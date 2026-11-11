@@ -60,6 +60,8 @@ export function installAutoTest(g: Game): void {
     god: (on: boolean) => { g.player.godMode = on; },
     tp: (x: number, y: number, z: number, yaw?: number) => { g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); if (yaw !== undefined) g.player.yaw = yaw; g.player.pitch = 0; },
     look: (yaw: number, pitch: number) => { g.player.yaw = yaw; g.player.pitch = pitch; },
+    mouse: (dx: number, dy: number) => { g.input.mouseDX += dx; g.input.mouseDY += dy; },
+    quality: (q: 'low' | 'medium' | 'high') => { g.settings.quality = q; g.applySettings(); },
     sim: (a: string, on: boolean) => g.input.sim(a, on),
     fire: (on: boolean) => { g.input.fire = on; if (on) g.input.firePressed = true; },
     ads: (on: boolean) => { g.input.ads = on; },

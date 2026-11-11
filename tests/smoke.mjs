@@ -1,0 +1,10 @@
+import { open, st, shot, sleep, waitFor } from './lib.mjs';
+const { browser, page, errors } = await open();
+await sleep(1500); await shot(page, '01-menu');
+await page.click('[data-a="classes"]'); await sleep(1200); await shot(page, '02-classes');
+await page.evaluate(() => window.WB.newGame('vanguard'));
+await waitFor(page, () => window.WB.state().level === 'hub' && window.WB.state().state === 'play');
+await sleep(2500); await shot(page, '03-hub');
+console.log(JSON.stringify(await st(page), null, 1));
+console.log('ERRORS', errors);
+await browser.close();

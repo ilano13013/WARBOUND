@@ -102,7 +102,7 @@ export function buildHub(g: Game, m: Mission): Level {
   L.sandbags(-6, -27, true, 4); L.sandbags(6, -27, true, 4);
   L.barrier(-9, -36, true); L.barrier(8, -41, true); L.crate(3, -34, 1.3); L.crate(-3, -44, 1.3, 0, 'olive'); L.container(11.5, -48, false, 'container_green');
   L.platform('grate', -11.5, -47, 5, 6, 2.4);
-  L.stairs('metal', -11.5, -43.9, 'z-', 2, 8, 0.3, 0.4);
+  L.stairs('metal', -11.5, -40.8, 'z-', 2, 8, 0.3, 0.4);
   const target = (x: number, z: number, y = 0) => {
     const grp = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.95, 0.12), cmat(0xd8742a, 0.7, 0.1)); body.position.y = 0.95;

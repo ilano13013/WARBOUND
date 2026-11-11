@@ -47,7 +47,7 @@ export class Input {
     window.addEventListener('keyup', (e) => this.key(e, false));
     window.addEventListener('blur', () => this.reset());
     document.addEventListener('mousemove', (e) => {
-      if (this.locked || this.testMode) { this.mouseDX += e.movementX || 0; this.mouseDY += e.movementY || 0; }
+      if (this.locked && !this.testMode) { this.mouseDX += e.movementX || 0; this.mouseDY += e.movementY || 0; }
     });
     document.addEventListener('mousedown', (e) => {
       if (!this.locked && !this.testMode) return;

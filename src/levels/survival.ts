@@ -57,8 +57,8 @@ export function buildSurvival(g: Game, m: Mission): Level {
   for (const [x, z] of [[-14, -14], [14, -14], [-14, 14], [14, 14]]) { L.column(x, z, 7, 1.1, 'darkmetal'); L.lamp(x, 7.2, z, 'violet', true, 30, 24); }
   L.container(-22, 0, false, 'container_blue'); L.container(22, 0, false, 'container_red'); L.container(0, -22, true, 'container_green'); L.container(0, 22, true, 'container_blue');
   for (const [x, z, ax] of [[-7, -6, 1], [7, 6, 1], [-6, 8, 0], [6, -8, 0], [-20, -22, 1], [20, 22, 1], [-22, 18, 0], [22, -18, 0]] as [number, number, number][]) L.barrier(x, z, !!ax, 3);
-  L.platform('grate', -24, -24, 8, 8, 2.6); L.stairs('metal', -19.8, -24, 'x+', 2.4, 9, 0.29, 0.4);
-  L.platform('grate', 24, 24, 8, 8, 2.6); L.stairs('metal', 19.8, 24, 'x-', 2.4, 9, 0.29, 0.4);
+  L.platform('grate', -24, -24, 8, 8, 2.6); L.stairs('metal', -16.4, -24, 'x-', 2.4, 9, 0.29, 0.4);
+  L.platform('grate', 24, 24, 8, 8, 2.6); L.stairs('metal', 16.4, 24, 'x+', 2.4, 9, 0.29, 0.4);
   L.crate(-3, 0, 1.3); L.crate(3.2, 1, 1.1, 0, 'olive'); L.crate(10, -18, 1.4); L.crate(-10, 18, 1.4); L.crate(-10.2, 18, 1, 1.4, 'olive');
   L.lamp(0, 8.5, 0, 'white', true, 40, 34);
   const ammo = L.ammoCrate(0, 4);

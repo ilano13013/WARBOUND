@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Ambience } from '../world/Level';
 import type { Settings } from '../save/Save';
 
@@ -69,6 +70,12 @@ export class Renderer {
     this.sky.renderOrder = -10;
     this.scene.add(this.sky);
 
+    // environnement de réflexion pour les matériaux PBR métalliques
+    const pm = new THREE.PMREMGenerator(this.renderer);
+    const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+    this.scene.environment = env; this.scene.environmentIntensity = 0.3;
+    this.vmScene.environment = env; this.vmScene.environmentIntensity = 0.7;
     this.vmScene.add(this.vmHemi, this.vmSun);
     this.vmSun.position.set(0.6, 1.2, 0.8);
     this.scene.add(this.camera);
@@ -149,6 +156,8 @@ export class Renderer {
     fog.density += (this.fogTarget - fog.density) * Math.min(1, dt * 2);
     this.hemi.intensity = this.baseHemi * this.zoneLight;
     this.sun.intensity = this.baseSun * (0.25 + 0.75 * this.zoneLight);
+    this.scene.environmentIntensity = 0.08 + 0.24 * this.zoneLight;
+    this.vmScene.environmentIntensity = 0.35 + 0.4 * this.zoneLight;
     this.vmHemi.intensity = 0.7 + 0.7 * this.zoneLight;
     this.vmSun.intensity = 0.6 + 1.0 * this.zoneLight;
     this.skyMat.uniforms.t.value = time;

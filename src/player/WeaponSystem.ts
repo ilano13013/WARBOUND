@@ -7,6 +7,7 @@ import { softTexture } from '../render/Materials';
 
 export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number }
 
+const VM_SCALE = 0.78;
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3(), _e = new THREE.Euler();
 
 export class WeaponSystem {
@@ -47,6 +48,7 @@ export class WeaponSystem {
       const st = weaponStats(item, this.g.player.mods, p.classId);
       const model = buildWeaponModel(st.def, item.attach || {});
       model.group.visible = false;
+      model.group.scale.setScalar(VM_SCALE);
       this.root.add(model.group);
       const prev = keepAmmo ? old.find((o) => o.st.item.uid === item.uid) : null;
       this.slots[i] = { st, ammo: prev ? Math.min(prev.ammo, st.mag) : st.mag, reserve: prev ? prev.reserve : st.def.reserve, model, hits: 0, shots: 0 };
@@ -263,8 +265,8 @@ export class WeaponSystem {
     const sprintT = p.sprinting && this.reloading <= 0 ? 1 : 0;
     this.sprintK += (sprintT - this.sprintK) * Math.min(1, dt * 10);
 
-    const hipX = pistol ? 0.15 : 0.17, hipY = pistol ? -0.17 : -0.19, hipZ = pistol ? -0.42 : -0.36;
-    const adsY = -w.model.sightY, adsZ = pistol ? -0.36 : -0.24;
+    const hipX = pistol ? 0.15 : 0.18, hipY = pistol ? -0.16 : -0.19, hipZ = pistol ? -0.42 : -0.4;
+    const adsY = -w.model.sightY * VM_SCALE, adsZ = pistol ? -0.36 : -0.26;
     const pos = this.pose.set(hipX + (0 - hipX) * ease, hipY + (adsY - hipY) * ease, hipZ + (adsZ - hipZ) * ease);
     const rot = this.rot.set(0, 0, 0);
     const bobK = (reduce ? 0.3 : 1) * p.bobLevel * (1 - ease * 0.85);

@@ -376,12 +376,15 @@ export class Game {
     requestAnimationFrame((t) => this.loop(t));
     let real = (now - this.last) / 1000;
     this.last = now;
-    if (real > 0.25) real = 0.25;
+    if (real > (this.testMode ? 1.5 : 0.25)) real = this.testMode ? 1.5 : 0.25;
     this.fpsAcc += real; this.fpsN++;
     if (this.fpsAcc >= 0.5) { this.fps = Math.round(this.fpsN / this.fpsAcc); this.fpsAcc = 0; this.fpsN = 0; }
     try {
-      if (this.testMode && this.testSpeed > 1) {
-        for (let i = 0; i < this.testSpeed; i++) this.step(1 / 60, i === this.testSpeed - 1);
+      if (this.testMode) {
+        // mode test : le temps de jeu suit le temps réel (× testSpeed) même à très faible fréquence d'images
+        const total = real * this.testSpeed;
+        const n = Math.max(1, Math.ceil(total / (1 / 30)));
+        for (let i = 0; i < n; i++) this.step(total / n, i === n - 1);
       } else this.step(Math.min(real, 0.05), true);
     } catch (err) {
       this.errors.push(String((err as Error)?.stack || err));
