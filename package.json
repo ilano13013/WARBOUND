@@ -1,0 +1,22 @@
+{
+  "name": "warbound",
+  "private": true,
+  "version": "1.0.0",
+  "description": "WARBOUND — The Fracture Chronicles. FPS 3D / Action RPG militaire dark fantasy.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/run-all.mjs"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "typescript": "5.6",
+    "vite": "5.4"
+  }
+}
