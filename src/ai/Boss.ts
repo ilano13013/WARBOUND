@@ -7,6 +7,7 @@ import type { Destructible } from '../world/Level';
 import { cmat, mat } from '../render/Materials';
 import { Enemy } from './Enemy';
 import { add, box, cone, cyl, humanoid, markerSprite, oct, pivot, sph, type EnemyModel } from './EnemyModels';
+import { buildRiggedEnemy } from './EnemyRigs';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 
@@ -31,6 +32,14 @@ export abstract class Boss extends Enemy {
     super(g, kind, x, z, { noLoot: true });
     this.isBoss = true;
     this.model.root.removeFromParent();
+    this.rig?.dispose(); this.rig = null;
+    const rg = buildRiggedEnemy(kind);
+    if (rg) {
+      // modèle animé : les ornements procéduraux (halos, cristaux) sont conservés et rattachés au nouveau modèle
+      for (const o of model.extra) { const w = o.getWorldPosition(new THREE.Vector3()); rg.model.root.add(o); o.position.copy(w); }
+      rg.model.extra = model.extra;
+      model = rg.model; this.rig = rg.rig;
+    }
     this.model = model;
     g.r.scene.add(model.root);
     this.shieldMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0x4ad8ff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -108,10 +117,30 @@ export abstract class Boss extends Enemy {
     g.profile!.stats.bossKills++;
   }
 
+  private castPrev = 0;
+  /** Animation commune des boss animés ; `cast` > valeur précédente déclenche un sort. */
+  protected bossRig(dt: number, gunUp: boolean, cast = 0, lift = 0): void {
+    const rig = this.rig!;
+    if (cast > this.castPrev + 0.05) rig.cast();
+    this.castPrev = cast;
+    rig.setMotion(Math.hypot(this.vel.x, this.vel.z), gunUp, dt);
+    rig.update(dt);
+    rig.model.position.y = lift;
+    if (this.exposedT > 0) rig.root.rotation.z = Math.sin(this.walkPhase * 8) * 0.02; else rig.root.rotation.z = 0;
+    this.walkPhase += dt;
+    this.shieldMesh.rotation.y += dt;
+  }
+
   protected updateDeath(dt: number): void {
     if (this.removed) return;
     this.deathT += dt;
     const r = this.model.root;
+    if (this.rig) {
+      this.rig.update(dt);
+      if (this.deathT > 3) r.position.y = this.pos.y - (this.deathT - 3) * 0.6;
+      if (this.deathT > 6) this.remove();
+      return;
+    }
     r.rotation.x = Math.min(0.5, this.deathT * 0.25);
     r.position.y = this.pos.y - Math.max(0, this.deathT - 2) * 0.8;
     r.position.x = this.pos.x + (Math.random() - 0.5) * 0.08;
@@ -220,10 +249,10 @@ export class Guardian extends Boss {
     if (dist < 6) {
       // frappe au sol rapprochée
       g.combat.hazardCircle(this.pos.clone(), 6, 0.9, 42 * g.diff.damage, 0xff5a1a);
-      g.audio.charge(this.pos, 0.8); this.stompAnim = 0.9; this.busyT = 1.2; this.actT = 2.2 * cdK;
+      g.audio.charge(this.pos, 0.8); this.stompAnim = 0.9; this.busyT = 1.2; this.actT = 2.2 * cdK; this.rig?.attack(true);
     } else if (this.attackI % 3 === 0) {
       // onde de choc : sauter pour l'éviter
-      this.stompAnim = 0.8; this.busyT = 1.3; this.actT = 3.0 * cdK;
+      this.stompAnim = 0.8; this.busyT = 1.3; this.actT = 3.0 * cdK; this.rig?.attack(false);
       g.audio.charge(this.pos, 0.7);
       g.combat.hazardWave(this.pos.clone(), 26, 13, 26 * g.diff.damage, 0xff8a2a, 0.75);
       g.after(0.75, () => { if (this.alive) { g.audio.explosion(this.pos, 1); g.player.shakeAmt = Math.min(1, g.player.shakeAmt + 0.5); } });
@@ -241,12 +270,13 @@ export class Guardian extends Boss {
         _c.set(p.pos.x + p.vel.x * 0.35 - this.pos.x, 0, p.pos.z + p.vel.z * 0.35 - this.pos.z).normalize();
         const origin = new THREE.Vector3(this.pos.x, _b.y, this.pos.z);
         g.audio.charge(this.pos, 0.9);
-        g.combat.hazardLine(origin, _c.clone(), 46, 2.4, 1.0, 30 * g.diff.damage, 0xff5a1a, () => { g.audio.enemyShot('sniper', this.pos); });
+        g.combat.hazardLine(origin, _c.clone(), 46, 2.4, 1.0, 30 * g.diff.damage, 0xff5a1a, () => { g.audio.enemyShot('sniper', this.pos); this.rig?.fire(); });
       });
     }
   }
 
   protected animate(dt: number): void {
+    if (this.rig) { this.bossRig(dt, false); return; }
     const m = this.model;
     const sp = Math.hypot(this.vel.x, this.vel.z);
     this.walkPhase += dt * (1.5 + sp * 1.6);
@@ -384,6 +414,13 @@ export class Archon extends Boss {
   }
 
   protected animate(dt: number): void {
+    if (this.rig) {
+      const m = this.model; this.walkPhase += dt;
+      if (m.extra.length >= 6) { m.extra[0].rotation.z += dt * 0.8; m.extra[1].rotation.z -= dt * 1.4; for (let i = 2; i < 6; i++) { const a = this.walkPhase * 0.9 + i * Math.PI / 2; m.extra[i].position.set(Math.cos(a) * 1.6, 1.8 + Math.sin(a * 2) * 0.3, Math.sin(a) * 1.6); m.extra[i].rotation.y += dt * 2; } }
+      if (this.castAnim > 0) this.castAnim -= dt;
+      this.bossRig(dt, false, this.castAnim, 0.35 + Math.sin(this.walkPhase * 1.4) * 0.18);
+      return;
+    }
     const m = this.model;
     this.walkPhase += dt;
     m.body.position.y = 0.6 + Math.sin(this.walkPhase * 1.4) * 0.18;
@@ -426,12 +463,14 @@ export class Sovereign extends Boss {
   anchors: THREE.Vector3[] = [];
   private wings: THREE.Group;
   private burstN = 0; private burstTm = 0; private dashT = 0; private dashDir = new THREE.Vector3();
+  private rootScale = 1.5;
   private volley = 0; private volleyT = 0; private transformT = 0; private fading = 0; private tpTarget = new THREE.Vector3(); private tpT = 6; private pulseI = 0; private castAnim = 0;
 
   constructor(g: Game, x: number, z: number) {
     const m = sovereignModel();
     super(g, 'sovereign', x, z, m);
     this.wings = m.wings;
+    if (this.rig) { this.rootScale = 1; this.rig.root.add(this.wings); this.wings.position.set(0, 1.55, 0.15); this.wings.scale.setScalar(1.5); }
     this.subtitle = 'Commandant Aldric Voss — Directeur du projet HELIX';
     this.shieldMesh.material = new THREE.MeshBasicMaterial({ color: 0xff3a5a, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   }
@@ -487,8 +526,8 @@ export class Sovereign extends Boss {
     }
     if (this.fading > 0) {
       this.fading -= dt;
-      this.model.root.scale.setScalar(Math.max(0.05, this.fading / 0.45) * 1.5);
-      if (this.fading <= 0) { this.pos.set(this.tpTarget.x, 1.2, this.tpTarget.z); this.model.root.scale.setScalar(1.5); g.fx.burst(this.center(_b), { count: 30, color: 0xff7a8a, speed: 5, life: 0.6, size: 0.22, gravity: 0 }); }
+      this.model.root.scale.setScalar(Math.max(0.05, this.fading / 0.45) * this.rootScale);
+      if (this.fading <= 0) { this.pos.set(this.tpTarget.x, 1.2, this.tpTarget.z); this.model.root.scale.setScalar(this.rootScale); g.fx.burst(this.center(_b), { count: 30, color: 0xff7a8a, speed: 5, life: 0.6, size: 0.22, gravity: 0 }); }
       return;
     }
 
@@ -576,6 +615,15 @@ export class Sovereign extends Boss {
   }
 
   protected animate(dt: number): void {
+    if (this.rig && !(this.phase === 1 && this.transformT <= 0)) {
+      if (this.castAnim > 0) this.castAnim -= dt;
+      this.walkPhase += dt;
+      this.wings.rotation.y = Math.sin(this.walkPhase * 2) * 0.12;
+      this.wings.children[this.wings.children.length - 1].rotation.z += dt * 2;
+      this.bossRig(dt, false, this.castAnim, Math.sin(this.walkPhase * 1.6) * 0.08);
+      return;
+    }
+    if (this.rig) { this.bossRig(dt, true); return; }
     if (this.phase === 1 && this.transformT <= 0) { super.animate(dt); if (this.dashT > 0) this.model.body.rotation.x = 0.5; return; }
     const m = this.model;
     this.walkPhase += dt;

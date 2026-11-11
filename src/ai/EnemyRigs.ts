@@ -7,6 +7,12 @@ import { cmat, mat } from '../render/Materials';
 import type { EnemyKind } from '../data/enemies';
 
 export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
+  guardian: { model: 'chars/mech', height: 4.3, humanoid: false, walkSpeed: 1.4, runSpeed: 4, clips: { idle: 'Idle', walk: 'Walk', run: 'Run', shoot: 'Shoot', attack: 'Punch', attack2: 'Kick', hit: 'HitRecieve_1', death: 'Death' }, mats: { '*': { color: 0xa8a8a8, rough: 0.55, metal: 0.45 } } },
+  archon: { model: 'chars/witch', height: 3.4, humanoid: true, walkSpeed: 1.4, mats: {
+    Purple: { color: 0x150c24, emissive: 0x2a0e4a, ei: 0.6, rough: 0.85 }, Gold: { color: 0x3a2a5a, emissive: 0xb07aff, ei: 2.4 }, Skin: { color: 0xb8b0c8, emissive: 0x4a2a8a, ei: 0.6 }, Hair_Black: { color: 0x0a0610 }, Brown: { color: 0x120c18 }, Brown2: { color: 0x1c1428 } } },
+  sovereign: { model: 'chars/king', height: 2.9, humanoid: true, gun: true, walkSpeed: 1.5, runSpeed: 3.6, mats: {
+    Blue: { color: 0x1c0a12, rough: 0.7 }, Metal: { color: 0x2a2a30, metal: 0.9, rough: 0.3 }, Metal_Dark: { color: 0x121216, metal: 0.9, rough: 0.35 }, Gold: { color: 0x8a6a2a, metal: 1, rough: 0.3, emissive: 0x5a0a10, ei: 0.5 },
+    Skin: { color: 0x9a8a8c, emissive: 0x3a0a10, ei: 0.4 }, Eye: { color: 0x300000, emissive: 0xff2a3a, ei: 3 }, Hair_White: { color: 0xd8d0d0 }, Beige: { color: 0x3a2a24 }, DarkBrown: { color: 0x1a120e } } },
   grunt: { model: 'chars/swat', height: 1.82, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
     Swat: { color: 0x2c3226, rough: 0.8 }, Swat_Black: { color: 0x141518, metal: 0.35, rough: 0.55 }, Visor: { color: 0x1a0a2a, emissive: 0x9a4aff, ei: 2.6 }, Skin: { color: 0x5e5262 } } },
   sniper: { model: 'chars/soldier', height: 1.78, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
@@ -22,9 +28,9 @@ export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
     Material: { color: 0x1a1222, metal: 0.45, rough: 0.32 }, 'Material.001': { color: 0x200030, emissive: 0xb04aff, ei: 3 } } },
   drone: { model: 'chars/drone', height: 0.85, humanoid: false, walkSpeed: 2, runSpeed: 4.5, clips: { idle: 'Idle', walk: 'Walk', run: 'Run', shoot: 'Shoot', death: 'Dead', attack: 'Attack' }, mats: {
     Main: { color: 0x2a2e34, metal: 0.7, rough: 0.3 }, Main2: { color: 0x15171a, metal: 0.7, rough: 0.3 }, Edge: { color: 0xc8a020, metal: 0.8, rough: 0.35 }, Grey: { color: 0x3a3e44, metal: 0.8 }, LightGrey: { color: 0x5a5e66, metal: 0.8 },
-    Material: { color: 0x300000, emissive: 0xff2a2a, ei: 3 }, 'Material.001': { color: 0x300000, emissive: 0xff3a2a, ei: 2.4 } } },
+    '*': { color: 0x23262b, metal: 0.65, rough: 0.35 } } },
   sentinel: { model: 'chars/knight', height: 2.65, humanoid: false, walkSpeed: 1.6, runSpeed: 3.4, clips: { idle: 'Idle_swordRight', walk: 'Walking', run: 'Run', attack: 'Run_swordAttack', death: 'Death' }, mats: {
-    Armor: { color: 0x34343e, metal: 0.4, rough: 0.5, emissive: 0x2a0a5a, ei: 0.5 }, Boots: { color: 0x2a2836, metal: 0.2, rough: 0.7 }, Skin: { color: 0x14081e, emissive: 0x9a5aff, ei: 2.2 } } },
+    Armor: { color: 0x34343e, metal: 0.4, rough: 0.5, emissive: 0x2a0a5a, ei: 0.5 }, Boots: { color: 0x2a2836, metal: 0.2, rough: 0.7 }, Skin: { color: 0x0e0816, emissive: 0x7a3aff, ei: 0.9 } } },
   wolf: { model: 'chars/wolf', height: 1.0, humanoid: false, walkSpeed: 1.8, runSpeed: 6, ghost: true, clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Attack', death: 'Death', hit: 'Idle_HitReact_Left' } },
 };
 
@@ -76,6 +82,35 @@ export function buildRiggedEnemy(kind: EnemyKind | 'wolf'): { model: EnemyModel;
     rig.hand.add(staff);
     staff.rotation.set(Math.PI / 2, 0, 0);
     rig.muzzle = cr;
+  }
+  if (kind === 'drone') {
+    const eye = root.getObjectByName('Eye');
+    if (eye) { root.updateMatrixWorld(true); const ws = eye.getWorldScale(new THREE.Vector3()).x; const o = new THREE.Mesh(new THREE.SphereGeometry(0.075 / ws, 12, 8), mat('glow_red')); eye.add(o); }
+    for (const n of ['UpperArmL', 'UpperArmR']) { const b = root.getObjectByName(n); if (b) { const ws = b.getWorldScale(new THREE.Vector3()).x; const s = new THREE.Mesh(new THREE.BoxGeometry(0.05 / ws, 0.012 / ws, 0.05 / ws), mat('hazard')); b.add(s); } }
+  }
+  if (kind === 'sentinel') {
+    // équipement du chevalier (modélisé à l'origine) : épée, casque, épaulières
+    root.updateMatrixWorld(true);
+    const attach = (bone: string, asset: string, pos: THREE.Vector3, quat: THREE.Quaternion, size: number) => {
+      const b = root.getObjectByName(bone), o = Assets.clone(asset);
+      if (!b || !o) return;
+      o.traverse((n) => { const me = n as THREE.Mesh; if (me.isMesh) { me.castShadow = true; me.material = (me.material as THREE.MeshStandardMaterial).clone(); const mm = me.material as THREE.MeshStandardMaterial; mm.color.multiplyScalar(0.55); mm.metalness = 0.6; mm.roughness = 0.4; rig.materials.push(mm); mm.userData.baseEmissive = mm.emissive.clone(); mm.userData.baseEI = mm.emissiveIntensity; } });
+      const w = new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(size, size, size));
+      const local = b.matrixWorld.clone().invert().multiply(w);
+      local.decompose(o.position, o.quaternion, o.scale);
+      b.add(o);
+      return o;
+    };
+    const wp = (n: string) => root.getObjectByName(n)?.getWorldPosition(new THREE.Vector3()) || new THREE.Vector3();
+    const face = root.getWorldQuaternion(new THREE.Quaternion());
+    attach('Head', 'chars/knight_helmet', wp('Head').add(new THREE.Vector3(0, rig.def.height * 0.075, 0)), face, rig.scale * 1.15);
+    attach('Torso', 'chars/knight_pads', wp('ShoulderL').lerp(wp('ShoulderR'), 0.5), face, rig.scale);
+    const palm = wp('PalmR'), fing = wp('FingersR');
+    const dirF = fing.clone().sub(palm).normalize();
+    void dirF;
+    const blade = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0.6, -1).applyQuaternion(face).normalize());
+    const sw = attach('PalmR', 'chars/knight_sword', palm, blade, rig.scale * 2.2);
+    if (sw) sw.traverse((n) => { const me = n as THREE.Mesh; if (me.isMesh) { const mm = me.material as THREE.MeshStandardMaterial; mm.emissive.setHex(0x6a2aff); mm.emissiveIntensity = 0.6; mm.userData.baseEmissive = mm.emissive.clone(); mm.userData.baseEI = 0.6; } });
   }
   const model: EnemyModel = { root, body: root, head: rig.head, legL: null, legR: null, armL: null, armR: null, extra: [], muzzle: rig.muzzle, shield, marker };
   return { model, rig };

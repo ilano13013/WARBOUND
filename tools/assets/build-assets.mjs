@@ -17,6 +17,7 @@ const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..
 const Q = `${SRC}/quaternius-showcase/public/glb`;
 const FG = `${SRC}/fps-asset-kit/weapons`;
 const only = process.argv[2] || 'all';
+const filter = process.argv[3] ? new RegExp(process.argv[3]) : null;
 
 // ---------------------------------------------------------------- modèles
 const MODELS = [
@@ -45,6 +46,9 @@ const MODELS = [
   ['chars/wolf', `${Q}/animals_pack/Wolf.glb`],
   ['chars/drone', `${Q}/cyberpunk_pack/Enemy_Flying_Gun.glb`],
   ['chars/mech', `${Q}/mech_pack/George.glb`, { tex: 1024 }],
+  ['chars/knight_sword', `${Q}/single_knight_pack/Sword.glb`],
+  ['chars/knight_helmet', `${Q}/single_knight_pack/Helmet2.glb`],
+  ['chars/knight_pads', `${Q}/single_knight_pack/ShoulderPads.glb`],
   // bibliothèque d'animations (Universal Animation Library, Quaternius, CC0)
   ['anims/ual', `${SRC}/gltf-universal-animation-library/glTF/AnimationLibrary_Godot_Standard.gltf`, { animOnly: [
     'A_TPose', 'Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Crouch_Idle_Loop', 'Crouch_Fwd_Loop', 'Death01', 'Hit_Chest', 'Hit_Head',
@@ -71,6 +75,7 @@ async function buildModels() {
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   let total = 0;
   for (const [name, src, opt = {}] of MODELS) {
+    if (filter && !filter.test(name)) continue;
     if (!fs.existsSync(src)) { console.warn('MANQUANT', src); continue; }
     const doc = await io.read(src);
     const root = doc.getRoot();

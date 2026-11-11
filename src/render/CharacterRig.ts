@@ -54,8 +54,12 @@ export class CharacterRig {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = true; mesh.receiveShadow = false; mesh.frustumCulled = false;
+      if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals();
       const conv = (src: THREE.Material) => {
-        const c = (src as THREE.MeshStandardMaterial).clone();
+        const ms = src as THREE.MeshStandardMaterial;
+        // matériaux non éclairés (KHR_materials_unlit) convertis en PBR pour recevoir lumière et ombres
+        const c = ms.isMeshStandardMaterial ? ms.clone() : new THREE.MeshStandardMaterial({ color: (src as THREE.MeshBasicMaterial).color?.clone() ?? new THREE.Color(0xffffff), map: (src as THREE.MeshBasicMaterial).map ?? null, roughness: 0.6, metalness: 0.3 });
+        c.name = src.name;
         const t = tw[src.name] || tw['*'];
         if (t) {
           if (t.color !== undefined) c.color.setHex(t.color);
