@@ -1,0 +1,82 @@
+// Association archétype ennemi -> modèle animé (Quaternius, CC0) avec teintes « corrompues ».
+import * as THREE from 'three';
+import { Assets } from '../assets/Assets';
+import { CharacterRig, type RigDef } from '../render/CharacterRig';
+import { markerSprite, type EnemyModel } from './EnemyModels';
+import { cmat, mat } from '../render/Materials';
+import type { EnemyKind } from '../data/enemies';
+
+export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
+  grunt: { model: 'chars/swat', height: 1.82, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    Swat: { color: 0x2c3226, rough: 0.8 }, Swat_Black: { color: 0x141518, metal: 0.35, rough: 0.55 }, Visor: { color: 0x1a0a2a, emissive: 0x9a4aff, ei: 2.6 }, Skin: { color: 0x5e5262 } } },
+  sniper: { model: 'chars/soldier', height: 1.78, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    Swat: { color: 0x3b3a2a, rough: 0.85 }, Black: { color: 0x141416 }, Grey: { color: 0x2b2d25 }, Brown: { color: 0x2a2018 }, Skin: { color: 0x7a6a6a, emissive: 0x401010, ei: 0.4 }, Hair_Brown: { color: 0x1a1410 } } },
+  breaker: { model: 'chars/swat', height: 2.05, humanoid: true, gun: true, walkSpeed: 1.3, runSpeed: 3.2, mats: {
+    Swat: { color: 0x3a3f48, metal: 0.65, rough: 0.4 }, Swat_Black: { color: 0x1a1b20, metal: 0.6, rough: 0.4 }, Visor: { color: 0x2a1000, emissive: 0xff7a2a, ei: 2.8 }, Skin: { color: 0x4a4a4a } } },
+  caster: { model: 'chars/witch', height: 1.95, humanoid: true, walkSpeed: 1.4, runSpeed: 3.2, clips: { aim: 'Spell_Simple_Idle_Loop' }, mats: {
+    Purple: { color: 0x26163c, rough: 0.9 }, Gold: { color: 0x3a2a6a, emissive: 0x9a5aff, ei: 1.6 }, Skin: { color: 0x8a8098, emissive: 0x2a1040, ei: 0.5 }, Hair_Black: { color: 0x0e0a14 }, Brown: { color: 0x1c1420 }, Brown2: { color: 0x2a1e30 } } },
+  commander: { model: 'chars/spacesuit', height: 1.98, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    SciFi_Main: { color: 0x5a1416, metal: 0.5, rough: 0.4 }, SciFi_MainDark: { color: 0x15161a, metal: 0.6, rough: 0.4 }, SciFi_Light: { color: 0x2a2c30, metal: 0.7, rough: 0.35 },
+    SciFi_Light_Accent: { color: 0x200000, emissive: 0xff2a2a, ei: 2.6 }, Grey: { color: 0x3a3c40 } } },
+  devourer: { model: 'chars/spider', height: 0.8, humanoid: false, walkSpeed: 2.5, runSpeed: 5, clips: { idle: 'Spider_Idle', walk: 'Spider_Walk', run: 'Spider_Walk', attack: 'Spider_Attack', death: 'Spider_Death' }, mats: {
+    Material: { color: 0x1a1222, metal: 0.45, rough: 0.32 }, 'Material.001': { color: 0x200030, emissive: 0xb04aff, ei: 3 } } },
+  drone: { model: 'chars/drone', height: 0.85, humanoid: false, walkSpeed: 2, runSpeed: 4.5, clips: { idle: 'Idle', walk: 'Walk', run: 'Run', shoot: 'Shoot', death: 'Dead', attack: 'Attack' }, mats: {
+    Main: { color: 0x2a2e34, metal: 0.7, rough: 0.3 }, Main2: { color: 0x15171a, metal: 0.7, rough: 0.3 }, Edge: { color: 0xc8a020, metal: 0.8, rough: 0.35 }, Grey: { color: 0x3a3e44, metal: 0.8 }, LightGrey: { color: 0x5a5e66, metal: 0.8 },
+    Material: { color: 0x300000, emissive: 0xff2a2a, ei: 3 }, 'Material.001': { color: 0x300000, emissive: 0xff3a2a, ei: 2.4 } } },
+  sentinel: { model: 'chars/knight', height: 2.65, humanoid: false, walkSpeed: 1.6, runSpeed: 3.4, clips: { idle: 'Idle_swordRight', walk: 'Walking', run: 'Run', attack: 'Run_swordAttack', death: 'Death' }, mats: {
+    Armor: { color: 0x34343e, metal: 0.4, rough: 0.5, emissive: 0x2a0a5a, ei: 0.5 }, Boots: { color: 0x2a2836, metal: 0.2, rough: 0.7 }, Skin: { color: 0x14081e, emissive: 0x9a5aff, ei: 2.2 } } },
+  wolf: { model: 'chars/wolf', height: 1.0, humanoid: false, walkSpeed: 1.8, runSpeed: 6, ghost: true, clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Attack', death: 'Death', hit: 'Idle_HitReact_Left' } },
+};
+
+export function rigAvailable(kind: EnemyKind | 'wolf'): boolean { const d = RIGS[kind]; return !!d && Assets.has(d.model) && (!d.humanoid || Assets.has('anims/ual')); }
+
+/** Modèle d'ennemi compatible avec l'interface de la 1.0, animé par un CharacterRig. */
+export function buildRiggedEnemy(kind: EnemyKind | 'wolf'): { model: EnemyModel; rig: CharacterRig } | null {
+  if (!rigAvailable(kind)) return null;
+  let rig: CharacterRig;
+  try { rig = new CharacterRig(RIGS[kind]!); } catch (e) { console.warn('rig', kind, e); return null; }
+  const root = rig.root;
+  const marker = markerSprite(); marker.position.y = rig.def.height + 0.45; root.add(marker);
+  let shield: THREE.Object3D | null = null;
+  if (kind === 'breaker' && rig.handL) {
+    // bouclier balistique tenu dans la main gauche
+    const sh = new THREE.Group();
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.3, 0.06), new THREE.MeshPhysicalMaterial({ color: 0x2a2e36, metalness: 0.85, roughness: 0.35, clearcoat: 0.4 }));
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.02), mat('glass')); visor.position.set(0, 0.38, -0.04);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.95, 0.02), mat('glow_orange')); strip.position.set(0, -0.08, -0.04);
+    const haz = new THREE.Mesh(new THREE.BoxGeometry(0.77, 0.08, 0.07), mat('hazard')); haz.position.y = -0.6;
+    for (const o of [plate, visor, strip, haz]) { o.castShadow = true; sh.add(o); }
+    // fixé devant le personnage, indépendant de l'animation des bras
+    sh.position.set(-0.18, 1.05, -0.5);
+    root.add(sh);
+    shield = sh;
+  }
+  if (kind === 'grunt') {
+    // excroissances cristallines de la Fracture sur l'épaule
+    const sh = root.getObjectByName('ShoulderL');
+    if (sh) {
+      root.updateMatrixWorld(true);
+      const ws = sh.getWorldScale(new THREE.Vector3()).x;
+      for (const [x, y, z, s] of [[0.05, 0.1, 0, 0.11], [0.12, 0.05, 0.06, 0.07]]) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), mat('crystal')); c.scale.set(s / ws, s * 1.8 / ws, s / ws); c.position.set(x / ws, y / ws, z / ws); sh.add(c); }
+    }
+  }
+  if (kind === 'commander') {
+    const ring = new THREE.Mesh((() => { const g = new THREE.RingGeometry(0.9, 1, 40); g.rotateX(-Math.PI / 2); return g; })(), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    ring.position.y = 0.06; ring.scale.setScalar(11); root.add(ring);
+    rig.root.userData.aura = ring;
+  }
+  if (kind === 'caster' && rig.hand) {
+    // bâton cristallin
+    const staff = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.6, 6), cmat(0x1a1420, 0.6, 0.4)); pole.position.y = 0.1;
+    const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), mat('crystal')); cr.position.y = 0.95;
+    staff.add(pole, cr);
+    root.updateMatrixWorld(true);
+    staff.scale.setScalar(1 / rig.hand.getWorldScale(new THREE.Vector3()).x);
+    rig.hand.add(staff);
+    staff.rotation.set(Math.PI / 2, 0, 0);
+    rig.muzzle = cr;
+  }
+  const model: EnemyModel = { root, body: root, head: rig.head, legL: null, legR: null, armL: null, armR: null, extra: [], muzzle: rig.muzzle, shield, marker };
+  return { model, rig };
+}

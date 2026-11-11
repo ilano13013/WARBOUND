@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { buildEnemyModel, type EnemyModel } from './EnemyModels';
 import type { Enemy } from './Enemy';
+import { buildRiggedEnemy } from './EnemyRigs';
+import type { CharacterRig } from '../render/CharacterRig';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 
@@ -14,12 +16,16 @@ export class Ally {
   hp: number;
   taunts: boolean;
   private model: EnemyModel;
+  private rig: CharacterRig | null = null;
   private target: Enemy | null = null;
   private thinkT = 0; private atkT = 0; private phase = Math.random() * 6; private grounded = false;
   private path: THREE.Vector3[] | null = null; private pathI = 0; private repathT = 0;
 
   constructor(private g: Game, public kind: 'wolf' | 'meddrone', public life: number, private power = 1) {
-    this.model = buildEnemyModel(kind);
+    const rg = kind === 'wolf' ? buildRiggedEnemy('wolf') : null;
+    this.model = rg ? rg.model : buildEnemyModel(kind);
+    this.rig = rg ? rg.rig : null;
+    if (rg) this.model.marker.visible = false;
     this.taunts = kind === 'wolf';
     this.hp = kind === 'wolf' ? 160 : 9999;
     const p = g.player;
@@ -40,6 +46,7 @@ export class Ally {
     this.alive = false;
     this.g.fx.burst(this.pos, { count: 16, color: 0x9af0d0, speed: 2.5, life: 0.6, size: 0.16, gravity: -1 });
     this.model.root.removeFromParent();
+    this.rig?.dispose();
   }
 
   update(dt: number): void {
@@ -77,6 +84,7 @@ export class Ally {
       }
     } else if (this.target && this.target.alive && this.atkT <= 0) {
       this.atkT = 0.8;
+      this.rig?.attack();
       this.target.takeDamage(24 * this.power, { source: 'ally', type: 'melee', point: this.target.center(_a) });
       g.fx.burst(_a, { count: 6, color: 0x9af0d0, speed: 3, life: 0.3, size: 0.12 });
       this.target.alertTo(this.pos, true);
@@ -91,6 +99,12 @@ export class Ally {
     if (mx || mz) this.yaw = Math.atan2(-mx, -mz);
     else if (this.target) this.yaw = Math.atan2(-(this.target.pos.x - this.pos.x), -(this.target.pos.z - this.pos.z));
     const m = this.model, sw = Math.min(1, Math.hypot(this.vel.x, this.vel.z) / 4);
+    if (this.rig) {
+      this.rig.setMotion(Math.hypot(this.vel.x, this.vel.z), false, dt); this.rig.update(dt);
+      m.root.position.copy(this.pos); m.root.rotation.y = this.yaw;
+      if (Math.random() < 0.3) g.fx.spark(this.pos.x, this.pos.y + 0.6, this.pos.z, 0x9af0d0, 0.14, 0.5, 0.5);
+      return;
+    }
     for (let i = 0; i < 4; i++) m.extra[i].rotation.x = Math.sin(this.phase * 1.5 + (i % 2 ? Math.PI : 0) + (i > 1 ? 1.2 : 0)) * (0.15 + sw * 0.9);
     m.body.rotation.x = this.atkT > 0.55 ? 0.4 : 0;
     m.root.position.copy(this.pos); m.root.rotation.y = this.yaw;

@@ -5,6 +5,8 @@ import { ENEMIES, type EnemyDef, type EnemyKind } from '../data/enemies';
 import type { Damageable, DamageInfo } from '../world/World';
 import { buildEnemyModel, type EnemyModel } from './EnemyModels';
 import type { Ally } from './Ally';
+import { buildRiggedEnemy } from './EnemyRigs';
+import type { CharacterRig } from '../render/CharacterRig';
 
 export type AIState = 'idle' | 'patrol' | 'alert' | 'combat' | 'search';
 
@@ -47,14 +49,16 @@ export class Enemy implements Damageable {
   protected walkPhase = Math.random() * 6; protected flinch = 0; protected deathT = 0; protected flashT = 0; private flashed: { m: THREE.Mesh; mat: THREE.Material | THREE.Material[] }[] = [];
   protected hover = 0; protected auraT = 0;
   eliteBarT = 0;
+  rig: CharacterRig | null = null;
 
   constructor(protected g: Game, public kind: EnemyKind, x: number, z: number, o: SpawnOpts = {}) {
     this.def = ENEMIES[kind];
     this.name = this.def.name;
     this.maxHp = this.hp = Math.round(this.def.hp * (o.hpMult ?? 1) * g.diff.hp);
     this.radius = this.def.radius; this.height = this.def.height * (this.def.scale ?? 1);
-    this.model = buildEnemyModel(kind);
-    if (this.def.scale) this.model.root.scale.setScalar(this.def.scale);
+    const rigged = buildRiggedEnemy(kind);
+    if (rigged) { this.model = rigged.model; this.rig = rigged.rig; }
+    else { this.model = buildEnemyModel(kind); if (this.def.scale) this.model.root.scale.setScalar(this.def.scale); }
     this.pos.set(x, o.y ?? (this.def.flying ? 3 : 0.05), z);
     this.lastPos.copy(this.pos);
     this.static = !!o.static; this.noLoot = !!o.noLoot; this.group = o.group || ''; this.siege = o.siege || null;
@@ -115,6 +119,7 @@ export class Enemy implements Damageable {
     this.hp -= dmg;
     this.flinch = Math.min(1, this.flinch + dmg / this.maxHp * 2.5 + 0.2);
     this.flash();
+    if (this.rig && this.hp - 0 > 0 && (dmg > this.maxHp * 0.12 || info.head || Math.random() < 0.35)) this.rig.hit(!!info.head);
     this.eliteBarT = 5;
     if (info.point) {
       g.fx.impact(info.point, info.dir ? _a.copy(info.dir).negate() : _a.set(0, 1, 0), blocked ? 'metal' : this.kind === 'drone' ? 'metal' : this.kind === 'sentinel' ? 'crystal' : 'flesh');
@@ -146,6 +151,7 @@ export class Enemy implements Damageable {
   }
 
   private flash(): void {
+    if (this.rig) { this.flashT = 0.07; this.rig.flash(1); return; }
     if (this.flashT > 0) { this.flashT = 0.07; return; }
     this.flashT = 0.07;
     this.flashed.length = 0;
@@ -154,13 +160,14 @@ export class Enemy implements Damageable {
       if (m.isMesh && !(m.material as any).transparent) { this.flashed.push({ m, mat: m.material }); m.material = flashMat; }
     });
   }
-  private unflash(): void { for (const f of this.flashed) f.m.material = f.mat; this.flashed.length = 0; }
+  private unflash(): void { if (this.rig) { this.rig.flash(0); return; } for (const f of this.flashed) f.m.material = f.mat; this.flashed.length = 0; }
 
   die(info: DamageInfo): void {
     if (!this.alive) return;
     this.alive = false; this.hp = 0; this.deathT = 0;
     this.unflash(); this.flashT = 0;
     this.model.marker.visible = false;
+    this.rig?.die();
     this.g.audio.enemyDeath(this.kind, this.pos);
     this.g.combat.onKill(this, info);
     this.onDeath(info);
@@ -173,6 +180,7 @@ export class Enemy implements Damageable {
     if (this.removed) return;
     this.removed = true; this.alive = false;
     this.unflash();
+    this.rig?.dispose();
     this.model.root.removeFromParent();
   }
 
@@ -433,7 +441,7 @@ export class Enemy implements Damageable {
       }
       const tx = this.tgtAlly ? this.tgtAlly.pos.x : seeTarget ? p.pos.x : this.lastKnown.x, tz = this.tgtAlly ? this.tgtAlly.pos.z : seeTarget ? p.pos.z : this.lastKnown.z;
       if (dist <= d.range && seeTarget) {
-        if (this.cdT <= 0) { this.meleeT = 0.5; this.meleeHit = false; this.cdT = d.cooldown * g.diff.cooldown; g.audio.enemyAlert(this.kind, this.pos); }
+        if (this.cdT <= 0) { this.meleeT = 0.5; this.meleeHit = false; this.cdT = d.cooldown * g.diff.cooldown; g.audio.enemyAlert(this.kind, this.pos); this.rig?.attack(Math.random() < 0.5); }
         this.facePoint(tp, dt);
       } else if (this.kind === 'devourer' && seeTarget && dist > 4.5 && dist < 10 && this.leapCd <= 0 && this.grounded && this.rootT <= 0) {
         // bond
@@ -544,6 +552,7 @@ export class Enemy implements Damageable {
 
   protected shoot(tp: THREE.Vector3, see: boolean, dist: number): void {
     const g = this.g, d = this.def, p = g.player;
+    if (this.rig) { if (d.attack === 'orb') this.rig.cast(); else this.rig.fire(); this.rig.root.updateMatrixWorld(true); }
     this.muzzlePos(_a);
     if (d.attack === 'orb') {
       g.audio.enemyShot('orb', this.pos);
@@ -606,6 +615,7 @@ export class Enemy implements Damageable {
   // ---------- animation ----------
 
   protected animate(dt: number): void {
+    if (this.rig) { this.rigAnimate(dt); return; }
     const m = this.model;
     const sp = Math.hypot(this.vel.x, this.vel.z);
     this.walkPhase += dt * (3 + sp * 2.4);
@@ -644,6 +654,17 @@ export class Enemy implements Damageable {
     if (this.stunT > 0) m.body.rotation.z = Math.sin(this.walkPhase * 3) * 0.12; else if (this.kind !== 'drone') m.body.rotation.z = 0;
   }
 
+  protected rigAnimate(dt: number): void {
+    const rig = this.rig!;
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    const ranged = this.def.attack !== 'melee';
+    rig.setMotion(this.stunT > 0 || this.rootT > 0 ? 0 : sp, ranged && (this.state === 'combat' || this.aiming), dt);
+    rig.update(dt);
+    const aura = rig.root.userData.aura as THREE.Mesh | undefined;
+    if (aura) { this.walkPhase += dt; aura.scale.setScalar(11 + Math.sin(this.walkPhase * 3) * 0.6); aura.rotation.y += dt; }
+    if (this.def.flying) rig.model.position.y = Math.sin(this.walkPhase * 2) * 0.05 - this.def.height * 0.2;
+  }
+
   protected syncModel(): void {
     const r = this.model.root;
     r.position.copy(this.pos);
@@ -655,8 +676,16 @@ export class Enemy implements Damageable {
     this.deathT += dt;
     const r = this.model.root;
     if (this.def.flying) {
+      this.rig?.update(dt);
       this.vel.y -= 14 * dt; this.pos.addScaledVector(this.vel, dt); r.position.copy(this.pos); r.rotation.z += dt * 5;
       if (this.deathT > 1.2 || this.pos.y < 0.2) this.remove();
+      return;
+    }
+    if (this.rig) {
+      // l'animation de mort joue jusqu'au bout, puis le corps s'enfonce dans le sol
+      this.rig.update(dt);
+      if (this.deathT > 4.5) r.position.y = this.pos.y - (this.deathT - 4.5) * 0.45;
+      if (this.deathT > 7) this.remove();
       return;
     }
     const k = Math.min(1, this.deathT / 0.45);
