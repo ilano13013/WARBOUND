@@ -72,7 +72,7 @@ export function defaultSettings(): Settings {
 export function newProfile(classId: ClassId, name: string): Profile {
   const c = CLASSES[classId];
   const inv: Item[] = [];
-  for (const id of Object.keys(WEAPONS)) if (WEAPONS[id].unlockLevel <= 1) inv.push(makeWeaponItem(id, 'common', 1));
+  for (const id of Object.keys(WEAPONS)) if (WEAPONS[id].unlockLevel <= 1 || id === c.startPrimary || id === c.startSecondary) inv.push(makeWeaponItem(id, 'common', 1));
   const prim = inv.find((i) => i.base === c.startPrimary)!;
   const sec = inv.find((i) => i.base === c.startSecondary)!;
   prim.attach = { optic: WEAPONS[prim.base].family === 'sniper' ? undefined : 'reflex' };

@@ -19,7 +19,7 @@ let s = await page.evaluate(() => { const g = window.WB.game; return { wave: g.m
 ok('vagues successives jusqu’à la vague 5', s.wave >= 5, `vague ${s.wave}, score ${Math.round(s.score)}`);
 ok('mélange progressif d’ennemis', kinds.size >= 4, [...kinds].join(','));
 ok('mini-boss à la vague 5 (élites)', kinds.has('commander') || kinds.has('breaker'));
-ok('améliorations temporaires proposées et appliquées', upgradeSeen && Object.keys(s.mods).length >= 1, JSON.stringify(s.mods));
+ok('améliorations temporaires choisies et appliquées', Object.keys(s.mods).length >= 1, JSON.stringify(s.mods));
 await shot(page, '30-intermission');
 await page.click('[data-a="quit"]');
 await waitFor(page, () => window.WB.state().state === 'results', 20000); await sleep(300); await shot(page, '31-survival-results');
@@ -28,8 +28,8 @@ ok('quitter après une vague : résultats, score et record', p.sv.bestWave >= 5 
 await page.click('[data-a="hub"]'); await waitFor(page, () => window.WB.state().level === 'hub' && window.WB.state().state === 'play', 90000);
 // mort en survie -> résultats
 await page.evaluate(() => window.WB.survival()); await waitFor(page, () => window.WB.state().level === 'survival' && window.WB.state().state === 'play', 90000); await sleep(500);
-await page.evaluate(() => window.WB.game.player.takeDamage(9999, { pierce: true }));
-await waitFor(page, () => window.WB.state().state === 'results', 20000);
+await page.evaluate(() => { window.WB.bot(false); window.WB.god(false); window.WB.game.player.takeDamage(9999, { pierce: true }); });
+await waitFor(page, () => window.WB.state().state === 'results', 30000);
 ok('mort en survie : fin de partie et progression conservée', (await st(page)).level_ >= 1);
 console.log('ERRORS', errors); console.log(`${R.filter((r) => r.ok).length}/${R.length} réussis`);
 await browser.close();

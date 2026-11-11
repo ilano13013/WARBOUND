@@ -41,7 +41,7 @@ export function buildOp4(g: Game, m: Mission): Level {
   for (const [x, z] of [[-26, 36], [26, 36], [-34, -2], [34, -18]]) { L.box('darkmetal', x, 0, z, 0.3, 8, 0.3); L.lamp(x, 8.1, z, 'red', false); }
   L.lamp(0, 7.5, 10, 'red', true, 40, 30);
   barrel(g, L, -9, 18); barrel(g, L, 9, -2); barrel(g, L, -3, -24); barrel(g, L, 24, 14); barrel(g, L, -24, -14);
-  L.crystalDeco(-42, 30, 0, 1); L.crystalDeco(-44, 0, 28, 1.8, 'crystal_red'); L.crystalDeco(44, 0, -34, 2, 'crystal_red'); L.crystalDeco(42, 0, 36, 1.4);
+  L.crystalDeco(-42, 0, 30, 1); L.crystalDeco(-44, 0, 28, 1.8, 'crystal_red'); L.crystalDeco(44, 0, -34, 2, 'crystal_red'); L.crystalDeco(42, 0, 36, 1.4);
   lore(g, L, 'op4_log1', -24.5, 8);
   ammo(g, L, 24, -8); ammo(g, L, -4, 36);
   // mur et porte de l'installation

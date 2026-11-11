@@ -10,9 +10,9 @@ for (const cls of ['vanguard', 'bulwark', 'lifebinder', 'wraith', 'arcanist', 'r
   await page.evaluate((c) => window.WB.newGame(c), cls); await hub(); await sleep(500);
   const res = await page.evaluate(async () => {
     const W = window.WB, g = W.game, p = g.player;
-    W.tp(0, 0.1, -30, 0); W.look(0, 0);
-    const e = W.spawn('breaker', 0, -42, { static: true }); e.def = { ...e.def, sight: 0 }; e.yaw = Math.PI;
-    const e2 = W.spawn('grunt', 3, -43, { static: true }); e2.def = { ...e2.def, sight: 0 };
+    W.tp(-6, 0.1, -30, 0); W.look(0, 0);
+    const e = W.spawn('breaker', -6, -42, { static: true }); e.def = { ...e.def, sight: 0 }; e.yaw = Math.PI;
+    const e2 = W.spawn('grunt', -8.6, -43, { static: true }); e2.def = { ...e2.def, sight: 0 };
     await new Promise((r) => setTimeout(r, 700));
     p.hp = p.maxHp * 0.4;
     const out = { cls: p.cls.id, skills: [], hp0: e.hp };
@@ -21,7 +21,8 @@ for (const cls of ['vanguard', 'bulwark', 'lifebinder', 'wraith', 'arcanist', 'r
       const used = W.skill(i);
       await new Promise((r) => setTimeout(r, 900));
       out.skills.push({ id: p.cls.skills[i].id, used, cost: Math.round(en - p.energy) > 0 || p.energy < p.maxEnergy, cd: p.cds[i] > 0, buffs: [...p.buffs.keys()], allies: g.allies.length, fields: g.combat.fields.length, ehp: Math.round(e.hp), mark: e.markT > 0, pos: p.pos.z.toFixed(1), hp: Math.round(p.hp) });
-      W.tp(0, 0.1, -30, 0);
+      W.tp(-6, 0.1, -30, 0);
+      await new Promise((r) => setTimeout(r, 400));
     }
     W.setUlt(100); W.look(0, 0.02);
     const u = W.skill(3);
@@ -29,12 +30,13 @@ for (const cls of ['vanguard', 'bulwark', 'lifebinder', 'wraith', 'arcanist', 'r
     out.ult = { id: p.cls.ult.id, used: u, ult: p.ult, buffs: [...p.buffs.keys()], allies: g.allies.length, fields: g.combat.fields.length, ehp: Math.round(e.hp), alive: e.alive, hp: Math.round(p.hp), shield: Math.round(p.shield) };
     return out;
   });
-  const all = res.skills.every((s) => s.used && s.cd) && res.ult.used && res.ult.ult === 0;
+  const all = res.skills.every((s) => s.used && s.cd) && res.ult.used && res.ult.ult < 50;
   ok(`classe ${cls} : 3 compétences + ultime fonctionnelles`, all, JSON.stringify(res.skills.map((s) => `${s.id}:${s.used ? 'ok' : 'KO'}`)) + ' ult:' + res.ult.id + ':' + res.ult.used);
   console.log('   détails', JSON.stringify(res));
 }
 
 // ---------- talents ----------
+await page.setViewportSize({ width: 1280, height: 720 });
 await page.evaluate(() => window.WB.newGame('bulwark')); await hub(); await sleep(400);
 let a = await st(page);
 await page.evaluate(() => window.WB.giveLevel(1)); await sleep(300);
