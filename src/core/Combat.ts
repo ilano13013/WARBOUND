@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from './Game';
 import type { Enemy } from '../ai/Enemy';
 import type { Collider, DamageInfo } from '../world/World';
+import { softTexture } from '../render/Materials';
 
 export interface HitResult { t: number; point: THREE.Vector3; normal: THREE.Vector3 | null; enemy: Enemy | null; head: boolean; collider: Collider | null }
 
@@ -239,8 +240,12 @@ export class Combat {
   // ---------- projectiles ----------
 
   spawnProjectile(o: ProjectileOpts): void {
-    const mesh = new THREE.Mesh(projGeo, new THREE.MeshBasicMaterial({ color: o.color }));
-    mesh.scale.setScalar(o.radius);
+    const mesh = new THREE.Mesh(projGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(o.color).lerp(new THREE.Color(0xffffff), 0.55) }));
+    mesh.scale.setScalar(o.radius * 0.7);
+    // halo coloré autour du cœur lumineux
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTexture(), color: o.color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.setScalar(o.bounce ? 0 : 5.5);
+    mesh.add(halo);
     mesh.position.copy(o.pos);
     this.group.add(mesh);
     this.projectiles.push({ ...o, pos: o.pos.clone(), vel: o.vel.clone(), mesh, dead: false, age: 0 });
@@ -301,7 +306,7 @@ export class Combat {
     }
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const pr = this.projectiles[i];
-      if (pr.dead) { pr.mesh.removeFromParent(); (pr.mesh.material as THREE.Material).dispose(); this.projectiles.splice(i, 1); }
+      if (pr.dead) { pr.mesh.removeFromParent(); (pr.mesh.material as THREE.Material).dispose(); ((pr.mesh.children[0] as THREE.Sprite)?.material as THREE.Material)?.dispose(); this.projectiles.splice(i, 1); }
     }
   }
 

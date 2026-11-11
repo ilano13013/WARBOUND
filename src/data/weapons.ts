@@ -29,6 +29,7 @@ export interface WeaponDef {
   // paramètres du modèle 3D et du son
   look: { len: number; barrel: number; body: number; stock: number; magLen: number; tint: number; accent: number };
   sound: { pitch: number; body: number; crack: number; tail: number };
+  rec?: [string, number]; // enregistrement réel et vitesse de lecture
 }
 
 const W = (d: WeaponDef) => d;
@@ -42,6 +43,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 28, rangeEnd: 60, minDmg: 0.68, headMult: 1.6, adsTime: 0.22, adsZoom: 0.72, unlockLevel: 1,
     look: { len: 0.62, barrel: 0.3, body: 0.07, stock: 0.22, magLen: 0.16, tint: 0x2a2d30, accent: 0x4a5a3a },
     sound: { pitch: 1.0, body: 0.8, crack: 0.9, tail: 0.25 },
+    rec: ['ar15', 1],
   }),
   vektor: W({
     id: 'vektor', name: 'Vektor-556', family: 'ar', slot: 'primary',
@@ -51,6 +53,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 24, rangeEnd: 52, minDmg: 0.65, headMult: 1.5, adsTime: 0.2, adsZoom: 0.74, unlockLevel: 3,
     look: { len: 0.56, barrel: 0.24, body: 0.065, stock: 0.2, magLen: 0.18, tint: 0x33363a, accent: 0x7a6a4a },
     sound: { pitch: 1.18, body: 0.6, crack: 1.0, tail: 0.2 },
+    rec: ['ak', 1.06],
   }),
   aegis762: W({
     id: 'aegis762', name: 'Aegis-762', family: 'ar', slot: 'primary',
@@ -60,6 +63,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 36, rangeEnd: 75, minDmg: 0.75, headMult: 1.7, adsTime: 0.26, adsZoom: 0.7, unlockLevel: 6,
     look: { len: 0.7, barrel: 0.36, body: 0.078, stock: 0.24, magLen: 0.15, tint: 0x3a352d, accent: 0x5b4a32 },
     sound: { pitch: 0.82, body: 1.1, crack: 0.8, tail: 0.35 },
+    rec: ['sks', 0.94],
   }),
   vesper: W({
     id: 'vesper', name: 'Vesper-9', family: 'smg', slot: 'primary',
@@ -69,6 +73,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 14, rangeEnd: 34, minDmg: 0.55, headMult: 1.4, adsTime: 0.15, adsZoom: 0.8, unlockLevel: 1,
     look: { len: 0.42, barrel: 0.14, body: 0.062, stock: 0.14, magLen: 0.2, tint: 0x2c2f33, accent: 0x3d4f5a },
     sound: { pitch: 1.35, body: 0.45, crack: 0.8, tail: 0.15 },
+    rec: ['smg9', 1.05],
   }),
   spectre: W({
     id: 'spectre', name: 'Spectre-PDW', family: 'smg', slot: 'primary',
@@ -78,6 +83,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 12, rangeEnd: 30, minDmg: 0.5, headMult: 1.4, adsTime: 0.16, adsZoom: 0.8, unlockLevel: 4,
     look: { len: 0.38, barrel: 0.1, body: 0.07, stock: 0.12, magLen: 0.24, tint: 0x25282b, accent: 0x5a3d6a },
     sound: { pitch: 1.55, body: 0.35, crack: 0.9, tail: 0.12 },
+    rec: ['ppsh', 1.1],
   }),
   ember45: W({
     id: 'ember45', name: 'Ember-45', family: 'smg', slot: 'primary',
@@ -87,6 +93,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 16, rangeEnd: 36, minDmg: 0.6, headMult: 1.5, adsTime: 0.17, adsZoom: 0.78, unlockLevel: 7,
     look: { len: 0.44, barrel: 0.16, body: 0.068, stock: 0.15, magLen: 0.17, tint: 0x3b3029, accent: 0x8a4a2a },
     sound: { pitch: 1.05, body: 0.75, crack: 0.6, tail: 0.18 },
+    rec: ['m1911', 0.95],
   }),
   titan: W({
     id: 'titan', name: 'Titan-46', family: 'lmg', slot: 'primary',
@@ -96,6 +103,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 32, rangeEnd: 70, minDmg: 0.7, headMult: 1.4, adsTime: 0.34, adsZoom: 0.74, unlockLevel: 1,
     look: { len: 0.78, barrel: 0.36, body: 0.09, stock: 0.22, magLen: 0.14, tint: 0x2e3230, accent: 0x4c5a3c },
     sound: { pitch: 0.9, body: 1.0, crack: 0.85, tail: 0.3 },
+    rec: ['ak', 0.86],
   }),
   bastion: W({
     id: 'bastion', name: 'Bastion-LMG', family: 'lmg', slot: 'primary',
@@ -105,6 +113,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 38, rangeEnd: 80, minDmg: 0.75, headMult: 1.5, adsTime: 0.36, adsZoom: 0.72, unlockLevel: 8,
     look: { len: 0.84, barrel: 0.4, body: 0.095, stock: 0.24, magLen: 0.13, tint: 0x35312b, accent: 0x6a5a3a },
     sound: { pitch: 0.75, body: 1.2, crack: 0.75, tail: 0.38 },
+    rec: ['sks', 0.82],
   }),
   frostbite: W({
     id: 'frostbite', name: 'Frostbite .50', family: 'sniper', slot: 'primary',
@@ -114,6 +123,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 90, rangeEnd: 160, minDmg: 0.9, headMult: 2.5, adsTime: 0.4, adsZoom: 0.24, unlockLevel: 1,
     look: { len: 0.98, barrel: 0.56, body: 0.075, stock: 0.26, magLen: 0.1, tint: 0x2b3238, accent: 0x5a7a8a },
     sound: { pitch: 0.55, body: 1.6, crack: 1.1, tail: 0.6 },
+    rec: ['tikka', 0.8],
   }),
   requiem: W({
     id: 'requiem', name: 'Requiem DMR', family: 'sniper', slot: 'primary',
@@ -123,6 +133,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 60, rangeEnd: 120, minDmg: 0.85, headMult: 2.0, adsTime: 0.28, adsZoom: 0.42, unlockLevel: 1,
     look: { len: 0.82, barrel: 0.44, body: 0.07, stock: 0.24, magLen: 0.13, tint: 0x30332c, accent: 0x55603a },
     sound: { pitch: 0.72, body: 1.2, crack: 1.0, tail: 0.42 },
+    rec: ['savage', 1],
   }),
   p9: W({
     id: 'p9', name: 'Sidearm P9', family: 'pistol', slot: 'secondary',
@@ -132,6 +143,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 16, rangeEnd: 40, minDmg: 0.6, headMult: 1.6, adsTime: 0.12, adsZoom: 0.82, unlockLevel: 1,
     look: { len: 0.2, barrel: 0.05, body: 0.045, stock: 0, magLen: 0.11, tint: 0x2a2c2f, accent: 0x44494e },
     sound: { pitch: 1.25, body: 0.5, crack: 0.9, tail: 0.14 },
+    rec: ['ppq', 1],
   }),
   ash: W({
     id: 'ash', name: 'Revolver Ash', family: 'pistol', slot: 'secondary',
@@ -141,6 +153,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     rangeStart: 28, rangeEnd: 60, minDmg: 0.7, headMult: 2.0, adsTime: 0.16, adsZoom: 0.78, unlockLevel: 5,
     look: { len: 0.27, barrel: 0.12, body: 0.05, stock: 0, magLen: 0, tint: 0x3a3632, accent: 0x9a5a2a },
     sound: { pitch: 0.7, body: 1.3, crack: 1.0, tail: 0.4 },
+    rec: ['revolver', 0.85],
   }),
 };
 

@@ -6,6 +6,7 @@ import { buildWeaponModel, type WeaponModel } from './WeaponModels';
 import { buildGunAsset, type GunAsset } from './GunAssets';
 import { Arms } from './Arms';
 import { softTexture } from '../render/Materials';
+import { flareTexture } from '../render/FX';
 
 export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number; gun: GunAsset | null }
 
@@ -35,7 +36,7 @@ export class WeaponSystem {
     const cm = new THREE.MeshStandardMaterial({ color: 0xc8962e, metalness: 1, roughness: 0.25 });
     for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(cg, cm); m.visible = false; this.root.add(m); this.casings.push({ m, v: new THREE.Vector3(), t: 0 }); }
     this.flash = new THREE.Group();
-    const fm = new THREE.MeshBasicMaterial({ map: softTexture(), color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const fm = new THREE.MeshBasicMaterial({ map: flareTexture(), color: 0xffd8a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const p1 = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), fm);
     const p2 = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.1), fm); p2.rotation.y = Math.PI / 2;
     const p3 = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.1), fm); p3.rotation.set(Math.PI / 2, Math.PI / 2, 0);
@@ -260,7 +261,7 @@ export class WeaponSystem {
     this.flash.rotation.z = Math.random() * Math.PI;
     this.flash.scale.setScalar((st.silent ? 0.35 : 0.8 + st.recoilV * 0.25) * (0.8 + Math.random() * 0.5));
     if (!st.silent) g.fx.flash(_r.copy(_o).addScaledVector(_d, 0.8), tcol, 16, 0.05, 12);
-    g.audio.gunshot(st.def.sound, st.silent);
+    g.audio.gunshot(st.def.sound, st.silent, null, 1, st.def.rec);
     g.ui.hud.fired();
   }
 

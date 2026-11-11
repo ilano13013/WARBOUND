@@ -117,10 +117,33 @@ export class AudioSys {
     src.start(t, Math.random()); src.stop(t + dur + 0.05);
   }
 
+  // ---------- échantillons enregistrés (Free Firearm Sound Library, Fantozzi, CC0) ----------
+
+  /** Joue un son enregistré ; retourne false s'il n'est pas disponible (repli sur la synthèse). */
+  sample(name: string, o: { vol?: number; rate?: number; pos?: THREE.Vector3 | null; delay?: number; lowpass?: number } = {}): boolean {
+    const c = this.ctx; if (!c) return false;
+    const buf = Assets.sounds.get(name);
+    if (!buf) return false;
+    const src = c.createBufferSource(); src.buffer = buf;
+    src.playbackRate.value = (o.rate ?? 1) * (0.96 + Math.random() * 0.08);
+    const g = c.createGain(); g.gain.value = o.vol ?? 1;
+    let node: AudioNode = src;
+    if (o.lowpass) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lowpass; node.connect(f); node = f; }
+    node.connect(g); g.connect(this.out(o.pos ?? null));
+    src.start(c.currentTime + (o.delay || 0));
+    return true;
+  }
+
   // ---------- armes ----------
 
-  gunshot(s: { pitch: number; body: number; crack: number; tail: number }, silenced = false, pos: THREE.Vector3 | null = null, vol = 1): void {
+  gunshot(s: { pitch: number; body: number; crack: number; tail: number }, silenced = false, pos: THREE.Vector3 | null = null, vol = 1, rec?: [string, number]): void {
     if (!this.ctx) return;
+    // enregistrement réel + couche synthétique grave pour le « poids » du tir
+    if (rec && this.sample(rec[0], { vol: (silenced ? 0.35 : 0.95) * vol, rate: rec[1], pos, lowpass: silenced ? 1400 : undefined })) {
+      if (!silenced) { this.tone(110 * s.pitch, 0.08 + s.tail * 0.12, { type: 'sine', to: 38, vol: 0.45 * s.body * vol, pos }); this.noise(0.04, { vol: 0.18 * s.crack * vol, type: 'highpass', freq: 3200, pos }); }
+      else this.noise(0.08, { vol: 0.14 * vol, type: 'bandpass', freq: 1500, q: 0.8, pos });
+      return;
+    }
     const p = s.pitch * (0.97 + Math.random() * 0.06);
     if (silenced) {
       this.noise(0.09, { vol: 0.22 * vol, type: 'bandpass', freq: 1400 * p, q: 0.7, pos });
@@ -134,6 +157,8 @@ export class AudioSys {
   }
 
   enemyShot(kind: string, pos: THREE.Vector3): void {
+    const far: Record<string, string> = { rifle: Math.random() < 0.5 ? 'ar15_far' : 'ak_far', sniper: 'sniper_far', shotgun: 'shotgun_far' };
+    if (far[kind] && this.sample(far[kind], { vol: kind === 'sniper' ? 1 : 0.6, pos, rate: kind === 'rifle' ? 1.05 : 1 })) return;
     if (kind === 'sniper') this.gunshot({ pitch: 0.6, body: 1.3, crack: 1, tail: 0.5 }, false, pos, 0.8);
     else if (kind === 'shotgun') this.gunshot({ pitch: 0.7, body: 1.4, crack: 0.7, tail: 0.35 }, false, pos, 0.8);
     else if (kind === 'laser') { this.tone(1400, 0.1, { type: 'sawtooth', to: 500, vol: 0.1, pos, filter: 3000 }); }
@@ -149,7 +174,12 @@ export class AudioSys {
   }
   swap(): void { this.noise(0.12, { vol: 0.12, type: 'bandpass', freq: 900, to: 2200, q: 1 }); }
 
+  private stepI = 0;
   footstep(surf: string, sprint: boolean): void {
+    this.stepI++;
+    const kind = surf === 'dirt' ? 'sand' : 'stone';
+    const name = `step_${kind}${this.stepI % 2 ? 'l' : 'r'}${1 + (this.stepI % 3)}`;
+    if (this.sample(name, { vol: (sprint ? 0.55 : 0.38) * (surf === 'metal' ? 0.8 : 1), rate: surf === 'metal' ? 1.35 : 1 })) { if (surf === 'metal') this.tone(260, 0.06, { type: 'triangle', vol: 0.03, to: 180 }); return; }
     const v = sprint ? 0.13 : 0.08;
     if (surf === 'metal') { this.noise(0.07, { vol: v, type: 'bandpass', freq: 900, q: 3 }); this.tone(190, 0.08, { type: 'triangle', vol: v * 0.6, to: 120 }); }
     else if (surf === 'dirt') this.noise(0.1, { vol: v * 1.1, type: 'lowpass', freq: 600 });

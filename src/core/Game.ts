@@ -77,6 +77,7 @@ export class Game {
     this.testMode = new URLSearchParams(location.search).has('autotest');
     this.r = new Renderer(canvas);
     this.r.scene.add(this.fx.group);
+    this.fx.camera = this.r.camera;
     this.audio = new AudioSys(this.settings);
     this.input = new Input(canvas, this.settings, this.testMode);
     this.player = new Player(this);
