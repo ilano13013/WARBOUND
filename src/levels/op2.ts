@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission, SpawnSpec } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { dressOp2 } from './dress';
 import { cmat, mat } from '../render/Materials';
 import { ammo, barrel, lore, REYES, ORACLE, MAREK } from './common';
 
@@ -96,6 +97,7 @@ export function buildOp2(g: Game, m: Mission): Level {
   bld(-44, -11, -190, -166, 24); bld(11, 44, -190, -166, 24);
   car(-4, -172, false, 0x6a3030); L.barrier(4, -176, true, 3); L.rubble(-5, -180, 2);
   L.box('hazard', 0, 0, -185, 8, 0.12, 6, { nav: false });
+  dressOp2(L);
   L.finish();
 
   // ================= ENNEMIS =================

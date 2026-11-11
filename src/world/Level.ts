@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Collider, World, type Damageable, type DamageInfo, type Surface } from './World';
 import { mat, cmat, TILE, softTexture, type MatName } from '../render/Materials';
+import { Assets } from '../assets/Assets';
 
 export interface Ambience {
   skyTop: number; skyHorizon: number; fog: number; fogDensity: number;
@@ -94,6 +95,7 @@ export class Level {
   private batches = new Map<MatName, Batch>();
   private decos = new Map<THREE.Material, THREE.BufferGeometry[]>();
   private lightCount = 0;
+  private propList: { name: string; m: THREE.Matrix4 }[] = [];
   maxLights = 8;
   time = 0;
 
@@ -172,6 +174,7 @@ export class Level {
       for (const x of geos) x.dispose();
     }
     this.batches.clear(); this.decos.clear();
+    this.buildProps();
     const b = this.bounds;
     this.world.buildNav(b.minX, b.minZ, b.maxX, b.maxZ, 0);
   }
@@ -194,6 +197,50 @@ export class Level {
   zoneAt(x: number, z: number): Zone | null {
     for (const zn of this.zones) if (x >= zn.minX && x <= zn.maxX && z >= zn.minZ && z <= zn.maxZ) return zn;
     return null;
+  }
+
+  // ---------- décors glTF instanciés (Quaternius, CC0) ----------
+
+  /**
+   * Place un décor glTF. `h` = hauteur voulue en mètres (l'échelle conserve les proportions).
+   * `solid` ajoute une collision AABB (rotations par quarts de tour). Retourne false si l'asset manque.
+   */
+  prop(name: string, x: number, y: number, z: number, ry = 0, h = 1, solid = false, surf: Surface = 'metal'): boolean {
+    const info = propInfo(name);
+    if (!info) return false;
+    const k = h / info.h;
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y - info.min.y * k, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(k, k, k));
+    this.propList.push({ name, m });
+    if (solid) {
+      const quarter = Math.round(ry / (Math.PI / 2)) % 2 !== 0;
+      const sx = (quarter ? info.size.z : info.size.x) * k, sz = (quarter ? info.size.x : info.size.z) * k;
+      const cx = ((info.min.x + info.max.x) / 2) * k, cz = ((info.min.z + info.max.z) / 2) * k;
+      const c = new THREE.Vector3(cx, 0, cz).applyAxisAngle(new THREE.Vector3(0, 1, 0), ry);
+      this.collider(x + c.x, y, z + c.z, sx * 0.9, info.h * k, sz * 0.9, surf);
+    }
+    return true;
+  }
+
+  private buildProps(): void {
+    const by = new Map<string, THREE.Matrix4[]>();
+    for (const p of this.propList) { let a = by.get(p.name); if (!a) by.set(p.name, (a = [])); a.push(p.m); }
+    const tmp = new THREE.Matrix4();
+    for (const [name, list] of by) {
+      const info = propInfo(name)!;
+      if (info.skinned) {
+        // modèles animés (chars) : copies complètes, le squelette est nécessaire au rendu
+        for (const m of list) { const o = Assets.clone('props/' + name); if (!o) continue; m.decompose(o.position, o.quaternion, o.scale); o.traverse((n) => { n.castShadow = true; n.receiveShadow = true; }); this.root.add(o); }
+        continue;
+      }
+      for (const part of info.parts) {
+        const im = new THREE.InstancedMesh(part.geometry, part.material, list.length);
+        list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, part.local)));
+        im.castShadow = true; im.receiveShadow = true;
+        im.computeBoundingSphere();
+        this.root.add(im);
+      }
+    }
+    this.propList.length = 0;
   }
 
   // ---------- kit modulaire ----------
@@ -593,4 +640,42 @@ export class Level {
     this.root.add(g);
     this.pickups.push({ kind, pos: pos.clone(), mesh: g, life: 40 });
   }
+}
+
+interface PropInfo { skinned: boolean; parts: { geometry: THREE.BufferGeometry; material: THREE.Material; local: THREE.Matrix4 }[]; min: THREE.Vector3; max: THREE.Vector3; size: THREE.Vector3; h: number }
+const propCache = new Map<string, PropInfo | null>();
+/** Géométries et matériaux d'un décor, partagés entre toutes ses instances. */
+function propInfo(name: string): PropInfo | null {
+  if (propCache.has(name)) return propCache.get(name)!;
+  const g = Assets.gltf('props/' + name);
+  if (!g) { propCache.set(name, null); return null; }
+  const scene = g.scene;
+  scene.updateMatrixWorld(true);
+  const parts: PropInfo['parts'] = [];
+  let skinned = false;
+  scene.traverse((o) => {
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned = true;
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    for (const mt of mats) {
+      const ms = mt as THREE.MeshStandardMaterial;
+      // aplats Quaternius : légère rugosité/métal pour réagir à l'éclairage d'environnement
+      if (ms.isMeshStandardMaterial && !ms.userData.wbTuned) { ms.roughness = Math.min(ms.roughness, 0.85); ms.userData.wbTuned = true; }
+    }
+    if (!m.geometry.attributes.normal) m.geometry.computeVertexNormals();
+    if (Array.isArray(m.material)) {
+      m.geometry.groups.forEach((gr, gi) => {
+        const sub = m.geometry.clone(); sub.clearGroups(); sub.setDrawRange(gr.start, gr.count);
+        parts.push({ geometry: sub, material: (m.material as THREE.Material[])[gr.materialIndex ?? gi], local: m.matrixWorld.clone() });
+      });
+    } else parts.push({ geometry: m.geometry, material: m.material, local: m.matrixWorld.clone() });
+  });
+  // boîte calculée exactement comme le rendu instancié (géométrie × matrice locale de chaque partie)
+  const box = new THREE.Box3(), pb = new THREE.Box3();
+  for (const p of parts) { if (!p.geometry.boundingBox) p.geometry.computeBoundingBox(); pb.copy(p.geometry.boundingBox!).applyMatrix4(p.local); box.union(pb); }
+  if (skinned) { box.setFromObject(scene); }
+  const info: PropInfo = { skinned, parts, min: box.min.clone(), max: box.max.clone(), size: box.getSize(new THREE.Vector3()), h: Math.max(0.01, box.max.y - box.min.y) };
+  propCache.set(name, info);
+  return info;
 }

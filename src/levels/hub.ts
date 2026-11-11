@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { dressHub } from './dress';
 import { cmat, mat } from '../render/Materials';
 import { buildOperatorModel } from '../ai/EnemyModels';
 import { MISSION_BY_ID } from '../data/missions';
@@ -122,6 +123,7 @@ export function buildHub(g: Game, m: Mission): Level {
   }, 3);
   const ammo2 = L.ammoCrate(-12.5, -25);
   L.interact(ammo2, 'Caisse de munitions — réapprovisionner', () => { g.weapons.refill(1); g.player.grenades = 2; g.audio.reload(2); g.ui.hud.toast('MUNITIONS RÉAPPROVISIONNÉES', '#ffb04a'); }, 2.6);
+  dressHub(L);
   L.finish();
 
   // ---- accueil ----

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { dressOp1 } from './dress';
 import { Guardian } from '../ai/Boss';
 import { ammo, barrel, lore, tank, REYES, ORACLE } from './common';
 
@@ -126,6 +127,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   for (const c of bossConduits) c.invulnerable = true;
   ammo(g, L, -24, -110); ammo(g, L, 24, -162);
   L.box('hazard', 0, 0, -163.5, 6, 0.15, 4, { nav: false });
+  dressOp1(L);
   L.finish();
 
   // ================= ENNEMIS INITIAUX =================

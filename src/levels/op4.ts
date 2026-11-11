@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level, type Interactable } from '../world/Level';
+import { dressOp4 } from './dress';
 import { mat } from '../render/Materials';
 import { Sovereign } from '../ai/Boss';
 import { ammo, barrel, lore, REYES, ORACLE, MAREK, VOSS } from './common';
@@ -120,6 +121,7 @@ export function buildOp4(g: Game, m: Mission): Level {
   L.lamp(0, 8, -218, 'red', true, 90, 50); L.lamp(-18, 12, -218, 'violet', true, 40, 36); L.lamp(18, 12, -218, 'violet', true, 40, 36);
   for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; L.crystalDeco(Math.cos(a) * 31, 0, -218 + Math.sin(a) * 27, 1.6 + (i % 2), 'crystal_red'); }
   ammo(g, L, -26, -194.5); ammo(g, L, 26, -242);
+  dressOp4(L);
   L.finish();
 
   // ================= ENNEMIS =================

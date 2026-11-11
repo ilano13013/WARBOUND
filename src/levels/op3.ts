@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { dressOp3 } from './dress';
 import { mat } from '../render/Materials';
 import { Archon } from '../ai/Boss';
 import { ammo, lore, REYES, ORACLE, MAREK, ARCHON } from './common';
@@ -112,6 +113,7 @@ export function buildOp3(g: Game, m: Mission): Level {
   const bossCrystals = [L.crystal(-24, 0, -146, 190, 1.5, 'crystal_red'), L.crystal(24, 0, -146, 190, 1.5, 'crystal_red'), L.crystal(-24, 0, -176, 190, 1.5, 'crystal_red'), L.crystal(24, 0, -176, 190, 1.5, 'crystal_red')];
   for (const c of bossCrystals) { c.invulnerable = true; c.destroy(); }
   ammo(g, L, -27, -130); ammo(g, L, 27, -190);
+  dressOp3(L);
   L.finish();
 
   // ================= ENNEMIS =================

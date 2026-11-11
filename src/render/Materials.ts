@@ -1,5 +1,6 @@
 // Textures procédurales (albédo + normal map) et bibliothèque de matériaux PBR partagés.
 import * as THREE from 'three';
+import { Assets } from '../assets/Assets';
 
 function hash(x: number, y: number, s: number): number {
   let h = (x * 374761393 + y * 668265263 + s * 1274126177) | 0;
@@ -198,12 +199,38 @@ const matCache = new Map<string, THREE.MeshStandardMaterial>();
 /** Taille en mètres d'une répétition de texture. */
 export const TILE: Partial<Record<MatName, number>> = {
   concrete: 4, darkconcrete: 4, metal: 3, darkmetal: 3, rust: 3, container_red: 2.4, container_blue: 2.4, container_green: 2.4,
-  asphalt: 5, dirt: 6, ash: 6, stone: 4, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
+  asphalt: 5, dirt: 5, ash: 6, stone: 3, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
+};
+
+/** Matériaux PBR photographiques (ambientCG, CC0) quand ils sont chargés. */
+const PBR: Partial<Record<MatName, { set: string; color?: number; metal?: number; rough?: number; emissive?: number; ei?: number; emissiveFrom?: string }>> = {
+  concrete: { set: 'concrete', color: 0xd8d8d8 },
+  darkconcrete: { set: 'concrete2', color: 0x7c8088 },
+  metal: { set: 'metal', color: 0xb8bcc4, metal: 0.85 },
+  darkmetal: { set: 'plate', color: 0x707680, metal: 0.55 },
+  rust: { set: 'metal2', color: 0xc89a7a, metal: 0.55 },
+  asphalt: { set: 'asphalt', color: 0x9a9a9e },
+  dirt: { set: 'dirt', color: 0xc8b8a0 },
+  ash: { set: 'mud', color: 0x5a4c66, emissive: 0x3a1a6a, ei: 0.3, emissiveFrom: 'ash' },
+  stone: { set: 'bricks', color: 0xa0a4b8 },
+  tiles: { set: 'tiles', color: 0xc8ccd0 },
 };
 
 export function mat(name: MatName): THREE.MeshStandardMaterial {
   let m = matCache.get(name);
   if (m) return m;
+  const pb = PBR[name];
+  if (pb && Assets.tex(pb.set + '_color')) {
+    const orm = Assets.tex(pb.set + '_orm');
+    m = new THREE.MeshStandardMaterial({
+      map: Assets.tex(pb.set + '_color'), normalMap: Assets.tex(pb.set + '_normal'), roughnessMap: orm, aoMap: orm, aoMapIntensity: 0.8,
+      color: pb.color ?? 0xffffff, roughness: pb.rough ?? 1, metalness: pb.metal ?? 0,
+    });
+    if (pb.emissive) { m.emissive.setHex(pb.emissive); m.emissiveIntensity = pb.ei ?? 0.3; if (pb.emissiveFrom) m.emissiveMap = tex(pb.emissiveFrom).map; }
+    m.name = name;
+    matCache.set(name, m);
+    return m;
+  }
   const T = (n: string, o: THREE.MeshStandardMaterialParameters = {}) => { const t = tex(n); return new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, roughnessMap: t.roughnessMap, roughness: 1, ...o }); };
   const glow = (c: number, i = 2.2) => new THREE.MeshStandardMaterial({ color: 0x050505, emissive: c, emissiveIntensity: i, roughness: 0.4 });
   switch (name) {

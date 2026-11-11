@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { dressSurvival } from './dress';
 import type { EnemyKind } from '../data/enemies';
 import { ENEMIES } from '../data/enemies';
 import type { Upgrade } from '../ui/Panels';
@@ -64,6 +65,7 @@ export function buildSurvival(g: Game, m: Mission): Level {
   L.lamp(0, 8.5, 0, 'white', true, 40, 34);
   const ammo = L.ammoCrate(0, 4);
   L.interact(ammo, 'Caisse de munitions', () => { g.weapons.refill(0.5); g.audio.reload(2); g.ui.hud.toast('MUNITIONS', '#ffb04a'); }, 2.6);
+  dressSurvival(L);
   L.finish();
 
   const spawns: THREE.Vector3[] = [];
