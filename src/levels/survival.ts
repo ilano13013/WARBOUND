@@ -48,6 +48,7 @@ export function composeWave(wave: number, rng: () => number = Math.random): { ki
 
 export function buildSurvival(g: Game, m: Mission): Level {
   const L = new Level('survival', 'Arène de simulation', { skyTop: 0x05060c, skyHorizon: 0x2a1840, fog: 0x100a1c, fogDensity: 0.012, sun: 0xa090ff, sunIntensity: 1.5, sunDir: [0.3, 0.8, 0.4], hemiSky: 0x7a6ab0, hemiGround: 0x1a1420, hemiIntensity: 0.95, rift: true });
+  m.level = L;
   L.bounds = { minX: -34, minZ: -34, maxX: 34, maxZ: 34 };
   L.spawn.set(0, 0.1, 0);
   L.floor('tiles', 0, 0, 64, 64);

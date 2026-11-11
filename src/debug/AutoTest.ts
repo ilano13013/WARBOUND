@@ -6,27 +6,28 @@ import type { ClassId } from '../data/classes';
 import { newProfile } from '../save/Save';
 
 export function installAutoTest(g: Game): void {
-  let bot = false, botT = 0, god = true;
+  let bot = false, botT = 0, god = true, power = 1, autoNext = true;
+  const log: string[] = [];
   const tick = () => {
     if (!bot || g.state !== 'play' || !g.mission || !g.level) return;
     const m = g.mission, p = g.player;
     p.godMode = god;
     // ferme les panneaux ouverts par des interactions (documents, etc.)
     if (g.ui.blocking && g.ui.current !== 'intermission') { g.ui.resume(); return; }
-    if (g.ui.current === 'intermission') { const b = document.querySelector('[data-a="up"]') as HTMLElement | null; if (b) b.click(); else (document.querySelector('[data-a="next"]') as HTMLElement | null)?.click(); return; }
+    if (g.ui.current === 'intermission') { if (!autoNext) return; const b = document.querySelector('[data-a="up"]') as HTMLElement | null; if (b) b.click(); else (document.querySelector('[data-a="next"]') as HTMLElement | null)?.click(); return; }
     botT++;
     // se rend au marqueur de l'objectif
     const mk = m.markerPos();
     if (mk && Math.hypot(mk.x - p.pos.x, mk.z - p.pos.z) > 2.5 && botT % 6 === 0) {
       const nav = g.level.world.nav;
       const i = nav.nearestOpen(mk.x, mk.z, 8);
-      if (i >= 0) { const c = nav.center(i, new THREE.Vector3()); const gy = g.level.world.groundAt(c.x, c.z, 50); p.pos.set(c.x, (gy > -100 ? gy : 0) + 0.05, c.z); p.vel.set(0, 0, 0); }
+      if (i >= 0) { const c = nav.center(i, new THREE.Vector3()); const gy = g.level.world.groundAt(c.x, c.z, mk.y + 3.2); p.pos.set(c.x, (gy > -100 ? gy : 0) + 0.05, c.z); p.vel.set(0, 0, 0); }
     }
     // combat : inflige des dégâts par la voie normale
     let n = 0;
     for (const e of g.enemies) {
       if (!e.alive || e.pos.distanceTo(p.pos) > 90) continue;
-      e.takeDamage(e.isBoss ? 220 : 70, { source: 'player', type: 'bullet', point: e.center(new THREE.Vector3()) });
+      e.takeDamage((e.isBoss ? 220 : 70) * power, { source: 'player', type: 'bullet', point: e.center(new THREE.Vector3()) });
       if (++n >= 4) break;
     }
     // cibles destructibles de l'objectif (conduits, cristaux)
@@ -34,7 +35,8 @@ export function installAutoTest(g: Game): void {
     const targets = [...((m.current as any)?.targets || []), ...(b?.alive && b.shielded ? b.conduits || b.crystals || [] : [])];
     for (const d of targets) if (d.alive && !d.invulnerable) d.takeDamage(120, { source: 'player', type: 'bullet' });
     // interactions à portée
-    for (const it of g.level.interactables) if (it.enabled && it.pos.distanceTo(p.pos) < 5) { it.onUse(); break; }
+    // interaction de l'objectif (celle située sur le marqueur)
+    if (mk) for (const it of g.level.interactables) if (it.enabled && Math.hypot(it.pos.x - mk.x, it.pos.z - mk.z) < 2 && it.pos.distanceTo(p.pos) < 7) { it.onUse(); break; }
   };
   setInterval(tick, 60);
 
@@ -55,7 +57,12 @@ export function installAutoTest(g: Game): void {
     hub: () => g.startHub(),
     mission: (id: string) => g.startMission(id),
     survival: () => g.startSurvival(),
-    bot: (on: boolean, godMode = true) => { bot = on; god = godMode; if (!on) g.player.godMode = false; },
+    bot: (on: boolean, godMode = true, pw = 1) => { bot = on; god = godMode; power = pw; if (!on) g.player.godMode = false; },
+    log,
+    autoNext: (v: boolean) => { autoNext = v; },
+    skipTo: (i: number) => { const m: any = g.mission; m.index = i - 1; m.advance(); },
+    hazards: () => g.combat.hazards.length + g.combat.projectiles.length,
+    give: (table: string, n = 1) => import('../rpg/items').then((m) => { for (let i = 0; i < n; i++) g.giveItems(m.rollLoot(table, g.profile!.level, 1.5, true)); return g.profile!.inventory.length; }),
     speed: (n: number) => { g.testSpeed = n; },
     god: (on: boolean) => { g.player.godMode = on; },
     tp: (x: number, y: number, z: number, yaw?: number) => { g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); if (yaw !== undefined) g.player.yaw = yaw; g.player.pitch = 0; },

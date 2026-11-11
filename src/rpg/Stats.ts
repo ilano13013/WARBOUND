@@ -6,7 +6,7 @@ import { makeWeaponItem, upMult, type Item } from './items';
 
 export const MAX_LEVEL = 20;
 
-export function xpForLevel(level: number): number { return 300 + 130 * level; }
+export function xpForLevel(level: number): number { return 400 + 180 * level; }
 
 export function talentPointsTotal(p: Profile): number { return p.level - 1; }
 export function talentPointsSpent(p: Profile): number { return Object.values(p.talents).reduce((a, b) => a + b, 0); }

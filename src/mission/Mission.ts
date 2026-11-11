@@ -196,11 +196,17 @@ export class Mission {
     const o: Objective = {
       text,
       marker: extra.marker ?? null,
-      start: () => { this.timer = { label, t: duration, max: duration }; fired = waves.map(() => false); if (protect) { protect.revive(); protect.playerOnly = false; } extra.start?.(); },
-      update: () => {
+      start: () => { this.timer = { label, t: duration, max: duration }; fired = waves.map(() => false); if (protect) { protect.revive(); protect.invulnerable = true; } extra.start?.(); },
+      update: (dt) => {
         const el = duration - (this.timer?.t ?? 0);
         waves.forEach((w, i) => { if (!fired[i] && el >= w.at) { fired[i] = true; this.portalSpawn(group, w.specs); } });
-        if (protect && !protect.alive) this.fail('La position est tombée.');
+        if (protect) {
+          // les créatures au contact de la position la détruisent peu à peu
+          let n = 0;
+          for (const e of this.g.enemies) if (e.alive && e.group === group && e.siege && e.pos.distanceTo(protect.center) < 4.2) n++;
+          if (n) { protect.hp -= n * 14 * this.g.diff.damage * dt; protect.flash = 0.1; if (protect.hp <= 0) protect.destroy(); }
+          if (!protect.alive) this.fail('La position est tombée.');
+        }
       },
       done: () => !!this.timer && this.timer.t <= 0,
       progress: () => (protect ? `Intégrité ${Math.max(0, Math.round((protect.hp / protect.maxHp) * 100))} %` : ''),

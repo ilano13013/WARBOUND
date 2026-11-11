@@ -9,6 +9,7 @@ import { MISSION_BY_ID } from '../data/missions';
 
 export function buildHub(g: Game, m: Mission): Level {
   const L = new Level('hub', 'Fort Aegis', { skyTop: 0x1a2436, skyHorizon: 0x6a7686, fog: 0x2a323c, fogDensity: 0.008, sun: 0xffe6c0, sunIntensity: 2.2, sunDir: [0.4, 0.8, -0.3], hemiSky: 0x9ab0c8, hemiGround: 0x2a2a28, hemiIntensity: 0.9 });
+  m.level = L;
   L.maxLights = 9;
   L.bounds = { minX: -24, minZ: -58, maxX: 24, maxZ: 28 };
   L.spawn.set(0, 0.1, 19); L.spawnYaw = 0;

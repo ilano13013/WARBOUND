@@ -135,6 +135,15 @@ export class Game {
     this.ui.hud.reset();
   }
 
+  /** Construit un niveau ; en cas d'erreur, retour au menu plutôt qu'un état incohérent. */
+  private safeBuild(fn: () => void): void {
+    try { fn(); } catch (err) {
+      this.errors.push(String((err as Error)?.stack || err));
+      console.error(err);
+      this.toMenu();
+    }
+  }
+
   private load(level: Level, mission: Mission): void {
     this.level = level; this.mission = mission; mission.level = level;
     this.r.scene.add(level.root);
@@ -173,7 +182,7 @@ export class Game {
 
   startHub(): void {
     if (!this.profile) return;
-    this.ui.fade(() => {
+    this.ui.fade(() => this.safeBuild(() => {
       this.unload();
       this.runMods = {};
       this.diff = DIFFICULTIES[this.profile!.difficulty];
@@ -183,14 +192,14 @@ export class Game {
       this.audio.setMusic('hub');
       this.save();
       this.ui.hud.banner('FORT AEGIS', 'Quartier général de la Coalition');
-    });
+    }));
   }
 
   startMission(id: string): void {
     if (!this.profile) return;
     const def = MISSION_BY_ID[id];
     if (!def) return;
-    this.ui.fade(() => {
+    this.ui.fade(() => this.safeBuild(() => {
       this.unload();
       this.runMods = {};
       this.diff = DIFFICULTIES[this.profile!.difficulty];
@@ -202,12 +211,12 @@ export class Game {
       this.load(level, m);
       this.audio.setMusic('explore', def.theme);
       this.ui.hud.banner(`OPÉRATION ${def.num} — ${def.name}`, def.location);
-    });
+    }));
   }
 
   startSurvival(): void {
     if (!this.profile) return;
-    this.ui.fade(() => {
+    this.ui.fade(() => this.safeBuild(() => {
       this.unload();
       this.runMods = {};
       this.diff = DIFFICULTIES[this.profile!.difficulty];
@@ -216,7 +225,7 @@ export class Game {
       this.load(level, m);
       this.audio.setMusic('explore', 4);
       this.ui.hud.banner('PROTOCOLE INFINI', 'Simulation de survie — vagues illimitées');
-    });
+    }));
   }
 
   spawnEnemy(kind: EnemyKind, x: number, z: number, o: SpawnOpts = {}): Enemy {
@@ -394,7 +403,7 @@ export class Game {
 
   private step(realDt: number, render: boolean): void {
     const dt = realDt * this.timeScale;
-    if (this.state === 'play' || this.state === 'dead') {
+    if ((this.state === 'play' || this.state === 'dead') && this.level) {
       if (!this.paused && !this.ui.blocking) this.simulate(dt, realDt);
       else this.weaponsIdle();
     } else if (this.state === 'menu' || this.state === 'cinematic' || this.state === 'results') {

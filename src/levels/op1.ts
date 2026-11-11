@@ -10,6 +10,7 @@ const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp1(g: Game, m: Mission): Level {
   const L = new Level('op1', 'Site Cendres', { skyTop: 0x1a1c2c, skyHorizon: 0xc8703a, fog: 0x3a2c28, fogDensity: 0.011, sun: 0xffa868, sunIntensity: 2.5, sunDir: [-0.5, 0.36, 0.6], hemiSky: 0x9a8490, hemiGround: 0x2a2420, hemiIntensity: 0.8 });
+  m.level = L;
   L.bounds = { minX: -44, minZ: -174, maxX: 44, maxZ: 46 };
   L.spawn.set(0, 0.1, 38); L.spawnYaw = 0;
   L.maxLights = 9;

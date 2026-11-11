@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require('/opt/node22/lib/node_modules/playwright'); }
 export const { chromium } = pw;
-export const GAME_URL = process.env.WB_URL || 'http://localhost:5173/?autotest';
+export const GAME_URL = process.env.WB_URL || 'http://localhost:4173/?autotest';
 export const SHOTS = new globalThis.URL('./shots/', import.meta.url).pathname;
 
 export async function open(opts = {}) {

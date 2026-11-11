@@ -11,7 +11,7 @@ export type AIState = 'idle' | 'patrol' | 'alert' | 'combat' | 'search';
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3();
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-export interface SpawnOpts { patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number }
+export interface SpawnOpts { patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number; siege?: THREE.Vector3 }
 
 export class Enemy implements Damageable {
   def: EnemyDef;
@@ -28,6 +28,8 @@ export class Enemy implements Damageable {
   group = '';
   static = false;
   noLoot = false;
+  /** Point à assiéger (objectifs de défense) : la créature s'y rend tant que le joueur est loin. */
+  siege: THREE.Vector3 | null = null;
   // perception
   canSee = false; lastKnown = new THREE.Vector3(); protected seeT = 0; protected lostT = 0; protected percT = Math.random() * 0.2; protected stateT = 0;
   tgtAlly: Ally | null = null;
@@ -55,7 +57,7 @@ export class Enemy implements Damageable {
     if (this.def.scale) this.model.root.scale.setScalar(this.def.scale);
     this.pos.set(x, o.y ?? (this.def.flying ? 3 : 0.05), z);
     this.lastPos.copy(this.pos);
-    this.static = !!o.static; this.noLoot = !!o.noLoot; this.group = o.group || '';
+    this.static = !!o.static; this.noLoot = !!o.noLoot; this.group = o.group || ''; this.siege = o.siege || null;
     if (o.patrol && o.patrol.length) { this.patrol = o.patrol; this.state = 'patrol'; }
     this.yaw = Math.random() * Math.PI * 2;
     g.r.scene.add(this.model.root);
@@ -424,6 +426,11 @@ export class Enemy implements Damageable {
         return;
       }
       this.leapCd -= dt;
+      if (this.siege && !this.tgtAlly && this.pos.distanceTo(p.pos) > 9 && this.grounded) {
+        if (this.pos.distanceTo(this.siege) > 2.6) { this.moving = true; this.goTo(this.siege.x, this.siege.z); this.follow(dt, speed, true); }
+        else this.facePoint(this.siege, dt);
+        return;
+      }
       const tx = this.tgtAlly ? this.tgtAlly.pos.x : seeTarget ? p.pos.x : this.lastKnown.x, tz = this.tgtAlly ? this.tgtAlly.pos.z : seeTarget ? p.pos.z : this.lastKnown.z;
       if (dist <= d.range && seeTarget) {
         if (this.cdT <= 0) { this.meleeT = 0.5; this.meleeHit = false; this.cdT = d.cooldown * g.diff.cooldown; g.audio.enemyAlert(this.kind, this.pos); }

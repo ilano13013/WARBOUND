@@ -1,0 +1,10 @@
+import { open, st, shot, sleep } from './lib.mjs';
+const { browser, page, errors } = await open({ w: 640, h: 360 });
+await page.evaluate(() => window.WB.quality('low'));
+await page.evaluate(() => window.WB.newGame('vanguard'));
+await sleep(6000);
+await page.evaluate(() => window.WB.mission('op1'));
+await sleep(15000);
+console.log(JSON.stringify(await st(page)).slice(0, 700)); console.log(errors.slice(0,2));
+await shot(page, 'dbg');
+await browser.close();

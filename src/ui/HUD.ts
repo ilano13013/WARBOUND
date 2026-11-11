@@ -37,6 +37,7 @@ export class HUD {
   private ebars: { el: HTMLElement; fill: HTMLElement; name: HTMLElement }[] = [];
   private cache: Record<string, string> = {};
   private fireKick = 0;
+  private clickHint!: HTMLElement;
   private lastPrompt = '';
 
   constructor(private g: Game, parent: HTMLElement) {
@@ -70,6 +71,7 @@ export class HUD {
     this.fpsEl = el('div', '', r); this.fpsEl.id = 'fps';
     this.lowAmmo = el('div', 'hidden', r); this.lowAmmo.id = 'lowammo';
     this.flashEl = el('div', '', r); this.flashEl.id = 'flash';
+    this.clickHint = el('div', 'hidden', r, 'CLIQUEZ POUR PRENDRE LE CONTRÔLE'); this.clickHint.id = 'clickhint';
   }
 
   setVisible(v: boolean): void { this.root.classList.toggle('hidden', !v); }
@@ -190,6 +192,7 @@ export class HUD {
   update(dt: number): void {
     const g = this.g, p = g.player, w = g.weapons.w;
     if (!p.cls || !w) return;
+    this.clickHint.classList.toggle('hidden', g.input.locked || g.state !== 'play' || g.ui.blocking || g.testMode);
     // réticule
     this.fireKick = Math.max(0, this.fireKick - dt * 8);
     const gap = 4 + g.weapons.spreadNow * 7 + this.fireKick * 3;
