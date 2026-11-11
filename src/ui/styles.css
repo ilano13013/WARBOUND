@@ -340,3 +340,5 @@ h1, h2, h3, .logo, .title-xl, #banner b, #levelup b, #bossbar .bn, .item-name, .
 #prompt kbd { background: var(--gold2); }
 .feed { font-weight: 600; }
 .dnum { font-family: var(--font); font-weight: 700; text-shadow: 0 0 4px #000, 0 2px 0 #000; }
+#bossbar { top: 92px; width: min(620px, 46vw); }
+#timer { top: 150px; }

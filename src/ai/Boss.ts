@@ -71,6 +71,8 @@ export abstract class Boss extends Enemy {
     this.g.audio.bossRoar(this.pos);
     this.g.player.shakeAmt = 0.8;
     this.g.fx.shock(this.center(_a), this.height * 1.5, 0xffffff, 0.5);
+    this.g.fx.explosion(this.center(_a), this.height * 1.2, this.kind === 'guardian' ? 0xff8a2a : this.kind === 'archon' ? 0x9a5aff : 0xff3a5a);
+    this.g.fx.ring(this.pos, 1, this.arenaR, 0xffffff, 0.9);
     this.busyT = Math.max(this.busyT, 1.6);
     this.onPhase?.(n);
     this.enterPhase(n);

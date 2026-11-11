@@ -315,12 +315,23 @@ export class Combat {
   private hazMat(color: number, opacity: number): THREE.MeshBasicMaterial {
     return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
   }
+  /** Remplissage animé des zones annoncées : bandes tournantes, bord lumineux, progression vers l'impact. */
+  private hazFill(color: number, line = false): THREE.ShaderMaterial {
+    return new THREE.ShaderMaterial({
+      uniforms: { color: { value: new THREE.Color(color) }, t: { value: 0 }, k: { value: 0 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader: line
+        ? 'uniform vec3 color; uniform float t; uniform float k; varying vec2 vUv; void main(){ float ch=step(0.5,fract(vUv.y*8.0+t*3.0+abs(vUv.x-0.5)*2.0)); float e=smoothstep(0.42,0.5,abs(vUv.x-0.5)); float fill=step(vUv.y,k); float a=(0.12+0.22*ch)*0.6+e*0.7+fill*0.25; gl_FragColor=vec4(color*(1.0+fill),a); }'
+        : 'uniform vec3 color; uniform float t; uniform float k; varying vec2 vUv; void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); if(r>1.0) discard; float a=atan(p.y,p.x); float st=step(0.5,fract(a*1.91+t*1.5-r*2.0)); float rim=smoothstep(0.86,1.0,r); float fill=1.0-smoothstep(k-0.02,k,r); float pulse=0.6+0.4*sin(t*14.0*(0.3+k)); float al=(0.08+0.14*st)+rim*0.9*pulse+fill*0.32; gl_FragColor=vec4(color*(1.0+fill*0.8),al); }',
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2,
+    });
+  }
 
   /** Cercle au sol qui explose après un délai : laisse au joueur le temps d'en sortir. */
   hazardCircle(pos: THREE.Vector3, radius: number, delay: number, damage: number, color = 0xff3a2a, onBoom?: () => void): Hazard {
     const grp = new THREE.Group();
-    const ring = new THREE.Mesh(ringGeo, this.hazMat(color, 0.9)); ring.scale.setScalar(radius);
-    const fill = new THREE.Mesh(discGeo, this.hazMat(color, 0.28)); fill.scale.setScalar(0.01);
+    const ring = new THREE.Mesh(ringGeo, this.hazMat(color, 0.9)); ring.scale.setScalar(radius * 1.02);
+    const fill = new THREE.Mesh(discGeo, this.hazFill(color)); fill.scale.setScalar(radius);
     grp.add(ring, fill);
     grp.position.set(pos.x, pos.y + 0.07, pos.z);
     this.group.add(grp);
@@ -343,9 +354,9 @@ export class Combat {
   /** Bande au sol (rayon, charge) qui frappe après un délai. */
   hazardLine(pos: THREE.Vector3, dir: THREE.Vector3, len: number, width: number, delay: number, damage: number, color = 0xff3a2a, onBoom?: () => void): Hazard {
     const grp = new THREE.Group();
-    const m = new THREE.Mesh(lineGeo, this.hazMat(color, 0.3));
+    const m = new THREE.Mesh(lineGeo, this.hazFill(color, true));
     m.scale.set(width, 1, len);
-    const fill = new THREE.Mesh(lineGeo, this.hazMat(color, 0.45)); fill.scale.set(0.01, 1, len);
+    const fill = new THREE.Mesh(lineGeo, this.hazMat(color, 0.0)); fill.scale.set(0.01, 1, len);
     grp.add(m, fill);
     grp.position.set(pos.x, pos.y + 0.08, pos.z);
     grp.rotation.y = Math.atan2(-dir.x, -dir.z);
@@ -363,9 +374,11 @@ export class Combat {
       let done = false;
       if (h.kind === 'circle') {
         const k = Math.min(1, h.t / h.delay);
-        h.fill!.scale.setScalar(Math.max(0.01, h.radius * k));
+        const u = (h.fill!.material as THREE.ShaderMaterial).uniforms; u.t.value = h.t; u.k.value = k;
         if (h.t >= h.delay) {
           done = true;
+          // colonne d'énergie à la détonation
+          for (let b = 0; b < 3; b++) { _a.set(h.pos.x + (Math.random() - 0.5) * h.radius, h.pos.y, h.pos.z + (Math.random() - 0.5) * h.radius); g.fx.bolt(_a, _b.copy(_a).setY(_a.y + 5 + Math.random() * 3), h.color, 0.3, 0.3, 0.12, false); }
           g.fx.burst(h.pos, { count: 26, color: h.color, speed: h.radius * 2, life: 0.6, size: 0.25, gravity: -4, up: 5 });
           g.fx.ring(h.pos, h.radius * 0.3, h.radius, h.color, 0.35);
           g.fx.flash(_a.copy(h.pos).setY(h.pos.y + 1), h.color, 50, 0.2, h.radius * 4);
@@ -389,13 +402,14 @@ export class Combat {
         }
       } else {
         const k = Math.min(1, h.t / h.delay);
-        h.fill!.scale.x = Math.max(0.01, h.width! * k);
+        const lu = ((h.mesh as THREE.Group).children[0] as THREE.Mesh).material as THREE.ShaderMaterial; lu.uniforms.t.value = h.t; lu.uniforms.k.value = k;
         if (h.t >= h.delay) {
           done = true;
           _a.copy(h.pos).addScaledVector(h.dir!, h.len!);
           _b.copy(h.pos).setY(h.pos.y + 1); _c.copy(_a).setY(_a.y + 1);
-          g.fx.bolt(_b, _c, h.color, 0.25, 0.35);
-          g.fx.tracer(_b, _c, h.color, h.width! * 0.5, 0.3);
+          g.fx.bolt(_b, _c, h.color, 0.25, 0.4, h.width! * 0.35, false);
+          g.fx.tracer(_b, _c, 0xffffff, h.width! * 0.18, 0.25);
+          g.fx.flash(_b, h.color, 60, 0.2, 18);
           g.audio.explosion(h.pos, 0.5);
           // distance du joueur au segment
           _d.set(p.pos.x - h.pos.x, 0, p.pos.z - h.pos.z);
