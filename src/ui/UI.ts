@@ -137,6 +137,16 @@ export class UI {
     }
   }
 
+  // ---------- chargement ----------
+
+  showLoading(k: number, label: string): void {
+    if (this.current !== 'loading') this.show('loading', 'overlay', `<div class="loading"><div class="logo" style="font-size:clamp(48px,7vw,104px)">WARBOUND</div><div class="logo-sub">The Fracture Chronicles</div><div class="load-bar"><i></i></div><div class="label load-txt">Chargement des assets</div></div>`, {}, true);
+    const bar = this.screen.querySelector('.load-bar i') as HTMLElement | null, txt = this.screen.querySelector('.load-txt') as HTMLElement | null;
+    if (bar) bar.style.width = `${Math.round(k * 100)}%`;
+    if (txt) txt.textContent = k >= 1 ? 'Prêt' : `Chargement des assets — ${Math.round(k * 100)} %`;
+    void label;
+  }
+
   // ---------- menu principal ----------
 
   showMenu(): void {

@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { weaponStats, equippedItem, type WStats } from '../rpg/Stats';
 import { buildWeaponModel, type WeaponModel } from './WeaponModels';
+import { buildGunAsset, type GunAsset } from './GunAssets';
+import { Arms } from './Arms';
 import { softTexture } from '../render/Materials';
 
-export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number }
+export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number; gun: GunAsset | null }
 
 const VM_SCALE = 0.78;
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3(), _e = new THREE.Euler();
@@ -23,8 +25,15 @@ export class WeaponSystem {
   private burstHeld = false;
   private pose = new THREE.Vector3(); private rot = new THREE.Vector3();
 
+  arms: Arms | null = null;
+  private casings: { m: THREE.Mesh; v: THREE.Vector3; t: number }[] = [];
+  private cycleT = 0; private reloadEmpty = false;
+
   constructor(private g: Game) {
     g.r.vmScene.add(this.root);
+    const cg = new THREE.CylinderGeometry(0.0045, 0.0045, 0.022, 8); cg.rotateZ(Math.PI / 2);
+    const cm = new THREE.MeshStandardMaterial({ color: 0xc8962e, metalness: 1, roughness: 0.25 });
+    for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(cg, cm); m.visible = false; this.root.add(m); this.casings.push({ m, v: new THREE.Vector3(), t: 0 }); }
     this.flash = new THREE.Group();
     const fm = new THREE.MeshBasicMaterial({ map: softTexture(), color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const p1 = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), fm);
@@ -46,16 +55,18 @@ export class WeaponSystem {
       const item = equippedItem(p, slot);
       if (!item) return;
       const st = weaponStats(item, this.g.player.mods, p.classId);
-      const model = buildWeaponModel(st.def, item.attach || {});
+      const gun = buildGunAsset(st.def, item.attach || {});
+      const model: WeaponModel = gun ? { group: gun.root, muzzle: gun.muzzle, mag: null, sightY: gun.sightY, scoped: gun.scoped } : buildWeaponModel(st.def, item.attach || {});
       model.group.visible = false;
-      model.group.scale.setScalar(VM_SCALE);
+      model.group.scale.setScalar(gun ? 1 : VM_SCALE);
       this.root.add(model.group);
       const prev = keepAmmo ? old.find((o) => o.st.item.uid === item.uid) : null;
-      this.slots[i] = { st, ammo: prev ? Math.min(prev.ammo, st.mag) : st.mag, reserve: prev ? prev.reserve : st.def.reserve, model, hits: 0, shots: 0 };
+      this.slots[i] = { st, ammo: prev ? Math.min(prev.ammo, st.mag) : st.mag, reserve: prev ? prev.reserve : st.def.reserve, model, hits: 0, shots: 0, gun };
     });
     this.cur = Math.min(this.cur, this.slots.length - 1);
     if (this.cur < 0) this.cur = 0;
     this.reloading = 0; this.swapT = 0; this.swapTo = -1; this.adsK = 0; this.fireT = 0;
+    if (!this.arms && this.slots.some((x) => x.gun)) { this.arms = new Arms(); if (this.arms.ok) this.root.add(this.arms.root); else this.arms = null; }
     this.attachFlash();
     this.updateVisibility();
   }
@@ -77,7 +88,7 @@ export class WeaponSystem {
     const w = this.w; const p = this.g.player;
     if (!w || this.reloading > 0 || this.swapT > 0 || w.ammo >= w.st.mag || w.reserve <= 0 || p.has('colossus')) return;
     this.reloadDur = w.st.reload;
-    this.reloading = this.reloadDur; this.reloadStage = 0;
+    this.reloading = this.reloadDur; this.reloadStage = 0; this.reloadEmpty = w.ammo === 0;
   }
 
   private finishReload(): void {
@@ -242,6 +253,8 @@ export class WeaponSystem {
     this.kickR += 0.018 + st.recoilV * 0.012;
     if (!g.settings.reduceMotion) p.shakeAmt = Math.min(0.5, p.shakeAmt + st.recoilV * 0.035);
     if (st.def.id === 'frostbite') this.boltT = 0.95;
+    this.cycleT = 0.07;
+    if (w.gun && st.def.id !== 'ash' && st.def.id !== 'frostbite') this.ejectCasing(w.gun);
     // flash de bouche
     this.flash.visible = true; this.flashT = st.silent ? 0.025 : 0.045;
     this.flash.rotation.z = Math.random() * Math.PI;
@@ -265,8 +278,9 @@ export class WeaponSystem {
     const sprintT = p.sprinting && this.reloading <= 0 ? 1 : 0;
     this.sprintK += (sprintT - this.sprintK) * Math.min(1, dt * 10);
 
-    const hipX = pistol ? 0.15 : 0.18, hipY = pistol ? -0.16 : -0.19, hipZ = pistol ? -0.42 : -0.4;
-    const adsY = -w.model.sightY * VM_SCALE, adsZ = pistol ? -0.36 : -0.26;
+    const gun = w.gun;
+    const hipX = gun ? (pistol ? 0.13 : 0.16) : pistol ? 0.15 : 0.18, hipY = gun ? (pistol ? -0.15 : -0.185) : pistol ? -0.16 : -0.19, hipZ = gun ? (pistol ? -0.38 : -0.4) : pistol ? -0.42 : -0.4;
+    const adsY = -w.model.sightY * (gun ? 1 : VM_SCALE), adsZ = gun ? (pistol ? -0.34 : w.st.scoped ? -0.2 : -0.24) : pistol ? -0.36 : -0.26;
     const pos = this.pose.set(hipX + (0 - hipX) * ease, hipY + (adsY - hipY) * ease, hipZ + (adsZ - hipZ) * ease);
     const rot = this.rot.set(0, 0, 0);
     const bobK = (reduce ? 0.3 : 1) * p.bobLevel * (1 - ease * 0.85);
@@ -289,7 +303,8 @@ export class WeaponSystem {
       const k = 1 - this.reloading / this.reloadDur;
       const inK = Math.min(1, k / 0.15), outK = Math.min(1, (1 - k) / 0.14);
       const a = Math.min(inK, outK);
-      pos.y -= 0.05 * a; pos.x -= 0.02 * a; rot.z += 0.55 * a; rot.x += 0.35 * a; rot.y -= 0.2 * a;
+      if (gun) { pos.y += 0.03 * a; pos.x -= 0.06 * a; pos.z += 0.04 * a; rot.z += 0.45 * a; rot.x += 0.16 * a; rot.y -= 0.05 * a; }
+      else { pos.y -= 0.05 * a; pos.x -= 0.02 * a; rot.z += 0.55 * a; rot.x += 0.35 * a; rot.y -= 0.2 * a; }
       if (w.model.mag) w.model.mag.visible = !(k > 0.2 && k < 0.6);
       if (k > 0.6 && k < 0.7) pos.y += 0.012;
       if (k > 0.86 && k < 0.94) pos.z += 0.02;
@@ -315,5 +330,87 @@ export class WeaponSystem {
     // lunette : masque l'arme quand la surimpression est affichée
     m.visible = !this.scopeOverlay;
     this.g.r.drawVm = true;
+    this.animateGun(dt, w, m);
+    this.updateCasings(dt);
+  }
+
+  // ---------------------------------------------------------------- arme glTF : mains, chargeur, culasse
+
+  private static readonly HAND: Record<'rifle' | 'pistol', Record<'R' | 'L', [[number, number, number], [number, number, number]]>> = {
+    rifle: { R: [[0, -0.3, -1], [0, 1, -0.2]], L: [[0.8, 0.35, -0.5], [0, 0, -1]] },
+    pistol: { R: [[0, -0.15, -1], [0, 1, 0]], L: [[0.7, 0.1, -0.7], [0.2, 0.8, -0.3]] },
+  };
+  private lt = new THREE.Vector3(); private rt = new THREE.Vector3();
+
+  private animateGun(dt: number, w: WeaponState, m: THREE.Object3D): void {
+    const arms = this.arms;
+    if (arms) arms.setVisible(!!w.gun && m.visible);
+    const gun = w.gun;
+    if (!gun) return;
+    if (this.cycleT > 0) this.cycleT = Math.max(0, this.cycleT - dt);
+    const sm = (a: number, b: number, k: number) => { const t = Math.min(1, Math.max(0, (k - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const left = this.lt.copy(gun.leftGrip), right = this.rt.set(0, 0, 0);
+    let magDrop = 0;
+    // rechargement : la main gauche retire le chargeur, en amène un neuf, l'insère, arme si nécessaire
+    if (this.reloading > 0 && gun.mag) {
+      const k = 1 - this.reloading / this.reloadDur;
+      const toMag = sm(0.08, 0.24, k), pull = sm(0.24, 0.38, k), away = sm(0.38, 0.52, k), back = sm(0.52, 0.7, k), seat = sm(0.7, 0.78, k);
+      const charge = this.reloadEmpty && !gun.pistol ? sm(0.8, 0.88, k) - sm(0.88, 0.95, k) : 0;
+      const ret = sm(0.86, 0.98, k);
+      left.lerp(gun.magPoint, toMag);
+      if (k < 0.52) { magDrop = 0.22 * pull + 0.5 * away; left.y -= magDrop; left.x -= 0.08 * away; }
+      else { magDrop = (1 - back) * 0.45 + 0.03 * (1 - seat) * back; left.copy(gun.magPoint); left.y -= magDrop; left.x -= 0.08 * (1 - back); }
+      if (charge > 0) left.lerp(gun.boltPoint, charge);
+      left.lerp(gun.leftGrip, ret);
+      if (gun.pistol && k > 0.8) left.copy(gun.leftGrip);
+    } else if (this.reloading > 0 && !gun.mag) {
+      // revolver : la main gauche pivote le barillet
+      const k = 1 - this.reloading / this.reloadDur;
+      const a = sm(0.1, 0.25, k) - sm(0.8, 0.95, k);
+      left.add(new THREE.Vector3(-0.04 * a, 0.03 * a, -0.06 * a));
+    }
+    if (gun.mag) gun.mag.position.copy(gun.magRest).addScaledVector(gun.magLocalDown, magDrop);
+    // culasse : recul à chaque tir, manœuvre complète pour le fusil à verrou
+    let boltBack = this.cycleT > 0 ? Math.sin((this.cycleT / 0.07) * Math.PI) : 0;
+    if (this.boltT > 0 && this.reloading <= 0) {
+      const k = 1 - this.boltT / 0.95;
+      const reach = sm(0.12, 0.28, k) - sm(0.75, 0.92, k);
+      boltBack = sm(0.32, 0.48, k) - sm(0.52, 0.68, k);
+      right.lerp(gun.boltPoint, reach).add(new THREE.Vector3(0, 0, gun.boltTravel * boltBack));
+    }
+    if (this.reloading > 0 && this.reloadEmpty && gun.pistol) { const k = 1 - this.reloading / this.reloadDur; boltBack = k < 0.85 ? 1 : 1 - Math.min(1, (k - 0.85) / 0.04); }
+    if (gun.bolt) gun.bolt.position.copy(gun.boltRest).addScaledVector(gun.boltAxis, gun.boltTravel * boltBack);
+    if (gun.charging && this.reloading > 0 && this.reloadEmpty && !gun.pistol) {
+      const k = 1 - this.reloading / this.reloadDur;
+      gun.charging.position.copy(gun.chargingRest).addScaledVector(gun.boltAxis, 0.06 * (Math.min(1, Math.max(0, (k - 0.84) / 0.04)) - Math.min(1, Math.max(0, (k - 0.9) / 0.03))));
+    }
+    if (!arms || !m.visible) return;
+    m.updateMatrixWorld(true);
+    const hp = gun.pistol ? WeaponSystem.HAND.pistol : WeaponSystem.HAND.rifle;
+    const q = m.quaternion;
+    arms.targetR.copy(m.localToWorld(right));
+    arms.targetL.copy(m.localToWorld(left));
+    arms.fR.set(...hp.R[0]).applyQuaternion(q); arms.sR.set(...hp.R[1]).applyQuaternion(q);
+    arms.fL.set(...hp.L[0]).applyQuaternion(q); arms.sL.set(...hp.L[1]).applyQuaternion(q);
+    arms.solve();
+  }
+
+  private ejectCasing(gun: GunAsset): void {
+    const c = this.casings.find((x) => x.t <= 0) || this.casings[0];
+    const m = this.w.model.group;
+    c.m.position.copy(m.localToWorld(gun.eject.clone()));
+    c.v.set(0.9 + Math.random() * 0.5, 0.9 + Math.random() * 0.5, 0.2 + Math.random() * 0.3);
+    c.m.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+    c.m.visible = true; c.t = 0.7;
+  }
+
+  private updateCasings(dt: number): void {
+    for (const c of this.casings) {
+      if (c.t <= 0) continue;
+      c.t -= dt; c.v.y -= 9 * dt;
+      c.m.position.addScaledVector(c.v, dt);
+      c.m.rotation.x += dt * 22; c.m.rotation.y += dt * 13;
+      if (c.t <= 0) c.m.visible = false;
+    }
   }
 }

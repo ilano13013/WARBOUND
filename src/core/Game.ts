@@ -25,6 +25,7 @@ import { buildOp3 } from '../levels/op3';
 import { buildOp4 } from '../levels/op4';
 import { buildSurvival } from '../levels/survival';
 import { Cinematics } from '../cinematic/Cinematics';
+import { Assets } from '../assets/Assets';
 
 export type GameState = 'boot' | 'menu' | 'cinematic' | 'play' | 'dead' | 'results';
 
@@ -96,6 +97,9 @@ export class Game {
     Object.assign(this.settings, s);
     this.applySettings();
     this.profile = await this.store.loadProfile();
+    this.last = performance.now();
+    this.ui.showLoading(0, '');
+    await Assets.loadAll((k, label) => this.ui.showLoading(k, label));
     this.toMenu();
     this.last = performance.now();
     requestAnimationFrame((t) => this.loop(t));

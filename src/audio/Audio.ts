@@ -1,6 +1,7 @@
 // Moteur audio entièrement synthétisé (Web Audio) : armes, compétences, ambiances, audio spatial et musique procédurale.
 import * as THREE from 'three';
 import type { Settings } from '../save/Save';
+import { Assets } from '../assets/Assets';
 
 type MusicMode = 'none' | 'menu' | 'hub' | 'explore' | 'combat' | 'boss' | 'ending';
 
@@ -49,6 +50,7 @@ export class AudioSys {
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     this.applyVolumes();
     this.timer = window.setInterval(() => this.schedule(), 90);
+    void Assets.decodeSounds(c);
     if (this.wanted !== 'none') { const w = this.wanted; this.mode = 'none'; this.setMusic(w); }
   }
 
