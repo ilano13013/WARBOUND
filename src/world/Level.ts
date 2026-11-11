@@ -347,7 +347,7 @@ export class Level {
   }
 
   /** Lampe : bloc émissif + éventuelle vraie lumière ponctuelle (nombre limité). */
-  lamp(x: number, y: number, z: number, color: 'white' | 'violet' | 'blue' | 'orange' | 'green' | 'red' = 'white', real = true, intensity = 14, dist = 16): void {
+  lamp(x: number, y: number, z: number, color: 'white' | 'violet' | 'blue' | 'orange' | 'green' | 'red' = 'white', real = true, intensity = 30, dist = 20): void {
     const names: Record<string, MatName> = { white: 'glow_white', violet: 'glow_violet', blue: 'glow_blue', orange: 'glow_orange', green: 'glow_green', red: 'glow_red' };
     const hex: Record<string, number> = { white: 0xffe8c8, violet: 0x8a4aff, blue: 0x3a9aff, orange: 0xff7a2a, green: 0x3aff8a, red: 0xff2a2a };
     this.deco(mat(names[color]), new THREE.BoxGeometry(0.5, 0.1, 0.5), x, y, z);

@@ -42,7 +42,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   barrel(g, L, 6, -12); barrel(g, L, -5, -22); barrel(g, L, 12, -27);
   L.tent(-28, -2, 6, 5); L.table(-28, -2, 2.4, 1);
   for (const [x, z] of [[-20, 2], [20, 2], [-18, -36], [18, -36]]) { L.box('darkmetal', x, 0, z, 0.25, 5.5, 0.25); L.lamp(x, 5.6, z, 'orange', false); }
-  L.lamp(0, 5.4, -4, 'orange', true, 30, 26);
+  L.lamp(0, 4.9, 7.4, 'orange', true, 40, 30);
   // bâtiment du générateur (est)
   L.floor('darkconcrete', 30, -19, 18, 22, 0.03, 0.03);
   L.enclosure('concrete', 21, -30, 39, -8, 5, [{ side: 'w', at: -19, gap: 3 }]);
@@ -51,7 +51,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.machine(33, -19, 5, 7, 3.6, 'glow_orange'); L.pipe(33, 3.8, -19, 33, 4.9, -19, 0.5); L.pipe(36, 1, -27, 36, 1, -11, 0.25); L.pipe(30, 4.5, -29, 30, 4.5, -9, 0.2);
   L.locker(24, -29.2, true, 4); L.crate(25, -10, 1.2); barrel(g, L, 37, -10.5);
   const genPos = L.terminal(28.5, -19, 'x-');
-  L.lamp(27, 4.9, -19, 'red', true, 12, 14);
+  L.lamp(27, 4.9, -19, 'red', true, 30, 18);
   // baraquements (ouest)
   L.floor('darkconcrete', -30, -20, 18, 20, 0.03, 0.03);
   L.enclosure('concrete', -39, -30, -21, -10, 4.5, [{ side: 'e', at: -20, gap: 3 }]);
@@ -59,7 +59,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.zones.push({ minX: -39, minZ: -30, maxX: -21, maxZ: -10, light: 0.4 });
   for (const z of [-27, -23, -17, -13]) { L.box('fabric', -36.5, 0.4, z, 2, 0.25, 1, { collide: false }); L.collider(-36.5, 0, z, 2, 0.65, 1, 'dirt'); L.box('darkmetal', -36.5, 0, z, 2.1, 0.4, 1.1, { collide: false }); }
   L.locker(-26, -29.2, true, 5); L.table(-28, -15, 2, 1);
-  L.lamp(-30, 4.4, -20, 'white', true, 10, 14);
+  L.lamp(-30, 4.4, -20, 'white', true, 28, 18);
   lore(g, L, 'op1_log1', -28, -15.2, 0.05);
   ammo(g, L, -24, -12);
 
@@ -77,7 +77,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.table(-6, -47, 4, 1.2); L.table(6, -52, 1.2, 4); L.locker(-13.2, -56, false, 5); L.locker(13.2, -46, false, 4);
   L.column(-7, -54, 5.5, 0.5, 'darkconcrete'); L.column(7, -46, 5.5, 0.5, 'darkconcrete');
   L.crate(10, -57, 1.2); L.crate(-10, -43, 1.2, 0, 'olive'); L.barrier(0, -53, true, 3);
-  L.lamp(0, 5.4, -50, 'white', true, 16, 18); L.lamp(-9, 5.4, -44, 'white', false); L.lamp(9, 5.4, -56, 'white', false);
+  L.lamp(0, 5.4, -50, 'white', true, 40, 24); L.lamp(-9, 5.4, -44, 'white', false); L.lamp(9, 5.4, -56, 'white', false);
   lore(g, L, 'op1_term1', -11.5, -58.6);
   // couloir
   L.enclosure('darkconcrete', -3, -72, 3, -60, 4.5, [{ side: 'n', at: 0, gap: 3 }, { side: 's', at: 0, gap: 3 }]);
@@ -96,7 +96,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.box('darkmetal', 0, 0, -97, 3, 0.3, 3, { nav: false });
   const dataPos = L.terminal(0, -97.6, 'z+');
   L.box('glow_blue', 0, 0.3, -97, 2.6, 0.05, 2.6, { collide: false });
-  L.lamp(0, 5.9, -82, 'white', true, 18, 22); L.lamp(0, 5.9, -98, 'blue', true, 18, 20); L.lamp(-15, 5.9, -90, 'violet', false); L.lamp(15, 5.9, -90, 'violet', false);
+  L.lamp(0, 5.9, -82, 'white', true, 45, 28); L.lamp(0, 5.9, -98, 'blue', true, 40, 26); L.lamp(-15, 5.9, -90, 'violet', false); L.lamp(15, 5.9, -90, 'violet', false);
   const bossDoor = L.door(0, -106, true, 5, 4, 'metal');
   // salles des conduits
   L.enclosure('darkconcrete', -41, -99, -22.5, -77, 5, [{ side: 'e', at: -88, gap: 3 }]);
@@ -106,7 +106,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.zones.push({ minX: -41, minZ: -99, maxX: -22, maxZ: -77, light: 0.25 }, { minX: 22, minZ: -99, maxX: 41, maxZ: -77, light: 0.25 });
   L.crate(-28, -80, 1.3); L.barrier(-30, -90, false, 3); L.machine(-39, -92, 2, 3, 2.6, 'glow_orange'); L.pipe(-34, 4.6, -98, -34, 4.6, -78, 0.3);
   L.crate(28, -96, 1.3, 0, 'olive'); L.barrier(30, -86, false, 3); L.machine(39, -84, 2, 3, 2.6, 'glow_orange'); L.pipe(34, 4.6, -98, 34, 4.6, -78, 0.3);
-  L.lamp(-32, 4.9, -88, 'orange', true, 12, 16); L.lamp(32, 4.9, -88, 'orange', true, 12, 16);
+  L.lamp(-32, 4.9, -88, 'orange', true, 30, 20); L.lamp(32, 4.9, -88, 'orange', true, 30, 20);
   const conduits = [L.conduit(-35, -88, 200), L.conduit(35, -88, 200), L.conduit(16, -103, 200)];
   for (const c of conduits) c.invulnerable = true;
   lore(g, L, 'op1_doc1', 38.5, -95);
@@ -120,7 +120,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   for (const s of [-1, 1]) { L.box('glow_orange', s * 26.4, 3, -136, 0.1, 0.2, 56, { collide: false }); L.box('hazard', s * 26.3, 0, -136, 0.3, 0.8, 56, { collide: false }); }
   L.deco(new THREE.MeshStandardMaterial({ color: 0x1a1c20, metalness: 0.8, roughness: 0.4 }), new THREE.CylinderGeometry(6, 6, 0.12, 24), 0, 0.06, -136);
   L.box('glow_orange', 0, 0.12, -136, 0.3, 0.02, 12, { collide: false }); L.box('glow_orange', 0, 0.12, -136, 12, 0.02, 0.3, { collide: false });
-  L.lamp(-14, 11.8, -136, 'orange', true, 40, 34); L.lamp(14, 11.8, -136, 'orange', true, 40, 34);
+  L.lamp(-14, 11.8, -136, 'orange', true, 90, 44); L.lamp(14, 11.8, -136, 'orange', true, 90, 44);
   L.barrier(-20, -116, true, 3); L.barrier(20, -116, true, 3); L.barrier(-20, -158, true, 3); L.barrier(20, -158, true, 3);
   const bossConduits = [L.conduit(-22, -136, 260, 'glow_blue'), L.conduit(22, -136, 260, 'glow_blue')];
   for (const c of bossConduits) c.invulnerable = true;

@@ -10,7 +10,7 @@ import { ammo, barrel, lore, REYES, ORACLE, MAREK, VOSS } from './common';
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp4(g: Game, m: Mission): Level {
-  const L = new Level('op4', 'Point Zéro', { skyTop: 0x0a0412, skyHorizon: 0x7a2a4c, fog: 0x261022, fogDensity: 0.012, sun: 0xff9a8c, sunIntensity: 1.9, sunDir: [0.3, 0.5, -0.6], hemiSky: 0x9a6a90, hemiGround: 0x221820, hemiIntensity: 0.9, rift: true });
+  const L = new Level('op4', 'Point Zéro', { skyTop: 0x0a0412, skyHorizon: 0x5a2440, fog: 0x261022, fogDensity: 0.012, sun: 0xff9a8c, sunIntensity: 1.9, sunDir: [0.3, 0.5, -0.6], hemiSky: 0x9a6a90, hemiGround: 0x221820, hemiIntensity: 0.9, rift: true });
   m.level = L;
   L.bounds = { minX: -52, minZ: -248, maxX: 52, maxZ: 46 };
   L.spawn.set(0, 0.1, 38); L.spawnYaw = 0;
@@ -102,7 +102,7 @@ export function buildOp4(g: Game, m: Mission): Level {
   L.zones.push({ minX: -51, minZ: -164, maxX: 51, maxZ: -112, light: 0.75, fogDensity: 0.022 });
 
   // ================= D. PARVIS DU NOYAU (z -164..-190) =================
-  L.box('rune', 0, -0.96, -177, 60, 1, 26, { nav: false });
+  L.box('stone', 0, -0.96, -177, 60, 1, 26, { nav: false });
   for (const [x, z, ax] of [[-10, -170, 1], [10, -170, 1], [-18, -180, 0], [18, -180, 0], [0, -176, 1]] as [number, number, number][]) L.sandbags(x, z, !!ax, 4);
   L.column(-24, -168, 10, 1, 'rune'); L.column(24, -168, 10, 1, 'rune'); L.column(-24, -186, 10, 1, 'rune', true); L.column(24, -186, 10, 1, 'rune');
   L.wallDoor('rune', -51, -190, 51, -190, 14, 0, 8, 7, 1.5);
@@ -111,7 +111,8 @@ export function buildOp4(g: Game, m: Mission): Level {
   ammo(g, L, 14, -187); ammo(g, L, -30, -166);
 
   // ================= E. NOYAU DE LA FRACTURE (boss) =================
-  L.box('rune', 0, -0.95, -218, 62, 1, 56, { nav: false });
+  L.box('stone', 0, -0.95, -218, 62, 1, 56, { nav: false });
+  L.box('rune', 0, -0.94, -218, 16, 1, 16, { nav: false });
   L.zones.push({ minX: -51, minZ: -247, maxX: 51, maxZ: -190, light: 0.8 });
   for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2 + 0.3; L.column(Math.cos(a) * 27, -218 + Math.sin(a) * 25, 14, 1.2, 'rune', i % 4 === 1); }
   for (const [x, z] of [[-12, -206], [12, -206], [-12, -230], [12, -230]]) L.box('stone', x, 0, z, 2.4, 1.5, 2.4);

@@ -58,7 +58,7 @@ export class Renderer {
           col=mix(col,hor*1.25,smoothstep(0.5,0.9,cl)*0.35*smoothstep(0.0,0.3,d.y));
           float s=max(dot(d,normalize(sunDir)),0.0); col+=sunCol*(pow(s,350.0)*2.0+pow(s,12.0)*0.18);
           if(rift>0.0){ float a=atan(d.z,d.x); float w=sin(d.y*11.0+t*0.4)*0.05+sin(d.y*23.0-t*0.7)*0.02;
-            float c=abs(a-1.2+w); float core=smoothstep(0.05,0.0,c)*smoothstep(0.02,0.25,d.y);
+            float c=abs(a+1.42+w); float core=smoothstep(0.05,0.0,c)*smoothstep(0.02,0.25,d.y);
             float halo=smoothstep(0.5,0.0,c)*smoothstep(0.0,0.3,d.y)*0.35;
             col+=rift*(vec3(0.75,0.5,1.0)*core*2.4+vec3(0.35,0.15,0.8)*halo*(0.7+0.3*sin(t*1.3))); }
           col=mix(hor*0.6,col,smoothstep(-0.12,0.02,d.y));
@@ -154,7 +154,7 @@ export class Renderer {
     this.zoneLight += (this.zoneTarget - this.zoneLight) * Math.min(1, dt * 2.5);
     const fog = this.scene.fog as THREE.FogExp2;
     fog.density += (this.fogTarget - fog.density) * Math.min(1, dt * 2);
-    this.hemi.intensity = this.baseHemi * this.zoneLight;
+    this.hemi.intensity = this.baseHemi * (0.42 + 0.58 * this.zoneLight);
     this.sun.intensity = this.baseSun * (0.25 + 0.75 * this.zoneLight);
     this.scene.environmentIntensity = 0.08 + 0.24 * this.zoneLight;
     this.vmScene.environmentIntensity = 0.35 + 0.4 * this.zoneLight;

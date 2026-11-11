@@ -96,7 +96,8 @@ export function buildOp3(g: Game, m: Mission): Level {
   ammo(g, L, 22, -84); ammo(g, L, -6, -123);
 
   // ================= D. SANCTUAIRE (boss) =================
-  L.box('rune', 0, -0.95, -160, 60, 1, 66, { nav: false });
+  L.box('stone', 0, -0.95, -160, 60, 1, 66, { nav: false });
+  L.box('rune', 0, -0.94, -160, 14, 1, 14, { nav: false });
   L.enclosure('stone', -30, -194, 30, -126.5, 16, [{ side: 's', at: 0, gap: 7, h: 7 }], 1.5);
   L.zones.push({ minX: -30, minZ: -194, maxX: 30, maxZ: -126, light: 0.7 });
   for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + 0.39; L.column(Math.cos(a) * 26, -160 + Math.sin(a) * 28, 15, 1.1, 'stone', i % 3 === 0); }

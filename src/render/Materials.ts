@@ -100,7 +100,7 @@ const painters: Record<string, { size: number; ns: number; paint: Painter }> = {
     return { r: lerp(base * 0.8, 140 + n * 40, r), g: lerp(base * 0.95, 78 + n * 25, r), b: lerp(base, 44, r), h: ridge * 0.5 + n * 0.2, rough: 0.6 + r * 0.35 };
   } },
   container: { size: 256, ns: 3, paint: (u, v) => {
-    const n = fbm(u, v, 51, 4, 4), r = sstep(0.55, 0.75, fbm(u, v, 53, 4, 3));
+    const n = fbm(u, v, 51, 4, 4), r = sstep(0.6, 0.85, fbm(u, v, 53, 5, 6)) * 0.55;
     const ridge = 0.5 + 0.5 * Math.sin(u * Math.PI * 2 * 14);
     const base = 150 + n * 40 + ridge * 30;
     return { r: lerp(base, 120, r), g: lerp(base, 70, r), b: lerp(base, 45, r), h: ridge * 0.6, rough: 0.55 + r * 0.35 };
@@ -219,7 +219,7 @@ export function mat(name: MatName): THREE.MeshStandardMaterial {
     case 'dirt': m = T('dirt'); break;
     case 'ash': m = T('ash', { emissive: 0x3a1a6a, emissiveMap: tex('ash').map, emissiveIntensity: 0.25 }); break;
     case 'stone': m = T('stone'); break;
-    case 'rune': m = T('rune', { emissive: 0x8a5aff, emissiveMap: tex('rune').map, emissiveIntensity: 0.9 }); break;
+    case 'rune': m = T('rune', { emissive: 0x8a5aff, emissiveMap: tex('rune').map, emissiveIntensity: 0.55 }); break;
     case 'tiles': m = T('tiles', { metalness: 0.1 }); break;
     case 'grate': m = T('grate', { metalness: 0.8 }); break;
     case 'hazard': m = T('hazard'); break;
