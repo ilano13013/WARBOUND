@@ -2,3 +2,5 @@ node_modules
 dist
 *.log
 tests/shots
+tools/node
+tools/telechargement

@@ -24,6 +24,19 @@ Le dossier `dist/` peut être déposé sur n'importe quel hébergement statique 
 
 Navigateur conseillé : Chrome, Edge ou Firefox récents, avec accélération matérielle (WebGL 2). Cliquez dans le jeu pour capturer la souris.
 
+## Lancer sous Windows sans installer Node.js (sans droits administrateur)
+
+Double-cliquez sur **`LANCER-WARBOUND.bat`**. Le script :
+
+1. utilise Node.js s'il est déjà présent (version 18 ou plus) ;
+2. sinon télécharge le ZIP portable officiel depuis `nodejs.org`, vérifie son empreinte SHA-256, et le décompresse dans `tools\node` (dans le dossier du jeu) ;
+3. au premier lancement, installe les dépendances dans `node_modules` et compile le jeu ;
+4. démarre un serveur local sur `http://localhost:4173` (accessible uniquement depuis votre PC) et ouvre le navigateur.
+
+**`BUILD-WARBOUND.bat`** reconstruit le jeu après une modification du code.
+
+Rien n'est installé ni modifié hors du dossier du jeu : pas de droits administrateur, pas de registre, le `PATH` n'est changé que pour la fenêtre du script. Pour tout retirer, supprimez `tools\node`, `node_modules` et `dist`. Si une règle de sécurité du PC bloque le téléchargement ou l'exécution, le script s'arrête avec un message et ne contourne rien.
+
 ## Commandes (AZERTY par défaut)
 
 | Action | Touche |
