@@ -1,0 +1,31 @@
+# Déploiement Netlify de WARBOUND (site statique).
+# Option 1 : relier le dépôt à Netlify, qui exécute la commande de build ci-dessous.
+# Option 2 : glisser-déposer le dossier dist/ sur https://app.netlify.com/drop
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# fichiers JavaScript/CSS produits par Vite : nom haché, mise en cache permanente
+[[headers]]
+  for = "/assets/index-*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# modèles, textures et sons du jeu : mise en cache d'une semaine
+[[headers]]
+  for = "/assets/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+    Content-Type = "model/gltf-binary"
+[[headers]]
+  for = "/assets/textures/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+[[headers]]
+  for = "/assets/sounds/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+    Content-Type = "audio/ogg"

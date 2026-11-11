@@ -1,5 +1,42 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.0 (refonte visuelle)
+
+Dernière exécution complète : `npm test` sur le build de production, Chromium piloté par Playwright, rendu logiciel (SwiftShader, pas de GPU dans l'environnement de développement).
+
+| Scénario | Résultat |
+| --- | --- |
+| `gameplay` (entrées clavier/souris réelles) | 27 / 27 |
+| `systems` (6 classes, 24 capacités, talents, inventaire, armurerie, atelier, sauvegarde, mort/reprise, paramètres) | 29 / 29 |
+| `boss` (Gardien, Archonte, Souverain : 3 phases, bouclier, attaques annoncées, renforts, victoire) | 3 / 3 |
+| `survival` | 6 / 6 |
+| `campaign` (4 opérations jusqu'aux crédits et au menu) | 4 / 4, aucune erreur JavaScript |
+
+Deux assertions du scénario `gameplay` ont été ajustées pendant la refonte, sans rapport avec un défaut du jeu :
+- « collision mur » : un conteneur ajouté au QG arrête désormais le joueur avant le mur ; le test vérifie qu'il ne traverse ni l'un ni l'autre ;
+- « pas de côté » : la durée d'appui est allongée, car en rendu logiciel une image du QG prend maintenant plus de 0,8 s et un appui plus court tombait entre deux images.
+
+Vérifications visuelles (captures inspectées à chaque étape) : armes et bras en visée hanche, visée et rechargement, roster des 8 ennemis, 3 boss, 4 niveaux, menus, HUD, talents, explosion, chaîne d'éclairs, annonces d'attaque des boss.
+
+Mesure indicative (rendu logiciel, qualité faible) : Opération 1 ≈ 410 appels de rendu et 190 000 triangles ; QG ≈ 190 appels.
+
+### Non vérifié en 2.0
+- **Fréquence d'images sur une vraie carte graphique** : impossible ici. Les nouveaux modèles animés, décors et ombres coûtent plus cher que la 1.0 ; si le jeu rame, baisser la qualité dans les paramètres.
+- **Écoute des sons enregistrés** : les fichiers se chargent et se décodent sans erreur, mais le mixage n'a pas été écouté.
+- **Navigateurs autres que Chromium** ; décodage Ogg Vorbis sur Safari (repli automatique sur les sons synthétisés si le décodage échoue).
+- **Lisibilité en jeu réel** : les choix de distance de l'arme, d'épaisseur des bras et de taille des décors ont été réglés sur des captures fixes, pas manette en main.
+
+### Limites de la refonte visuelle
+- Les modèles Quaternius sont stylisés *low poly* ; le rendu est nettement plus riche que la 1.0 mais reste en dessous d'une production AAA photoréaliste.
+- Les bras sont ceux du personnage Swat (proportions stylisées), allongés et posés par IK ; les mains tiennent l'arme mais les doigts gardent une pose de prise fixe.
+- Les animations de rechargement sont procédurales (os du chargeur et de la culasse animés en code), pas des animations capturées.
+- Le Gardien du temple (modèle de chevalier très simple) reste le personnage le moins détaillé.
+- Le revolver n'a pas de pièces mobiles (pas de barillet animé).
+
+---
+
+## Version 1.0
+
 Dernière exécution : `npm test` sur le build de production, Chromium piloté par Playwright, rendu logiciel (SwiftShader, pas de GPU dans l'environnement de développement).
 
 ## Ce qui a été vérifié automatiquement

@@ -4,6 +4,25 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Tout le contenu (modèles 3D, textures, effets, sons, musiques) est **généré procéduralement par le code** : aucune ressource externe, aucun service cloud, aucun backend.
 
+## Nouveautés de la version 2.0 (refonte visuelle)
+
+Le gameplay, les six classes, les quatre opérations, les boss, l'inventaire et les sauvegardes de la 1.0 sont conservés. La 2.0 remplace la présentation :
+
+- **Armes** : 12 modèles glTF riggés (*Flat Guns* et revolver Quaternius, CC0) avec accessoires montés sur leurs points d'attache, **bras et mains gantés** posés par cinématique inverse, rechargements animés (chargeur retiré puis inséré par la main gauche, armement de la culasse), culasse et glissière qui reculent à chaque tir, douilles éjectées.
+- **Personnages** : ennemis, compagnons, PNJ et boss sont des modèles animés (Quaternius, CC0). Les animations de la *Universal Animation Library* sont **retargetées à l'exécution** sur les personnages humanoïdes : locomotion, visée et tir superposés au haut du corps, sorts, réactions aux impacts, morts.
+- **Boss** : le Gardien d'Helix est un mech animé, l'Archonte et le Souverain sont des personnages animés qui conservent leurs halos, cristaux et ailes ; attaques annoncées par des zones animées et des colonnes d'énergie.
+- **Environnements** : 16 matériaux PBR photographiques (ambientCG, CC0) et environ 110 décors glTF instanciés (laboratoire, rue, temple, installation).
+- **Effets** : boules de feu en shader, éclats, brûlures au sol, éclairs en rubans ramifiés, trous de balle, flash de bouche en étoile, projectiles lumineux.
+- **Son** : détonations enregistrées sur de vraies armes et bruits de pas (CC0), superposés à la synthèse existante.
+- **Interface** : direction artistique militaire dark fantasy (polices Cinzel et Rajdhani embarquées), icônes vectorielles des compétences, recharges en balayage circulaire, boussole avec marqueur d'objectif.
+
+Sources, licences et pipeline de régénération des assets : [`ASSETS.md`](ASSETS.md).
+
+## Déployer sur Netlify
+
+- Glisser-déposer le dossier `dist/` sur https://app.netlify.com/drop, ou
+- relier le dépôt à Netlify : `netlify.toml` fournit la commande de build (`npm run build`) et le dossier publié (`dist`).
+
 ## Lancer le jeu
 
 Prérequis : Node.js 18+ (testé avec Node 22).

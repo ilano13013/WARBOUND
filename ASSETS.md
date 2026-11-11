@@ -24,4 +24,13 @@ node tools/assets/build-assets.mjs      # optimise : meshopt, textures 1024 px, 
 
 Les sites d'origine (quaternius.com, opengameart.org, ambientcg.com) ne sont pas accessibles depuis l'environnement où le jeu a été construit. Les licences ont été vérifiées dans les fichiers de licence et README des dépôts GitHub miroirs listés ci-dessus, pas directement sur les pages d'origine. Avant une publication commerciale, il est conseillé de reconfirmer la licence sur chaque page source.
 
+## Polices
+
+| Paquet | Usage | Licence |
+| --- | --- | --- |
+| `@fontsource/cinzel` | Titres, logo | SIL Open Font License 1.1 |
+| `@fontsource/rajdhani` | Interface, HUD | SIL Open Font License 1.1 |
+
+Les polices sont embarquées dans le build par Vite (aucun appel à un service externe).
+
 Tout le reste (niveaux, effets, interface, musique, sons de compétences) est créé par le code du jeu.
