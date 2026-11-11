@@ -5,6 +5,7 @@ import { bindLabel } from '../core/Input';
 import { RARITY, type Item } from '../rpg/items';
 import { xpForLevel, MAX_LEVEL } from '../rpg/Stats';
 import type { Boss } from '../ai/Boss';
+import { icon } from './Icons';
 
 const BUFF_LABEL: Record<string, [string, string]> = {
   ember: ['Balles de braise', '#ff7a2a'], aegis: ['Égide', '#ffd27a'], inferno: ['Surcharge infernale', '#ff4a1a'], armor: ['Armure renforcée', '#6ab0ff'],
@@ -37,6 +38,7 @@ export class HUD {
   private ebars: { el: HTMLElement; fill: HTMLElement; name: HTMLElement }[] = [];
   private cache: Record<string, string> = {};
   private fireKick = 0;
+  private compass!: HTMLElement;
   private clickHint!: HTMLElement;
   private lastPrompt = '';
 
@@ -71,6 +73,9 @@ export class HUD {
     this.fpsEl = el('div', '', r); this.fpsEl.id = 'fps';
     this.lowAmmo = el('div', 'hidden', r); this.lowAmmo.id = 'lowammo';
     this.flashEl = el('div', '', r); this.flashEl.id = 'flash';
+    this.compass = el('div', '', r, '<div class="cstrip"></div><div class="cobj"></div><i></i>'); this.compass.id = 'compass';
+    const strip = this.compass.firstChild as HTMLElement; const pts = ['N', '·', 'NE', '·', 'E', '·', 'SE', '·', 'S', '·', 'SO', '·', 'O', '·', 'NO', '·'];
+    for (let k = -1; k <= 1; k++) pts.forEach((t, j) => { const d = el('span', t.length > 1 || t === 'N' || t === 'E' || t === 'S' || t === 'O' ? 'big' : '', strip, t); d.style.left = `${(k * 16 + j) * 40}px`; });
     this.clickHint = el('div', 'hidden', r, 'CLIQUEZ POUR PRENDRE LE CONTRÔLE'); this.clickHint.id = 'clickhint';
   }
 
@@ -93,15 +98,15 @@ export class HUD {
     const p = this.g.player, b = this.g.settings.binds;
     if (!p.cls) return;
     this.bc.innerHTML = ''; this.skills = [];
-    const mk = (icon: string, color: string, key: string, cls = '') => {
-      const root = el('div', 'skill ' + cls, this.bc, `<span>${icon}</span>`); root.style.color = color;
+    const mk = (ic: string, color: string, key: string, cls = '') => {
+      const root = el('div', 'skill ' + cls, this.bc, `<span class="ico">${icon(ic, cls.includes('ult') ? 34 : cls.includes('gren') ? 20 : 28)}</span>`); root.style.color = color;
       const cd = el('div', 'cd', root), cdt = el('div', 'cdt', root);
       el('div', 'key', root, bindLabel(key));
       return { root, cd, cdt };
     };
-    this.gren = mk('●', '#a8b890', b.grenade, 'gren').root;
-    p.cls.skills.forEach((s, i) => this.skills.push(mk(s.icon, s.color, b['skill' + (i + 1)])));
-    this.ult = mk(p.cls.ult.icon, p.cls.ult.color, b.ult, 'ult');
+    this.gren = mk('grenade', '#b8c890', b.grenade, 'gren').root;
+    p.cls.skills.forEach((s, i) => this.skills.push(mk(s.id, s.color, b['skill' + (i + 1)])));
+    this.ult = mk(p.cls.ult.id, p.cls.ult.color, b.ult, 'ult');
     this.cache = {};
   }
 
@@ -232,15 +237,16 @@ export class HUD {
     for (let i = 0; i < 3; i++) {
       const s = this.skills[i]; if (!s) continue;
       const cd = p.cds[i], k = cd / p.cdMax[i];
-      this.style('cd' + i, s.cd, 'height', `${Math.min(100, k * 100).toFixed(0)}%`);
+      this.style('cd' + i, s.cd, '--cd' as any, Math.min(1, k).toFixed(3)); s.cd.style.setProperty('--cd', Math.min(1, k).toFixed(3));
       this.set('cdt' + i, s.cdt, cd > 0 ? (cd < 10 ? cd.toFixed(1) : String(Math.ceil(cd))) : '');
       s.root.classList.toggle('noen', cd <= 0 && p.energy < p.cls.skills[i].cost);
       s.root.classList.toggle('act', p.has(p.cls.skills[i].id));
     }
-    this.style('ultcd', this.ult.cd, 'height', `${(100 - p.ult).toFixed(0)}%`);
+    this.ult.cd.style.setProperty('--cd', (1 - p.ult / 100).toFixed(3));
     this.set('ultt', this.ult.cdt, p.ult < 100 ? `${Math.floor(p.ult)}%` : '');
     this.ult.root.classList.toggle('ready', p.ult >= 100);
-    this.set('gren', this.gren.firstChild as HTMLElement, p.grenades > 0 ? '●'.repeat(p.grenades) : '○');
+    this.set('gren', this.gren.querySelector('.cdt') as HTMLElement, String(p.grenades));
+    this.gren.classList.toggle('noen', p.grenades <= 0);
     // buffs
     let bh = '';
     for (const [k, t] of p.buffs) { const b = BUFF_LABEL[k]; if (b && t > 0) bh += `<div class="buff" style="color:${b[1]};border-color:${b[1]}">${b[0]} ${k === 'fortressIn' ? '' : t.toFixed(0) + 's'}</div>`; }
@@ -288,6 +294,17 @@ export class HUD {
       this.updateBoss(m.boss);
     }
     this.updateEliteBars();
+    // boussole : 40 px par 22,5°
+    const yawDeg = ((-p.yaw * 180) / Math.PI + 360) % 360;
+    (this.compass.firstChild as HTMLElement).style.transform = `translateX(${(-yawDeg / 22.5) * 40 - 640 * 0}px)`;
+    const mp2 = g.mission?.markerPos();
+    const cobj = this.compass.children[1] as HTMLElement;
+    if (mp2) {
+      const ang = (Math.atan2(mp2.x - p.pos.x, -(mp2.z - p.pos.z)) * 180) / Math.PI;
+      let rel = ((ang - yawDeg + 540) % 360) - 180;
+      rel = Math.max(-90, Math.min(90, rel));
+      cobj.style.display = 'block'; cobj.style.transform = `translateX(${(rel / 22.5) * 40}px)`;
+    } else cobj.style.display = 'none';
     if (g.settings.showFps) this.set('fps', this.fpsEl, `${g.fps} FPS · ${g.r.info.calls} appels · ${(g.r.info.tris / 1000).toFixed(0)}k tri`); else this.set('fps', this.fpsEl, '');
   }
 

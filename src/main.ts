@@ -1,3 +1,8 @@
+import '@fontsource/rajdhani/500.css';
+import '@fontsource/rajdhani/600.css';
+import '@fontsource/rajdhani/700.css';
+import '@fontsource/cinzel/600.css';
+import '@fontsource/cinzel/800.css';
 // Point d'entrée de WARBOUND.
 import { Game } from './core/Game';
 

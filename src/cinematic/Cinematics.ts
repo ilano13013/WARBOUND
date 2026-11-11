@@ -4,6 +4,8 @@ import type { Game } from '../core/Game';
 import { Level } from '../world/Level';
 import { CLASSES, type ClassId } from '../data/classes';
 import { buildOperatorModel } from '../ai/EnemyModels';
+import { buildOperatorRig } from '../ai/EnemyRigs';
+import type { CharacterRig } from '../render/CharacterRig';
 
 interface Shot { dur: number; text?: string; title?: string; from: [number, number, number]; to: [number, number, number]; look: [number, number, number]; fx?: () => void }
 
@@ -15,7 +17,8 @@ export class Cinematics {
   private shots: Shot[] = [];
   private shotI = -1; private shotT = 0;
   private done: (() => void) | null = null;
-  private operator: THREE.Group | null = null;
+  private operator: THREE.Object3D | null = null;
+  private opRig: CharacterRig | null = null;
   private opClass: ClassId | null = null;
   private camPos = new THREE.Vector3(0, 2, 10);
   private riftFade = false;
@@ -58,7 +61,11 @@ export class Cinematics {
     if (this.operator) { this.operator.removeFromParent(); this.operator = null; }
     this.opClass = id;
     if (!id || !g.level) return;
-    this.operator = buildOperatorModel(CLASSES[id].color);
+    const rig = buildOperatorRig(CLASSES[id].color, id === 'wraith' || id === 'lifebinder' || id === 'ranger');
+    this.opRig = rig;
+    this.operator = rig ? rig.root : buildOperatorModel(CLASSES[id].color);
+    // halo de la couleur de la classe aux pieds de l'opérateur
+    if (rig) { const l = new THREE.PointLight(CLASSES[id].color, 6, 4, 1.6); l.position.set(0, 1.2, 0.6); rig.root.add(l); }
     this.operator.position.set(-1.2, 0.02, 3.2);
     this.operator.rotation.y = Math.PI * 0.9;
     g.level.root.add(this.operator);
@@ -125,6 +132,7 @@ export class Cinematics {
   }
 
   update(dt: number): void {
+    this.opRig?.update(dt);
     const g = this.g, cam = g.r.camera;
     this.t += dt;
     if (this.mode === 'menu') {

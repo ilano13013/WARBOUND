@@ -6,6 +6,7 @@ import { Level } from '../world/Level';
 import { dressHub } from './dress';
 import { cmat, mat } from '../render/Materials';
 import { buildOperatorModel } from '../ai/EnemyModels';
+import { buildOperatorRig } from '../ai/EnemyRigs';
 import { MISSION_BY_ID } from '../data/missions';
 
 export function buildHub(g: Game, m: Mission): Level {
@@ -86,8 +87,13 @@ export function buildHub(g: Game, m: Mission): Level {
   L.interact(survP, 'Terminal de survie — Protocole Infini', () => g.ui.panels.survival(), 3.2);
 
   // ---- personnel ----
-  const npc = (x: number, z: number, ry: number, color: number) => { const o = buildOperatorModel(color); o.position.set(x, 0, z); o.rotation.y = ry; L.root.add(o); L.collider(x, 0, z, 0.7, 1.8, 0.7, 'flesh'); return o; };
-  npc(2.9, -1.2, -Math.PI / 2 - 0.4, 0x6ab0ff);
+  const npc = (x: number, z: number, ry: number, color: number, female = false) => {
+    const rig = buildOperatorRig(color, female);
+    const o = rig ? rig.root : buildOperatorModel(color);
+    if (rig) L.updaters.push((dt) => rig.update(dt));
+    o.position.set(x, 0, z); o.rotation.y = ry; L.root.add(o); L.collider(x, 0, z, 0.7, 1.8, 0.7, 'flesh'); return o;
+  };
+  npc(2.9, -1.2, -Math.PI / 2 - 0.4, 0x6ab0ff, true);
   npc(-13.5, 5.2, Math.PI / 2, 0xffb04a);
   npc(14.6, 10.4, -Math.PI * 0.8, 0xb06aff);
   L.interact(new THREE.Vector3(2.9, 1.4, -1.2), 'Parler à la Commandante Reyes', () => {

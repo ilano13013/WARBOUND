@@ -11,6 +11,7 @@ import { bindLabel } from '../core/Input';
 import { RARITY, formatStat, KIND_LABEL, LEGENDS, type Item } from '../rpg/items';
 import { buildWeaponModel } from '../player/WeaponModels';
 import { Panels } from './Panels';
+import { icon } from './Icons';
 
 export function esc(s: string): string { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); }
 
@@ -184,7 +185,7 @@ export class UI {
     const render = () => {
       const c = CLASSES[this.selClass];
       const pips = (n: number) => `<span class="pips" style="color:${c.css}">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
-      const sk = [...c.skills, c.ult].map((s, i) => `<div class="skill-row"><div class="skill-ico" style="color:${s.color};border-color:${s.color}">${s.icon}</div><div><b>${s.name}</b>${i === 3 ? ' <span class="label" style="color:#ffd24a">Ultime</span>' : ` <span class="label">${s.cost} énergie · ${s.cd}s</span>`}<br><span style="color:#9aa8b8">${s.desc}</span></div></div>`).join('');
+      const sk = [...c.skills, c.ult].map((s, i) => `<div class="skill-row"><div class="skill-ico" style="color:${s.color};border-color:${s.color}">${icon(s.id, 22)}</div><div><b>${s.name}</b>${i === 3 ? ' <span class="label" style="color:#ffd24a">Ultime</span>' : ` <span class="label">${s.cost} énergie · ${s.cd}s</span>`}<br><span style="color:#9aa8b8">${s.desc}</span></div></div>`).join('');
       this.show('classsel', '', `
         <div class="class-top"><h2 style="font-size:30px">${create ? 'Création de l’opérateur' : 'Classes de l’unité Warbound'}</h2><div class="label" style="margin-top:6px">Choisissez votre spécialisation — six classes, six façons de combattre</div></div>
         <div class="class-info scroll">

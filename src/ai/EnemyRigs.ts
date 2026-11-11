@@ -115,3 +115,17 @@ export function buildRiggedEnemy(kind: EnemyKind | 'wolf'): { model: EnemyModel;
   const model: EnemyModel = { root, body: root, head: rig.head, legL: null, legR: null, armL: null, armR: null, extra: [], muzzle: rig.muzzle, shield, marker };
   return { model, rig };
 }
+
+/** Opérateur allié animé (sélection de classe, personnel du QG), teinté à la couleur de la classe. */
+export function buildOperatorRig(color: number, female = false, pose: 'idle' | 'aim' = 'idle'): CharacterRig | null {
+  const model = female ? 'chars/soldier' : 'chars/swat';
+  if (!Assets.has(model) || !Assets.has('anims/ual')) return null;
+  const mats: Record<string, import('../render/CharacterRig').MatTweak> = female
+    ? { Swat: { color: 0x3c4432, rough: 0.85 }, Black: { color: 0x15171a }, Grey: { color: 0x2c3028 }, Brown: { color: 0x2a2018 }, Skin: {}, Hair_Brown: {} }
+    : { Swat: { color: 0x3c4432, rough: 0.85 }, Swat_Black: { color: 0x15171a, metal: 0.4, rough: 0.5 }, Visor: { color: 0x050505, emissive: color, ei: 2.2 }, Skin: {} };
+  try {
+    const rig = new CharacterRig({ model, height: 1.84, humanoid: true, gun: true, mats });
+    rig.setMotion(0, pose === 'aim', 1);
+    return rig;
+  } catch { return null; }
+}
