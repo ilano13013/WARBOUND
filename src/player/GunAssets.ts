@@ -34,30 +34,68 @@ const TUNE: Record<string, { scale?: number; grip?: [number, number, number]; le
 
 const _v = new THREE.Vector3(), _box = new THREE.Box3();
 
+const _gv = new THREE.Vector3();
+/**
+ * Finition procédurale d'une pièce d'arme : variation de teinte, usure brillante en traînées le long du canon,
+ * grain de surface. `metal` = 1 pour l'acier (usure marquée), 0 pour polymère et bois (grain mat).
+ */
+function gunSurface(m: THREE.MeshPhysicalMaterial, scale: { value: number }, metal: number): void {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uGS = scale; sh.uniforms.uGM = { value: metal };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP=position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vOP; uniform float uGS; uniform float uGM;
+float gH(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+float gN(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(gH(i),gH(i+vec3(1,0,0)),f.x),mix(gH(i+vec3(0,1,0)),gH(i+vec3(1,1,0)),f.x),f.y),mix(mix(gH(i+vec3(0,0,1)),gH(i+vec3(1,0,1)),f.x),mix(gH(i+vec3(0,1,1)),gH(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float gWear=0.0; float gFine=0.0;`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+{ vec3 q=vOP*uGS; float big=gN(q*0.7)*0.6+gN(q*2.3+4.0)*0.4;
+  gFine=gN(q*22.0);
+  float scr=max(gN(q*vec3(2.0,34.0,34.0)),gN(q*vec3(34.0,34.0,2.0)+9.0));
+  gWear=smoothstep(0.62,0.92,scr*0.6+big*0.5)*uGM;
+  diffuseColor.rgb*=0.8+0.4*big+0.08*(gFine-0.5);
+  diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.34,0.35,0.37),gWear*0.5); }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+roughnessFactor=clamp(roughnessFactor*(0.78+0.5*gFine)-gWear*0.22,0.1,1.0);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+{ vec3 q=vOP*uGS*26.0; normal=normalize(normal+(vec3(gN(q),gN(q+17.0),gN(q+31.0))-0.5)*mix(0.16,0.07,uGM)); }`);
+  };
+  m.customProgramCacheKey = () => 'gun-surface';
+}
+
 /** Matériaux PBR « premium » remplaçant les aplats d'origine. */
 function remapMaterials(o: THREE.Object3D, def: WeaponDef): void {
   const accent = new THREE.Color(def.look.accent);
   const cache = new Map<string, THREE.Material>();
+  // échelle du grain : une quinzaine de motifs sur la longueur de l'arme, quelle que soit l'unité du modèle
+  const gs = { value: 1 };
+  let gmax = 0;
   o.traverse((n) => {
     const m = n as THREE.Mesh;
     if (!m.isMesh) return;
     m.castShadow = true; m.frustumCulled = false;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    const bs = m.geometry.boundingBox!.getSize(_gv); gmax = Math.max(gmax, bs.x, bs.y, bs.z); gs.value = 15 / Math.max(gmax, 1e-4);
     const conv = (src: THREE.Material): THREE.Material => {
       const k = src.name;
       let r = cache.get(k);
       if (r) return r;
       const base = (src as THREE.MeshStandardMaterial).color?.clone() || new THREE.Color(0x222222);
       const p: THREE.MeshPhysicalMaterialParameters = { color: base, roughness: 0.5, metalness: 0.4, clearcoat: 0, clearcoatRoughness: 0.4 };
-      if (/Black$/.test(k)) Object.assign(p, { color: new THREE.Color(0x0e0f11), metalness: 0.85, roughness: 0.38, clearcoat: 0.35 }); // acier bronzé
-      else if (/Black_Lighter/.test(k)) Object.assign(p, { color: new THREE.Color(0x17181a), metalness: 0.05, roughness: 0.62 }); // polymère
-      else if (/Grey_Darker/.test(k)) Object.assign(p, { color: new THREE.Color(0x2a2c30), metalness: 0.9, roughness: 0.3, clearcoat: 0.2 });
+      if (/Black$/.test(k)) Object.assign(p, { color: new THREE.Color(0x1b1d21), metalness: 0.9, roughness: 0.4, clearcoat: 0.3 }); // acier bronzé
+      else if (/Black_Lighter/.test(k)) Object.assign(p, { color: new THREE.Color(0x25272b), metalness: 0.05, roughness: 0.66 }); // polymère
+      else if (/Grey_Darker/.test(k)) Object.assign(p, { color: new THREE.Color(0x34373c), metalness: 0.9, roughness: 0.34, clearcoat: 0.2 });
       else if (/Grey/.test(k)) Object.assign(p, { color: new THREE.Color(0x4a4d52), metalness: 0.9, roughness: 0.28 });
       else if (/White/.test(k)) Object.assign(p, { color: accent.clone().multiplyScalar(1.4), metalness: 0.2, roughness: 0.55 });
       else if (/Brown|Wood/.test(k)) Object.assign(p, { color: accent.clone(), metalness: 0.05, roughness: 0.6, clearcoat: 0.25 });
       else if (/Red/.test(k)) Object.assign(p, { color: accent.clone(), metalness: 0.1, roughness: 0.6 });
       else if (/Brass|Yellow/.test(k)) Object.assign(p, { color: new THREE.Color(0xb8862a), metalness: 1, roughness: 0.3 });
       else if (/^Metal$|LightMetal/.test(k)) Object.assign(p, { color: new THREE.Color(k === 'Metal' ? 0x2a2b2e : 0x6a6d72), metalness: 0.95, roughness: 0.3, clearcoat: 0.3 });
-      r = new THREE.MeshPhysicalMaterial(p);
+      const pm = new THREE.MeshPhysicalMaterial(p);
+      gunSurface(pm, gs, /Lighter|Brown|Wood|White|Red/.test(k) ? 0 : 1);
+      r = pm;
       r.name = k;
       cache.set(k, r);
       return r;

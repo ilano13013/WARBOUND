@@ -22,6 +22,27 @@ function mapBasis(f0: THREE.Vector3, s0: THREE.Vector3, f1: THREE.Vector3, s1: T
   return out.setFromRotationMatrix(_m2);
 }
 
+/** Grain de tissu et de cuir sur les manches et les gants : trame fine, variation de teinte, relief. */
+function clothSurface(m: THREE.MeshStandardMaterial, scale: { value: number }, amount: number): void {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uCS = scale; sh.uniforms.uCA = { value: amount };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP=position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vOP; uniform float uCS; uniform float uCA;
+float cH(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+float cN(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(cH(i),cH(i+vec3(1,0,0)),f.x),mix(cH(i+vec3(0,1,0)),cH(i+vec3(1,1,0)),f.x),f.y),mix(mix(cH(i+vec3(0,0,1)),cH(i+vec3(1,0,1)),f.x),mix(cH(i+vec3(0,1,1)),cH(i+vec3(1,1,1)),f.x),f.y),f.z); }`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+{ vec3 q=vOP*uCS; float weave=0.5+0.25*sin(q.x*6.0)*sin(q.y*6.0)+0.25*sin(q.z*6.0)*sin(q.y*6.0+1.6);
+  float big=cN(q*0.06)*0.6+cN(q*0.2+3.0)*0.4;
+  diffuseColor.rgb*=(0.78+0.44*big)*(1.0-uCA*0.35*(1.0-weave)); }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+{ vec3 q=vOP*uCS*1.5; normal=normalize(normal+(vec3(cN(q),cN(q+17.0),cN(q+31.0))-0.5)*0.22*uCA); }`);
+  };
+  m.customProgramCacheKey = () => 'cloth-surface';
+}
+
 export class Arms {
   root = new THREE.Group();
   ok = false;
@@ -39,6 +60,7 @@ export class Arms {
     this.root.add(m);
     m.rotation.y = Math.PI; // face à -Z, comme la caméra de l'arme
     const bones = new Map<string, THREE.Bone>();
+    const cloth = { value: 0 };
     m.traverse((o) => {
       if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone);
       const sk = o as THREE.SkinnedMesh;
@@ -49,8 +71,11 @@ export class Arms {
           if (mt.name === 'Skin') { c.color.setHex(0x1b1c1e); c.roughness = 0.75; c.metalness = 0.05; } // gants tactiques
           else if (mt.name === 'Swat') { c.color.setHex(0x3c4332); c.roughness = 0.85; } // manches olive
           else if (mt.name === 'Swat_Black') { c.color.setHex(0x16181b); c.roughness = 0.6; c.metalness = 0.3; }
+          clothSurface(c, cloth, mt.name === 'Swat' ? 1 : 0.45);
           return c;
         };
+        if (!sk.geometry.boundingBox) sk.geometry.computeBoundingBox();
+        cloth.value = Math.max(cloth.value, 260 / Math.max(sk.geometry.boundingBox!.getSize(new THREE.Vector3()).y, 1e-4));
         sk.material = Array.isArray(sk.material) ? sk.material.map(conv) : conv(sk.material);
       }
     });

@@ -4,6 +4,7 @@ import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level, type Interactable } from '../world/Level';
 import { dressOp4 } from './dress';
+import { backdrop } from '../world/Detail';
 import { mat } from '../render/Materials';
 import { Sovereign } from '../ai/Boss';
 import { ammo, barrel, lore, REYES, ORACLE, MAREK, VOSS } from './common';
@@ -11,7 +12,8 @@ import { ammo, barrel, lore, REYES, ORACLE, MAREK, VOSS } from './common';
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp4(g: Game, m: Mission): Level {
-  const L = new Level('op4', 'Point Zéro', { skyTop: 0x0a0412, skyHorizon: 0x5a2440, fog: 0x261022, fogDensity: 0.012, sun: 0xff9a8c, sunIntensity: 1.9, sunDir: [0.3, 0.5, -0.6], hemiSky: 0x9a6a90, hemiGround: 0x221820, hemiIntensity: 0.9, rift: true });
+  const L = new Level('op4', 'Point Zéro', { skyTop: 0x0c0614, skyHorizon: 0x64303e, fog: 0x2a1a24, fogDensity: 0.011, sun: 0xffa08c, sunIntensity: 2.8, sunDir: [0.75, 0.38, -0.3], hemiSky: 0x8c84a4, hemiGround: 0x2a1c24, hemiIntensity: 0.8, env: 0.85, rift: true, wet: 0.4, storm: 0.6, mist: 0.35, rays: 0.28, exposure: 1.02, gradeShadow: 0x8478a8, gradeLight: 0xffe0d0, weather: 'embers' });
+  L.theme = 'fracture';
   m.level = L;
   L.bounds = { minX: -52, minZ: -248, maxX: 52, maxZ: 46 };
   L.spawn.set(0, 0.1, 38); L.spawnYaw = 0;
@@ -20,7 +22,7 @@ export function buildOp4(g: Game, m: Mission): Level {
   L.floor('dirt', 0, 2, 104, 88);
   L.floor('darkconcrete', 0, -76, 104, 70);
   L.floor('ash', 0, -179, 104, 138);
-  L.enclosure('concrete', -51, -247, 51, 45, 9, [], 1.5);
+  L.enclosure('darkconcrete', -51, -247, 51, 45, 9, [], 1.5);
 
   // ================= A. DÉFENSES HELIX (z 44..-40) =================
   L.box('asphalt', 0, -0.98, 2, 9, 1, 86, { nav: false });
@@ -121,12 +123,13 @@ export function buildOp4(g: Game, m: Mission): Level {
   L.lamp(0, 8, -218, 'red', true, 90, 50); L.lamp(-18, 12, -218, 'violet', true, 40, 36); L.lamp(18, 12, -218, 'violet', true, 40, 36);
   for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; L.crystalDeco(Math.cos(a) * 31, 0, -218 + Math.sin(a) * 27, 1.6 + (i % 2), 'crystal_red'); }
   ammo(g, L, -26, -194.5); ammo(g, L, 26, -242);
+  backdrop(L, 'fracture');
   dressOp4(L);
   L.finish();
 
   // ================= ENNEMIS =================
   m.spawn('def', [
-    ['grunt', -8, 22], ['grunt', 8, 18], ['grunt', -14, 10, { patrol: [V(-14, 10), V(0, 8)] }], ['sniper', -22, 6, { static: true, y: 4 }], ['grunt', 12, 2], ['drone', 0, 14],
+    ['grunt', -8, 22], ['grunt', 8, 18], ['grunt', -14, 14.5, { patrol: [V(-14, 14.5), V(0, 8)] }], ['sniper', -22, 6, { static: true, y: 4 }], ['grunt', 12, 2], ['drone', 0, 14],
     ['grunt', -6, -6], ['grunt', 6, -16], ['sniper', 22, -10, { static: true, y: 4 }], ['drone', -10, -14], ['grunt', -16, -24], ['grunt', 14, -30], ['drone', 6, -26],
   ]);
   m.spawn('cmd', [['commander', 0, -32], ['breaker', -5, -28], ['breaker', 5, -28]]);
@@ -139,7 +142,7 @@ export function buildOp4(g: Game, m: Mission): Level {
       L.openDoor(gate); g.audio.door(V(0, -40));
       m.say(ORACLE, 'Porte ouverte. Trois stabilisateurs maintiennent la Fracture béante : aile ouest, aile est, et la cour centrale.');
       m.spawn('complex', [['grunt', -30, -62], ['grunt', -40, -76], ['caster', -32, -80], ['breaker', -28, -70], ['grunt', 30, -60], ['grunt', 40, -72], ['sniper', 44, -58, { static: true }], ['commander', 30, -74],
-        ['grunt', -6, -84], ['grunt', 6, -70], ['drone', 0, -90], ['drone', -10, -60], ['caster', 4, -96]]);
+        ['grunt', -6, -84], ['grunt', 6, -70], ['drone', 0, -90], ['drone', -10, -60], ['caster', 6.5, -98]]);
     },
   });
   m.custom({
@@ -151,7 +154,7 @@ export function buildOp4(g: Game, m: Mission): Level {
     onDone: () => {
       g.audio.bossRoar(null); g.player.shakeAmt = 1;
       m.say(ORACLE, 'Les trois stabilisateurs sont coupés. La zone au nord est… altérée. La réalité s’y fracture par à-coups. Ne restez pas immobile.');
-      m.spawn('altered', [['devourer', -8, -124], ['devourer', 10, -128], ['devourer', -12, -138], ['devourer', 6, -144], ['sentinel', 0, -134], ['caster', -18, -146], ['caster', 16, -122], ['devourer', 14, -154], ['sentinel', -4, -156], ['devourer', -20, -130]]);
+      m.spawn('altered', [['devourer', -3, -124], ['devourer', 10, -128], ['devourer', -12, -138], ['devourer', 6, -144], ['sentinel', 0, -134], ['caster', -18, -146], ['caster', 16, -122], ['devourer', 14, -154], ['sentinel', -4, -156], ['devourer', -20, -130]]);
     },
   });
   let riftT = 2;

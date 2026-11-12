@@ -158,14 +158,33 @@ const painters: Record<string, { size: number; ns: number; paint: Painter }> = {
     const n = fbm(u, v, 111, 3, 4);
     return s ? { r: 210 - n * 40, g: 160 - n * 30, b: 20, h: 0, rough: 0.6 } : { r: 24 + n * 10, g: 24 + n * 10, b: 26 + n * 10, h: 0, rough: 0.6 };
   } },
-  facade: { size: 256, ns: 2, paint: (u, v) => {
-    const n = fbm(u, v, 121, 4, 4);
+  facade: { size: 512, ns: 3.5, paint: (u, v) => {
+    // trame de 4 travées × 4 étages : enduit, bandeau d'étage, encadrement, appui, croisée, vitrage
+    const n = fbm(u, v, 121, 5, 4), st = fbm(u, v, 123, 3, 2);
+    const cu = Math.floor(u * 4), cv = Math.floor(v * 4);
     const wu = (u * 4) % 1, wv = (v * 4) % 1;
-    const win = wu > 0.2 && wu < 0.8 && wv > 0.25 && wv < 0.8;
-    const id = hash(Math.floor(u * 4), Math.floor(v * 4), 122);
-    if (win) { const lit = id > 0.9; const broken = id < 0.25; const c = broken ? 8 : 26 + n * 16; return { r: lit ? 200 : c, g: lit ? 150 : c * 1.1, b: lit ? 70 : c * 1.35, h: -0.5, rough: lit ? 0.9 : 0.15 }; }
-    const c = 96 + n * 44 - fbm(u, v, 123, 3, 2) * 24;
-    return { r: c, g: c * 0.97, b: c * 0.92, h: n * 0.3, rough: 0.85 };
+    const id = hash(cu, cv, 122), id2 = hash(cu, cv, 127);
+    const inX = wu > 0.2 && wu < 0.8, inY = wv > 0.25 && wv < 0.8;
+    const frame = wu > 0.165 && wu < 0.835 && wv > 0.215 && wv < 0.835;
+    const sill = wu > 0.14 && wu < 0.86 && wv > 0.8 && wv < 0.86;
+    const band = wv < 0.035;
+    if (inX && inY) {
+      const mull = Math.abs(wu - 0.5) < 0.014 || Math.abs(wv - 0.47) < 0.012;
+      if (mull) return { r: 52, g: 54, b: 58, h: 0.1, rough: 0.6 };
+      const lit = id > 0.93, broken = id < 0.22;
+      if (broken) { const sh = fbm(u * 6, v * 6, 129, 3, 4) > 0.52 ? 1 : 0; return { r: 6 + sh * 26, g: 7 + sh * 30, b: 10 + sh * 38, h: -0.9, rough: sh ? 0.12 : 0.95 }; }
+      if (lit) { const cur = wu < 0.36 || wu > 0.64 ? 0.55 : 1; const g = 1 - Math.abs(wv - 0.5) * 0.9; return { r: 230 * cur * g, g: 170 * cur * g, b: 84 * cur * g, h: -0.8, rough: 0.9 }; }
+      const refl = 20 + (1 - wv) * 26 + id2 * 14 + n * 10;
+      return { r: refl * 0.8, g: refl * 0.95, b: refl * 1.25, h: -0.8, rough: 0.1 };
+    }
+    let c = 104 + n * 46 - st * 30 + (id2 - 0.5) * 10;
+    let hh = n * 0.25;
+    if (frame) { c += 26; hh += 0.35; }
+    if (sill) { c += 34; hh += 0.6; }
+    if (band) { c -= 26; hh -= 0.3; }
+    // traces d'eau sous les appuis
+    if (wu > 0.2 && wu < 0.8 && wv > 0.86) c -= 26 * (1 - (wv - 0.86) / 0.14) * (0.4 + 0.6 * hash(Math.floor(u * 160), cv, 131));
+    return { r: c, g: c * 0.965, b: c * 0.9, h: hh, rough: 0.9 };
   } },
   crate: { size: 128, ns: 2.5, paint: (u, v) => {
     const n = fbm(u, v * 0.2, 131, 4, 8);
@@ -192,6 +211,7 @@ function tex(name: string): TexSet {
 export type MatName =
   | 'concrete' | 'darkconcrete' | 'metal' | 'darkmetal' | 'rust' | 'container_red' | 'container_blue' | 'container_green' | 'asphalt' | 'dirt' | 'ash'
   | 'stone' | 'rune' | 'tiles' | 'grate' | 'hazard' | 'facade' | 'crate' | 'fabric' | 'olive' | 'black' | 'glass' | 'sandbag'
+  | 'plaster' | 'wood' | 'rock' | 'rubble' | 'ground' | 'trim' | 'cable' | 'paint_yellow' | 'paint_red' | 'paint_white'
   | 'glow_violet' | 'glow_blue' | 'glow_orange' | 'glow_green' | 'glow_red' | 'glow_white' | 'screen' | 'crystal' | 'crystal_red' | 'chitin' | 'bone';
 
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
@@ -199,12 +219,12 @@ const matCache = new Map<string, THREE.MeshStandardMaterial>();
 /** Taille en mètres d'une répétition de texture. */
 export const TILE: Partial<Record<MatName, number>> = {
   concrete: 4, darkconcrete: 4, metal: 3, darkmetal: 3, rust: 3, container_red: 2.4, container_blue: 2.4, container_green: 2.4,
-  asphalt: 5, dirt: 5, ash: 6, stone: 3, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
+  asphalt: 5, dirt: 5, ash: 6, plaster: 4, wood: 2, rock: 4, rubble: 3, ground: 5, trim: 2, stone: 3, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
 };
 
 /** Matériaux PBR photographiques (ambientCG, CC0) quand ils sont chargés. */
 const PBR: Partial<Record<MatName, { set: string; color?: number; metal?: number; rough?: number; emissive?: number; ei?: number; emissiveFrom?: string }>> = {
-  concrete: { set: 'concrete', color: 0xd8d8d8 },
+  concrete: { set: 'concrete', color: 0x9c9c9a },
   darkconcrete: { set: 'concrete2', color: 0x7c8088 },
   metal: { set: 'metal', color: 0xb8bcc4, metal: 0.85 },
   darkmetal: { set: 'plate', color: 0x707680, metal: 0.55 },
@@ -214,7 +234,69 @@ const PBR: Partial<Record<MatName, { set: string; color?: number; metal?: number
   ash: { set: 'mud', color: 0x5a4c66, emissive: 0x3a1a6a, ei: 0.3, emissiveFrom: 'ash' },
   stone: { set: 'bricks', color: 0xa0a4b8 },
   tiles: { set: 'tiles', color: 0xc8ccd0 },
+  plaster: { set: 'plaster', color: 0xb8b2a8 },
+  wood: { set: 'wood', color: 0xa89880 },
+  rock: { set: 'rock', color: 0x9a9aa2 },
+  rubble: { set: 'rubble', color: 0xb0aca8 },
+  ground: { set: 'ground', color: 0xa8a098 },
+  trim: { set: 'plate', color: 0x3a3e46, metal: 0.7 },
 };
+
+/** Paramètres partagés par les matériaux de niveau (pilotés par le rendu). */
+export const SURFACE = { wet: { value: 0 }, detail: true };
+const surfaced: THREE.Material[] = [];
+/** Active ou coupe l'habillage procédural des surfaces (coupé en qualité « Bas » : calcul par pixel évité). */
+export function setSurfaceDetail(on: boolean): void {
+  if (SURFACE.detail === on) return;
+  SURFACE.detail = on;
+  for (const m of surfaced) m.needsUpdate = true;
+}
+
+/**
+ * Habille un matériau de niveau : variation à grande échelle (casse la répétition des textures), salissures en pied de mur,
+ * coulures, et sol mouillé avec flaques réfléchissantes quand l'ambiance est humide.
+ */
+function surface<T extends THREE.MeshStandardMaterial>(m: T): T {
+  surfaced.push(m);
+  m.customProgramCacheKey = () => (SURFACE.detail ? 'surface' : 'plain');
+  m.onBeforeCompile = (sh) => {
+    if (!SURFACE.detail) return;
+    sh.uniforms.uWet = SURFACE.wet;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz; vWN=normalize(mat3(modelMatrix)*objectNormal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vWP; varying vec3 vWN; uniform float uWet;
+float wbH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float wbN(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(wbH(i),wbH(i+vec2(1,0)),f.x),mix(wbH(i+vec2(0,1)),wbH(i+vec2(1,1)),f.x),f.y); }
+float wbF(vec2 p){ return wbN(p)*0.5+wbN(p*2.1+7.3)*0.3+wbN(p*4.3+1.7)*0.2; }
+float wbPuddle=0.0; float wbDamp=0.0;`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+{
+  float up=smoothstep(0.6,0.9,vWN.y);
+  float side=1.0-smoothstep(0.3,0.6,abs(vWN.y));
+  vec2 hp=mix(vec2(vWP.x+vWP.z*0.73,vWP.y),vWP.xz,up);
+  float macro=wbF(hp*0.11+3.1);
+  float fine=wbN(hp*1.7);
+  diffuseColor.rgb*=0.74+0.42*macro+0.1*(fine-0.5);
+  // salissures : pied de mur encrassé et coulures verticales
+  float foot=smoothstep(1.1,0.0,vWP.y)*(0.35+0.65*wbN(vec2(hp.x*0.9,1.3)));
+  float streak=smoothstep(0.52,0.85,wbN(vec2(hp.x*2.6,vWP.y*0.16+macro)))*smoothstep(0.35,0.75,wbN(hp*0.23+11.0));
+  diffuseColor.rgb*=1.0-side*(foot*0.42+streak*0.3);
+  // humidité : flaques dans les creux, sol assombri
+  float pm=wbF(vWP.xz*0.16+vec2(5.2,1.3));
+  wbPuddle=up*uWet*smoothstep(0.6-uWet*0.2,0.68-uWet*0.16,pm);
+  wbDamp=uWet*(up*(0.45+0.4*smoothstep(0.3,0.7,pm))+side*streak*0.6);
+  diffuseColor.rgb*=mix(1.0,0.55,wbDamp)*mix(1.0,0.5,wbPuddle);
+}`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+roughnessFactor=mix(roughnessFactor*(1.0-0.45*wbDamp),0.035,wbPuddle);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+normal=normalize(mix(normal,nonPerturbedNormal,wbPuddle*0.96));`);
+  };
+  return m;
+}
 
 export function mat(name: MatName): THREE.MeshStandardMaterial {
   let m = matCache.get(name);
@@ -228,6 +310,7 @@ export function mat(name: MatName): THREE.MeshStandardMaterial {
     });
     if (pb.emissive) { m.emissive.setHex(pb.emissive); m.emissiveIntensity = pb.ei ?? 0.3; if (pb.emissiveFrom) m.emissiveMap = tex(pb.emissiveFrom).map; }
     m.name = name;
+    surface(m);
     matCache.set(name, m);
     return m;
   }
@@ -254,6 +337,12 @@ export function mat(name: MatName): THREE.MeshStandardMaterial {
     case 'crate': m = T('crate'); break;
     case 'fabric': m = T('fabric'); break;
     case 'sandbag': m = T('fabric', { color: 0xd8c8a0 }); break;
+    case 'cable': m = new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.6, metalness: 0.1 }); break;
+    case 'paint_yellow': m = new THREE.MeshStandardMaterial({ color: 0xc89a1e, roughness: 0.55, metalness: 0.3 }); break;
+    case 'paint_red': m = new THREE.MeshStandardMaterial({ color: 0x8a2a22, roughness: 0.55, metalness: 0.3 }); break;
+    case 'paint_white': m = new THREE.MeshStandardMaterial({ color: 0xb8bcc0, roughness: 0.5, metalness: 0.2 }); break;
+    case 'plaster': case 'wood': case 'rock': case 'rubble': case 'ground': m = T('concrete'); break;
+    case 'trim': m = T('darkmetal', { metalness: 0.8, color: 0x888888 }); break;
     case 'olive': m = new THREE.MeshStandardMaterial({ color: 0x4a5236, roughness: 0.7, metalness: 0.2 }); break;
     case 'black': m = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.55, metalness: 0.5 }); break;
     case 'glass': m = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.08, metalness: 0.6, transparent: true, opacity: 0.35 }); break;
@@ -271,6 +360,7 @@ export function mat(name: MatName): THREE.MeshStandardMaterial {
     default: m = new THREE.MeshStandardMaterial({ color: 0x888888 });
   }
   m.name = name;
+  if (m.map && !m.transparent) surface(m);
   matCache.set(name, m);
   return m;
 }

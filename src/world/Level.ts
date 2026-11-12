@@ -4,12 +4,17 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Collider, World, type Damageable, type DamageInfo, type Surface } from './World';
 import { mat, cmat, TILE, softTexture, type MatName } from '../render/Materials';
 import { Assets } from '../assets/Assets';
+import { detailBuilding, detailWall, detailRoof, detailGround, glowPatch, lightCone, type Theme } from './Detail';
 
 export interface Ambience {
   skyTop: number; skyHorizon: number; fog: number; fogDensity: number;
   sun: number; sunIntensity: number; sunDir: [number, number, number];
   hemiSky: number; hemiGround: number; hemiIntensity: number;
   rift?: boolean; // faille dans le ciel
+  /** Rendu : humidité du sol, brume, rayons, occlusion, couverture nuageuse, reflets, exposition et étalonnage. */
+  wet?: number; mist?: number; rays?: number; ao?: number; storm?: number; env?: number; exposure?: number;
+  contrast?: number; saturation?: number; gradeShadow?: number; gradeLight?: number;
+  weather?: "ash" | "rain" | "motes" | "embers";
   dust?: number; // couleur des particules d'ambiance
 }
 
@@ -97,6 +102,13 @@ export class Level {
   private lightCount = 0;
   private propList: { name: string; m: THREE.Matrix4 }[] = [];
   maxLights = 8;
+  /** Maillages d'ambiance (halos, cônes, taches, débris) : coupés en qualité « Bas ». */
+  fxMeshes: THREE.Object3D[] = [];
+  setFx(on: boolean): void { for (const m of this.fxMeshes) m.visible = on; }
+  /** Direction artistique de l'habillage automatique (voir Detail.ts). */
+  theme: Theme = 'military';
+  /** Désactive l'habillage automatique (zones déjà détaillées à la main). */
+  autoDetail = true;
   time = 0;
 
   constructor(public id: string, public name: string, public ambience: Ambience) {}
@@ -153,6 +165,7 @@ export class Level {
 
   /** Finalise le niveau : fusionne la géométrie et construit la navigation. */
   finish(): void {
+    if (this.autoDetail) detailGround(this);
     for (const [m, b] of this.batches) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
@@ -170,6 +183,8 @@ export class Level {
       const mesh = new THREE.Mesh(g, material);
       mesh.castShadow = !(material as any).transparent; mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
+      // halos, cônes de lumière, taches : effets d'ambiance masquables en qualité « Bas »
+      if ((material as any).transparent && (material as any).depthWrite === false) this.fxMeshes.push(mesh);
       this.root.add(mesh);
       for (const x of geos) x.dispose();
     }
@@ -251,6 +266,7 @@ export class Level {
   wall(m: MatName, x1: number, z1: number, x2: number, z2: number, h = 4, th = 0.5, y = 0): void {
     const w = Math.abs(x2 - x1) + th, d = Math.abs(z2 - z1) + th;
     this.box(m, (x1 + x2) / 2, y, (z1 + z2) / 2, x1 === x2 ? th : w, h, z1 === z2 ? th : d);
+    if (this.autoDetail && y === 0 && (x1 === x2) !== (z1 === z2)) detailWall(this, m, x1, z1, x2, z2, h, th);
   }
 
   /** Mur avec une ouverture de porte ; retourne le centre de l'ouverture. */
@@ -317,14 +333,33 @@ export class Level {
 
   roof(m: MatName, x0: number, z0: number, x1: number, z1: number, y: number, th = 0.4): void {
     this.box(m, (x0 + x1) / 2, y, (z0 + z1) / 2, x1 - x0 + 0.5, th, z1 - z0 + 0.5, { nav: false });
+    if (this.autoDetail) detailRoof(this, x0, z0, x1, z1, y);
   }
 
-  crate(x: number, z: number, s = 1.2, y = 0, m: MatName = 'crate'): void { this.box(m, x, y, z, s, s, s); }
+  crate(x: number, z: number, s = 1.2, y = 0, m: MatName = 'crate'): void {
+    this.box(m, x, y, z, s, s, s);
+    // cadre : patins, couvercle cerclé, cornières
+    const N = { collide: false } as BoxOpts, t: MatName = m === 'crate' ? 'wood' : 'trim';
+    for (const yy of [0, s - 0.07]) this.box(t, x, y + yy, z, s + 0.05, 0.07, s + 0.05, N);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) this.box('trim', x + sx * (s / 2 - 0.02), y, z + sz * (s / 2 - 0.02), 0.07, s, 0.07, N);
+    if (m !== 'crate') { this.box('paint_yellow', x, y + s * 0.42, z, s + 0.012, s * 0.1, s + 0.012, N); }
+  }
 
   container(x: number, z: number, alongX: boolean, color: MatName = 'container_red', y = 0): void {
     const w = alongX ? 6 : 2.4, d = alongX ? 2.4 : 6;
     this.box(color, x, y, z, w, 2.6, d);
-    this.box('darkmetal', x, y + 2.6, z, w + 0.06, 0.08, d + 0.06, { collide: false });
+    const N = { collide: false } as BoxOpts;
+    // cadre : montants d'angle, longerons, pièces de coin
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      this.box('trim', x + sx * (w / 2 - 0.04), y, z + sz * (d / 2 - 0.04), 0.16, 2.6, 0.16, N);
+      for (const yy of [0, 2.48]) this.box('darkmetal', x + sx * (w / 2 - 0.02), y + yy, z + sz * (d / 2 - 0.02), 0.22, 0.14, 0.22, N);
+    }
+    for (const yy of [0, 2.5]) { this.box('trim', x, y + yy, z, w + 0.05, 0.12, d + 0.05, N); }
+    // portes : barres de fermeture et charnières sur une extrémité
+    const e = alongX ? w / 2 + 0.02 : d / 2 + 0.02;
+    for (const o of [-0.75, -0.3, 0.3, 0.75]) this.box('metal', alongX ? x + e : x + o, y + 0.2, alongX ? z + o : z + e, alongX ? 0.05 : 0.05, 2.2, alongX ? 0.05 : 0.05, N);
+    this.box('trim', alongX ? x + e : x, y + 0.14, alongX ? z : z + e, alongX ? 0.03 : 0.06, 2.34, alongX ? 0.06 : 0.03, N);
+    for (const o of [-0.52, 0.52]) this.box('darkmetal', alongX ? x + e + 0.02 : x + o, y + 1.15, alongX ? z + o : z + e + 0.02, alongX ? 0.06 : 0.34, 0.1, alongX ? 0.34 : 0.06, N);
   }
 
   barrier(x: number, z: number, alongX: boolean, len = 2.4): void {
@@ -354,29 +389,50 @@ export class Level {
   /** Épave de véhicule. type : car | truck | apc */
   vehicle(x: number, z: number, alongX: boolean, type: 'car' | 'truck' | 'apc' = 'car', color = 0x3a4048): void {
     const L = type === 'car' ? 4.2 : type === 'truck' ? 7 : 6, W = type === 'car' ? 1.9 : 2.5, H = type === 'car' ? 0.75 : type === 'truck' ? 1.2 : 1.5;
-    const paint = cmat(color, 0.5, 0.6);
+    // peinture mate légèrement éclaircie : lisible même dans l'ombre
+    const pc = new THREE.Color(color).multiplyScalar(1.5);
+    const paint = cmat(pc.getHex(), 0.62, 0.2);
     const ry = alongX ? 0 : Math.PI / 2;
     const P = (lx: number, lz: number): [number, number] => (alongX ? [x + lx, z + lz] : [x + lz, z + lx]);
     const bx = (geo: THREE.BufferGeometry, m: THREE.Material, lx: number, y: number, lz: number, rz = 0) => { const [px, pz] = P(lx, lz); this.deco(m, geo, px, y, pz, 0, ry, rz); };
-    bx(new THREE.BoxGeometry(L, H, W), paint, 0, 0.4 + H / 2, 0);
+    const B = (m: THREE.Material, lx: number, y: number, lz: number, sx: number, sy: number, sz: number, rz = 0) => bx(new THREE.BoxGeometry(sx, sy, sz), m, lx, y + sy / 2, lz, rz);
+    const dark = mat('trim'), blk = mat('black'), glass = cmat(0x0c1218, 0.08, 0.7), steel = mat('darkmetal');
+    const wheels = (xs: number[], r: number, wd: number) => { for (const lx of xs) for (const s of [-1, 1]) { const [px, pz] = P(lx, s * (W / 2 - wd / 2 + 0.04)); this.deco(blk, new THREE.CylinderGeometry(r, r, wd, 14), px, r, pz, Math.PI / 2, ry, 0); this.deco(steel, new THREE.CylinderGeometry(r * 0.5, r * 0.5, wd + 0.04, 8), px, r, pz, Math.PI / 2, ry, 0); } };
     if (type === 'car') {
-      bx(new THREE.BoxGeometry(L * 0.5, 0.6, W * 0.9), paint, -0.2, 0.4 + H + 0.3, 0);
-      bx(new THREE.BoxGeometry(L * 0.52, 0.4, W * 0.92), mat('black'), -0.2, 0.4 + H + 0.3, 0);
+      B(dark, 0, 0.28, 0, L - 0.3, 0.2, W - 0.2);
+      B(paint, 0, 0.42, 0, L, 0.5, W);
+      B(paint, 1.25, 0.9, 0, 1.5, 0.1, W - 0.1, -0.06); B(paint, -1.55, 0.9, 0, 1.0, 0.12, W - 0.1);
+      B(paint, -0.25, 0.92, 0, L * 0.5, 0.56, W * 0.86); B(glass, -0.25, 1.0, 0, L * 0.5 + 0.03, 0.36, W * 0.88);
+      B(paint, -0.25, 1.46, 0, L * 0.46, 0.06, W * 0.84);
+      for (const e of [1, -1]) { B(dark, e * (L / 2 + 0.04), 0.36, 0, 0.14, 0.2, W + 0.04); for (const s of [-1, 1]) B(e > 0 ? mat('paint_white') : mat('paint_red'), e * (L / 2 + 0.01), 0.66, s * (W / 2 - 0.3), 0.04, 0.14, 0.36); }
+      B(blk, L / 2 + 0.012, 0.6, 0, 0.03, 0.2, 0.9);
+      wheels([-L / 2 + 0.8, L / 2 - 0.85], 0.36, 0.26);
     } else if (type === 'truck') {
-      bx(new THREE.BoxGeometry(1.8, 1.3, W), paint, L / 2 - 0.9, 0.4 + H + 0.65, 0);
-      bx(new THREE.BoxGeometry(1.84, 0.6, W * 0.9), mat('black'), L / 2 - 0.88, 0.4 + H + 0.8, 0);
-      bx(new THREE.BoxGeometry(L - 2, 1.7, W), mat('fabric'), -1, 0.4 + H + 0.85, 0);
+      B(dark, 0, 0.55, 0, L, 0.22, W * 0.5);
+      B(paint, -1, 0.77, 0, L - 2, 0.2, W);
+      // cabine : capot, pare-brise, calandre, pare-chocs
+      B(paint, L / 2 - 0.95, 0.72, 0, 1.9, 1.05, W - 0.06); B(paint, L / 2 - 1.1, 1.77, 0, 1.6, 0.95, W - 0.1);
+      B(glass, L / 2 - 0.29, 1.9, 0, 0.04, 0.62, W - 0.36); for (const s of [-1, 1]) B(glass, L / 2 - 1.1, 1.92, s * (W / 2 - 0.045), 1.0, 0.56, 0.03);
+      B(blk, L / 2 + 0.012, 0.95, 0, 0.04, 0.6, W * 0.6); B(dark, L / 2 + 0.08, 0.55, 0, 0.2, 0.26, W + 0.1);
+      for (const s of [-1, 1]) { B(mat('paint_white'), L / 2 + 0.02, 1.05, s * (W / 2 - 0.28), 0.04, 0.2, 0.3); B(dark, L / 2 - 1.15, 2.2, s * (W / 2 + 0.16), 0.06, 0.34, 0.2); }
+      // plateau bâché : ridelles, arceaux, bâche
+      B(mat('fabric'), -1, 0.97, 0, L - 2.1, 1.75, W - 0.04);
+      for (let i = 0; i < 4; i++) B(dark, -L / 2 + 0.25 + (i * (L - 2.5)) / 3, 0.97, 0, 0.07, 1.8, W + 0.03);
+      B(paint, -1, 0.97, W / 2, L - 2.05, 0.5, 0.05); B(paint, -1, 0.97, -W / 2, L - 2.05, 0.5, 0.05); B(paint, -L / 2, 0.97, 0, 0.05, 0.6, W);
+      bx(new THREE.CylinderGeometry(0.28, 0.28, 1.1, 10), steel, 0.6, 0.62, W / 2 - 0.2, Math.PI / 2);
+      bx(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 6), steel, L / 2 - 2.0, 2.3, -W / 2 + 0.1);
+      wheels([L / 2 - 1.0, -L / 2 + 2.1, -L / 2 + 0.95], 0.5, 0.34);
     } else {
-      bx(new THREE.BoxGeometry(L * 0.7, 0.5, W * 0.8), paint, -0.3, 0.4 + H + 0.25, 0);
-      bx(new THREE.CylinderGeometry(0.7, 0.8, 0.5, 8), paint, 0.2, 0.4 + H + 0.75, 0);
-      bx(new THREE.CylinderGeometry(0.07, 0.07, 2.4, 6), mat('black'), 1.5, 0.4 + H + 0.8, 0, Math.PI / 2);
-    }
-    const wheel = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10);
-    const nW = type === 'apc' ? 3 : 2;
-    for (let i = 0; i < nW; i++) for (const s of [-1, 1]) {
-      const lx = -L / 2 + 0.9 + (i * (L - 1.8)) / (nW - 1);
-      const [px, pz] = P(lx, s * (W / 2 - 0.05));
-      this.deco(mat('black'), wheel, px, 0.42, pz, Math.PI / 2, ry, 0);
+      B(paint, 0, 0.5, 0, L, 0.8, W); B(paint, -0.2, 1.3, 0, L * 0.82, 0.56, W * 0.84);
+      // glacis avant, coffres latéraux, trappes
+      B(paint, L / 2 - 0.5, 1.02, 0, 1.3, 0.1, W * 0.84, -0.5); B(dark, L / 2 + 0.03, 0.62, 0, 0.08, 0.3, W * 0.8);
+      for (const s of [-1, 1]) { B(steel, -0.6, 1.2, s * (W / 2 - 0.04), 2.2, 0.36, 0.2); B(mat('paint_white'), L / 2 + 0.01, 0.98, s * (W / 2 - 0.3), 0.04, 0.14, 0.26); B(dark, 0.9, 0.9, s * (W / 2 + 0.02), 0.6, 0.06, 0.1); }
+      B(steel, -1.6, 1.86, 0.5, 0.7, 0.05, 0.7); B(steel, -1.6, 1.86, -0.5, 0.7, 0.05, 0.7);
+      // tourelle, canon, optique, antenne
+      bx(new THREE.CylinderGeometry(0.72, 0.86, 0.5, 10), paint, 0.3, 2.11, 0);
+      bx(new THREE.CylinderGeometry(0.075, 0.075, 2.5, 8), steel, 1.65, 2.14, 0, Math.PI / 2); bx(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 8), blk, 2.85, 2.14, 0, Math.PI / 2);
+      B(steel, 0.75, 2.36, 0.42, 0.26, 0.2, 0.26); B(blk, -1.2, 1.86, -W / 2 + 0.3, 0.03, 2.2, 0.03);
+      wheels([-L / 2 + 0.75, -L / 2 + 2.25, L / 2 - 2.25, L / 2 - 0.75].sort((p, q) => p - q), 0.52, 0.4);
     }
     const totalH = type === 'car' ? 1.75 : type === 'truck' ? 3.3 : 2.6;
     this.collider(x, 0, z, alongX ? L : W, type === 'car' ? 1.2 : totalH, alongX ? W : L, 'metal');
@@ -398,6 +454,10 @@ export class Level {
     const names: Record<string, MatName> = { white: 'glow_white', violet: 'glow_violet', blue: 'glow_blue', orange: 'glow_orange', green: 'glow_green', red: 'glow_red' };
     const hex: Record<string, number> = { white: 0xffe8c8, violet: 0x8a4aff, blue: 0x3a9aff, orange: 0xff7a2a, green: 0x3aff8a, red: 0xff2a2a };
     this.deco(mat(names[color]), new THREE.BoxGeometry(0.5, 0.1, 0.5), x, y, z);
+    this.deco(mat('trim'), new THREE.BoxGeometry(0.66, 0.14, 0.66), x, y + 0.1, z);
+    // lumière visible dans l'air et flaque au sol
+    const gy = this.world.groundAt(x, z, y - 0.4), hgt = y - gy;
+    if (gy > -50 && hgt > 1.6 && hgt < 9) { lightCone(this, x, y - 0.05, z, hgt - 0.05, Math.min(hgt * 0.55, 3.2), hex[color]); glowPatch(this, x, gy + 0.025, z, Math.min(hgt * 0.9, 5), hex[color]); }
     if (real && this.lightCount < this.maxLights) {
       this.lightCount++;
       const l = new THREE.PointLight(hex[color], intensity, dist, 1.8);
@@ -450,6 +510,7 @@ export class Level {
   building(x: number, z: number, w: number, d: number, h: number, m: MatName = 'facade'): void {
     this.box(m, x, 0, z, w, h, d);
     this.box('darkconcrete', x, h, z, w + 0.4, 0.5, d + 0.4, { collide: false });
+    if (this.autoDetail) detailBuilding(this, x, z, w, d, h);
   }
 
   /** Console / terminal. Retourne la position d'interaction. */

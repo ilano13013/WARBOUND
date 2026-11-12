@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { backdrop } from '../world/Detail';
 import { dressHub } from './dress';
 import { cmat, mat } from '../render/Materials';
 import { buildOperatorModel } from '../ai/EnemyModels';
@@ -10,7 +11,8 @@ import { buildOperatorRig } from '../ai/EnemyRigs';
 import { MISSION_BY_ID } from '../data/missions';
 
 export function buildHub(g: Game, m: Mission): Level {
-  const L = new Level('hub', 'Fort Aegis', { skyTop: 0x1a2436, skyHorizon: 0x6a7686, fog: 0x2a323c, fogDensity: 0.008, sun: 0xffe6c0, sunIntensity: 2.2, sunDir: [0.4, 0.8, -0.3], hemiSky: 0x9ab0c8, hemiGround: 0x2a2a28, hemiIntensity: 0.9 });
+  const L = new Level('hub', 'Fort Aegis', { skyTop: 0x1c2838, skyHorizon: 0x8a8f96, fog: 0x39404a, fogDensity: 0.008, sun: 0xffd9a8, sunIntensity: 3.0, sunDir: [0.55, 0.42, -0.35], hemiSky: 0x8ea4c0, hemiGround: 0x34302a, hemiIntensity: 0.85, wet: 0.7, storm: 0.55, mist: 0.3, exposure: 1.1, gradeShadow: 0x7f95ad, gradeLight: 0xffecd2 });
+  L.theme = 'military';
   m.level = L;
   L.maxLights = 9;
   L.bounds = { minX: -24, minZ: -58, maxX: 24, maxZ: 28 };
@@ -129,6 +131,7 @@ export function buildHub(g: Game, m: Mission): Level {
   }, 3);
   const ammo2 = L.ammoCrate(-12.5, -25);
   L.interact(ammo2, 'Caisse de munitions — réapprovisionner', () => { g.weapons.refill(1); g.player.grenades = 2; g.audio.reload(2); g.ui.hud.toast('MUNITIONS RÉAPPROVISIONNÉES', '#ffb04a'); }, 2.6);
+  backdrop(L, 'fort');
   dressHub(L);
   L.finish();
 

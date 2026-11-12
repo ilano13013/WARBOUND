@@ -2,7 +2,21 @@
 
 FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Campagne solo de quatre opérations, trois boss à phases, six classes, progression RPG, butin, QG interactif et mode survie.
 
-Tout le contenu (modèles 3D, textures, effets, sons, musiques) est **généré procéduralement par le code** : aucune ressource externe, aucun service cloud, aucun backend.
+Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
+
+## Nouveautés de la version 2.1 (refonte visuelle : ambiance, matériaux, densité)
+
+Gameplay, missions, cartes, classes, boss et sauvegardes inchangés. Aucun asset ajouté : tout vient du rendu et de l'habillage.
+
+- **Lumière et atmosphère** : ciel à nuages éclairés par le soleil, capturé en carte d'environnement pour que les reflets suivent l'ambiance de chaque carte ; occlusion ambiante, rayons du soleil et brume au sol calculés depuis la profondeur de la scène ; cônes de lumière et flaques lumineuses sous les lampes ; étalonnage final (contraste, teinte des ombres et des hautes lumières, vignettage, grain, netteté). Éclairage neutre en intérieur, ambiance du ciel en extérieur.
+- **Matériaux** : variation à grande échelle qui casse la répétition des textures, salissures en pied de mur, coulures, **sol mouillé avec flaques réfléchissantes** (pluie sur Varsen, cendres humides sur le Site Cendres). Façades d'immeubles redessinées (encadrements, appuis, vitrages).
+- **Densité** : habillage automatique de chaque mur (plinthes, pilastres, tuyauteries, chemins de câbles, armoires électriques, grilles, appliques, signalétique HELIX peinte), plafonds techniques (poutres, gaines, luminaires), taches et fissures au sol, débris. Immeubles avec soubassement, devantures, corniches, balcons, équipements de toit. Conteneurs et véhicules détaillés.
+- **Composition et verticalité** : horizon propre à chaque carte (site industriel et reliefs, ville en ruine, flèches rocheuses et monolithes, éclats d'obsidienne), miradors, mâts d'éclairage, passerelles de tuyauteries, cuves, lignes électriques, gabions, barbelés, statues colossales, obélisques, bannières, braseros, incendies et colonnes de fumée, fissures et excroissances de la Fracture, roches en lévitation.
+- **Météo** : cendres (Cendres), pluie (Ville Morte), poussières arcaniques (Temple, simulation), braises (Point Zéro).
+- **Arme en vue subjective** : finition procédurale (usure brillante en traînées, grain, variation de teinte), éclairée par le soleil de la scène depuis sa vraie direction, contre-jour, reflets du ciel ; grain de tissu et de cuir sur les manches et les gants.
+- **Correctifs** : cinq ennemis apparaissaient dans un obstacle (caisse, escalier, baril) ; un contrôle automatique (`tests/layout.mjs`) vérifie désormais chaque point d'apparition.
+
+Le préréglage **Bas** désactive le post-traitement (occlusion, rayons, brume, étalonnage) pour les machines modestes ; **Moyen** et **Élevé** l'activent.
 
 ## Nouveautés de la version 2.0 (refonte visuelle)
 
@@ -112,12 +126,12 @@ Three.js + TypeScript + Vite. Matériaux PBR procéduraux avec normal maps, ombr
 ```
 src/
   core/       Game (boucle, états, transitions), Combat, Input
-  render/     Renderer, Materials (textures procédurales), FX
-  world/      World (collisions, rayons, navigation A*), Level (kit modulaire)
+  render/     Renderer, PostFX (ciel, atmosphère, étalonnage), Weather, Materials, FX
+  world/      World (collisions, rayons, navigation A*), Level (kit modulaire), Detail (habillage automatique), SetPieces (éléments de décor)
   player/     Player, WeaponSystem, WeaponModels, Abilities
   ai/         Enemy, EnemyModels, Boss, Ally
   mission/    Mission (objectifs, points de contrôle, radio)
-  levels/     hub, op1..op4, survival, common
+  levels/     hub, op1..op4, survival, common, dress (décors glTF), art (passe level art)
   rpg/        items (butin), Stats (talents, armes, expérience)
   data/       weapons, classes, enemies, missions (données configurables)
   save/       Save (profil, paramètres, IndexedDB)
@@ -139,6 +153,7 @@ node tests/systems.mjs           # classes, talents, inventaire, sauvegarde, par
 node tests/boss.mjs              # phases des trois boss
 node tests/survival.mjs          # mode survie
 node tests/campaign.mjs          # parcours des quatre opérations jusqu'aux crédits
+node tests/layout.mjs            # points d'apparition et accessibilité après habillage
 ```
 
 Le mode de test s'active uniquement avec `?autotest` dans l'URL : il expose le jeu aux scripts et fournit un pilote qui se rend aux objectifs, inflige des dégâts par la voie normale et déclenche les interactions. Il n'existe pas dans une partie normale.

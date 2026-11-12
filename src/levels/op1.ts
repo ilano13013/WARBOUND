@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { backdrop } from '../world/Detail';
 import { dressOp1 } from './dress';
 import { Guardian } from '../ai/Boss';
 import { ammo, barrel, lore, tank, REYES, ORACLE } from './common';
@@ -10,7 +11,8 @@ import { ammo, barrel, lore, tank, REYES, ORACLE } from './common';
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp1(g: Game, m: Mission): Level {
-  const L = new Level('op1', 'Site Cendres', { skyTop: 0x1a1c2c, skyHorizon: 0xc8703a, fog: 0x3a2c28, fogDensity: 0.011, sun: 0xffa868, sunIntensity: 2.5, sunDir: [-0.5, 0.36, 0.6], hemiSky: 0x9a8490, hemiGround: 0x2a2420, hemiIntensity: 0.8 });
+  const L = new Level('op1', 'Site Cendres', { skyTop: 0x242e40, skyHorizon: 0xc89064, fog: 0x46423f, fogDensity: 0.010, sun: 0xffc494, sunIntensity: 3.6, sunDir: [-0.8, 0.34, 0.3], hemiSky: 0x8a9cb8, hemiGround: 0x44382c, hemiIntensity: 1.25, wet: 0.55, storm: 0.45, mist: 0.4, rays: 0.6, exposure: 1.2, gradeShadow: 0x7896b0, gradeLight: 0xffe4c0, weather: 'ash' });
+  L.theme = 'helix';
   m.level = L;
   L.bounds = { minX: -44, minZ: -174, maxX: 44, maxZ: 46 };
   L.spawn.set(0, 0.1, 38); L.spawnYaw = 0;
@@ -127,6 +129,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   for (const c of bossConduits) c.invulnerable = true;
   ammo(g, L, -24, -110); ammo(g, L, 24, -162);
   L.box('hazard', 0, 0, -163.5, 6, 0.15, 4, { nav: false });
+  backdrop(L, 'industrial');
   dressOp1(L);
   L.finish();
 
@@ -148,7 +151,7 @@ export function buildOp1(g: Game, m: Mission): Level {
     onDone: () => {
       g.audio.door(genPos); g.audio.alarm();
       m.say(ORACLE, 'Courant rétabli. Mauvaise nouvelle : ça a réveillé quelque chose. Contacts en approche, dont des drones !');
-      m.portalSpawn('ambush', [['grunt', -4, -30], ['grunt', 6, -34], ['grunt', -10, -10], ['drone', 0, -20], ['drone', 10, -12]]);
+      m.portalSpawn('ambush', [['grunt', -4, -30], ['grunt', 6, -34], ['grunt', -13, -12], ['drone', 0, -20], ['drone', 10, -12]]);
     },
   }, 1.5);
   m.interact('Ouvrir l’accès au laboratoire', labTerm, 'Déverrouiller la porte du laboratoire', {

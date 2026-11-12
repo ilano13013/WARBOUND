@@ -1,5 +1,46 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.1 (refonte visuelle : ambiance, matériaux, densité)
+
+Exécution sur le build de production, Chromium piloté par Playwright, rendu logiciel (SwiftShader, pas de GPU dans l'environnement de développement).
+
+| Scénario | Résultat |
+| --- | --- |
+| `gameplay` (entrées clavier/souris réelles) | 27 / 27 |
+| `systems` (6 classes, 24 capacités, talents, inventaire, atelier, sauvegarde, mort/reprise, paramètres) | 29 / 29 |
+| `boss` (Gardien, Archonte, Souverain : 3 phases, bouclier, renforts, victoire) | 3 / 3 |
+| `survival` | 6 / 6 |
+| `layout` (nouveau : points d'apparition et accessibilité des 4 opérations, absence d'erreur) | 21 / 21 |
+| `campaign` (4 opérations jusqu'aux crédits et au menu) | 4 / 4, aucune erreur JavaScript |
+
+`boss`, `survival`, `layout` et `campaign` ont passé dans l'exécution complète `npm test`. `gameplay` et `systems` ont passé relancés seuls, après correction de leurs délais (voir ci-dessous).
+
+### Fragilité des tests en rendu logiciel (à connaître)
+La 2.1 affiche beaucoup plus de géométrie. Sans carte graphique, une image prend 0,35 s au QG et 0,8 s dans l'opération 1 en qualité « Bas » (0,16 s et 0,3 s en 2.0). Plusieurs vérifications attendaient un délai fixe plus court qu'une image et ont échoué sans défaut du jeu : saut, ruée, accroupissement, « marque » du Wraith, capture d'écran. Elles ont été rendues indépendantes de la cadence (mesure image par image, appuis plus longs, départ dégagé). Malgré cela, une exécution lancée juste après un redémarrage de la machine a encore échoué sur deux vérifications de délai (« pas de côté », une vérification de `systems`), puis tout a passé à la relance. Ces scénarios restent donc sensibles à la charge de la machine de test ; le nombre de vérifications de `systems` affiché a aussi varié entre 26 et 29 selon les exécutions, sans échec.
+
+### Défauts trouvés et corrigés
+Le nouveau contrôle `layout` a révélé cinq ennemis qui apparaissaient dans un obstacle (caisse, escalier, baril, cristal). Ces défauts existaient déjà en 2.0 (vérifié en lançant le même contrôle sur l'ancien build) ; les points d'apparition ont été déplacés. La passe de décor n'a introduit aucun conflit.
+
+### Mesures indicatives (rendu logiciel, 640×360)
+| | 2.0 | 2.1 |
+| --- | --- | --- |
+| QG, qualité Bas | 170 appels, 68 000 triangles | 202 appels, 89 000 triangles |
+| Opération 1, qualité Bas | 406 appels, 186 000 triangles | 445 appels, 302 000 triangles |
+| Opération 2, qualité Élevée | non mesuré | 1 012 appels, 854 000 triangles |
+
+### Non vérifié en 2.1
+- **Fréquence d'images sur une vraie carte graphique** : toujours impossible ici. La 2.1 coûte plus cher que la 2.0 (géométrie, post-traitement plein écran, transparences). Si le jeu rame : qualité « Moyen », puis « Bas » (qui coupe post-traitement, shader de surface, halos, cônes de lumière, taches et débris).
+- **Rendu réel de l'étalonnage** : exposition, contraste et saturation ont été réglés sur des captures 960×540 en rendu logiciel, pas sur un écran en jeu. Certaines zones peuvent paraître trop sombres ou trop denses en brume.
+- **Lisibilité des ennemis** dans la pluie, la brume et les intérieurs plus contrastés : non éprouvée en jeu réel.
+- Les points déjà listés pour la 2.0 (sons non écoutés, autres navigateurs, lanceurs Windows jamais exécutés sous Windows).
+
+### Limites de la refonte 2.1
+- L'image de référence est un rendu AAA (éclairage global, reflets en espace écran, modèles scannés). La 2.1 s'en rapproche par l'atmosphère, la densité et les matériaux, mais n'atteint pas ce niveau : personnages et décors glTF restent *low poly*, les reflets du sol mouillé montrent le ciel et non les objets, les halos lumineux sont simulés et non calculés.
+- L'habillage des murs est automatique : il peut placer une armoire ou une plaque derrière un meuble existant.
+- Les poteaux intermédiaires des passerelles de tuyauteries n'ont pas de collision (choix pour ne pas gêner la navigation des ennemis).
+
+---
+
 ## Version 2.0 (refonte visuelle)
 
 Dernière exécution complète : `npm test` sur le build de production, Chromium piloté par Playwright, rendu logiciel (SwiftShader, pas de GPU dans l'environnement de développement).

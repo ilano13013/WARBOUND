@@ -4,9 +4,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { ATMOSPHERE_SHADER, GRADE_SHADER, SKY_FRAGMENT } from './PostFX';
 import type { Ambience } from '../world/Level';
 import type { Settings } from '../save/Save';
+import { SURFACE, setSurfaceDetail } from './Materials';
+import { Weather } from './Weather';
 
 export class Renderer {
   renderer: THREE.WebGLRenderer;
@@ -18,6 +21,8 @@ export class Renderer {
   hemi = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
   vmHemi = new THREE.HemisphereLight(0xffffff, 0x333340, 1.3);
   vmSun = new THREE.DirectionalLight(0xffffff, 1.6);
+  /** Contre-jour sur l'arme : détache la silhouette du décor. */
+  vmRim = new THREE.DirectionalLight(0xffffff, 1.2);
   private sky: THREE.Mesh;
   private skyMat: THREE.ShaderMaterial;
   private composer: EffectComposer | null = null;
@@ -25,6 +30,15 @@ export class Renderer {
   private quality: Settings['quality'] = 'medium';
   private scale = 1;
   private sunOffset = new THREE.Vector3(30, 50, 20);
+  private pmrem: THREE.PMREMGenerator;
+  private envScene = new THREE.Scene();
+  private envRT: THREE.WebGLRenderTarget | null = null;
+  private atmo: ShaderPass | null = null;
+  private grade: ShaderPass | null = null;
+  private amb: Ambience | null = null;
+  private indoorSky = new THREE.Color(0xc4d0dc); private indoorGround = new THREE.Color(0x4a4640);
+  private weather = new Weather(this.scene);
+  private envBase = 0.5;
   private baseHemi = 1; private baseSun = 2; private zoneLight = 1; private zoneTarget = 1;
   private fogBase = 0.012; private fogTarget = 0.012;
   drawVm = true;
@@ -47,22 +61,9 @@ export class Renderer {
     this.sun.shadow.normalBias = 0.04;
 
     this.skyMat = new THREE.ShaderMaterial({
-      uniforms: { top: { value: new THREE.Color(0x101828) }, hor: { value: new THREE.Color(0x404858) }, rift: { value: 0 }, t: { value: 0 }, sunDir: { value: new THREE.Vector3(0.5, 0.7, 0.3) }, sunCol: { value: new THREE.Color(0xffffff) } },
+      uniforms: { top: { value: new THREE.Color(0x101828) }, hor: { value: new THREE.Color(0x404858) }, rift: { value: 0 }, t: { value: 0 }, storm: { value: 0 }, envMode: { value: 0 }, sunDir: { value: new THREE.Vector3(0.5, 0.7, 0.3) }, sunCol: { value: new THREE.Color(0xffffff) } },
       vertexShader: 'varying vec3 vDir; void main(){ vDir=normalize(position); vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position=p.xyww; }',
-      fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform float rift; uniform float t; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vDir;
-        float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-        float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y); }
-        void main(){ vec3 d=normalize(vDir); float y=clamp(d.y,0.0,1.0);
-          vec3 col=mix(hor,top,pow(y,0.55));
-          float cl=n(d.xz/(d.y+0.25)*1.6+t*0.01)*0.6+n(d.xz/(d.y+0.25)*4.0-t*0.015)*0.4;
-          col=mix(col,hor*1.25,smoothstep(0.5,0.9,cl)*0.35*smoothstep(0.0,0.3,d.y));
-          float s=max(dot(d,normalize(sunDir)),0.0); col+=sunCol*(pow(s,350.0)*2.0+pow(s,12.0)*0.18);
-          if(rift>0.0){ float a=atan(d.z,d.x); float w=sin(d.y*11.0+t*0.4)*0.05+sin(d.y*23.0-t*0.7)*0.02;
-            float c=abs(a+1.42+w); float core=smoothstep(0.05,0.0,c)*smoothstep(0.02,0.25,d.y);
-            float halo=smoothstep(0.5,0.0,c)*smoothstep(0.0,0.3,d.y)*0.35;
-            col+=rift*(vec3(0.75,0.5,1.0)*core*2.4+vec3(0.35,0.15,0.8)*halo*(0.7+0.3*sin(t*1.3))); }
-          col=mix(hor*0.6,col,smoothstep(-0.12,0.02,d.y));
-          gl_FragColor=vec4(col,1.0); }`,
+      fragmentShader: SKY_FRAGMENT,
       side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false,
     });
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this.skyMat);
@@ -70,14 +71,12 @@ export class Renderer {
     this.sky.renderOrder = -10;
     this.scene.add(this.sky);
 
-    // environnement de réflexion pour les matériaux PBR métalliques
-    const pm = new THREE.PMREMGenerator(this.renderer);
-    const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-    pm.dispose();
-    this.scene.environment = env; this.scene.environmentIntensity = 0.3;
-    this.vmScene.environment = env; this.vmScene.environmentIntensity = 0.7;
-    this.vmScene.add(this.vmHemi, this.vmSun);
+    // environnement de réflexion : capturé depuis le ciel de chaque niveau (voir bakeEnvironment)
+    this.pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), this.skyMat));
+    this.vmScene.add(this.vmHemi, this.vmSun, this.vmRim);
     this.vmSun.position.set(0.6, 1.2, 0.8);
+    this.vmRim.position.set(-0.7, 0.9, -1);
     this.scene.add(this.camera);
     window.addEventListener('resize', () => this.resize());
   }
@@ -86,6 +85,7 @@ export class Renderer {
     const changed = s.quality !== this.quality || s.renderScale !== this.scale || (!this.composer && s.quality !== 'low');
     this.quality = s.quality; this.scale = s.renderScale;
     const q = s.quality;
+    setSurfaceDetail(q !== 'low');
     this.renderer.shadowMap.enabled = q !== 'low';
     this.sun.castShadow = q !== 'low';
     const size = q === 'high' ? 2048 : 1024;
@@ -94,27 +94,90 @@ export class Renderer {
     const cam = this.sun.shadow.camera;
     cam.left = -ext; cam.right = ext; cam.top = ext; cam.bottom = -ext; cam.near = 1; cam.far = 160;
     cam.updateProjectionMatrix();
-    if (changed) this.buildComposer();
+    if (changed) { this.buildComposer(); if (this.amb) this.weather.set(this.amb.weather, q === 'low' ? 0.4 : q === 'high' ? 1 : 0.7); }
     this.resize();
   }
 
   private buildComposer(): void {
     this.composer?.dispose();
-    this.composer = null; this.bloom = null;
+    this.composer = null; this.bloom = null; this.atmo = null; this.grade = null;
     if (this.quality === 'low') return;
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: this.quality === 'high' ? 4 : 2 });
+    const depth = new THREE.DepthTexture(size.x, size.y);
+    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: this.quality === 'high' ? 4 : 2, depthTexture: depth });
     const comp = new EffectComposer(this.renderer, rt);
     comp.addPass(new RenderPass(this.scene, this.camera));
+    // atmosphère : occlusion ambiante, rayons du soleil et brume au sol, calculés depuis la profondeur de la scène
+    const atmo = new ShaderPass(ATMOSPHERE_SHADER);
+    atmo.material.defines.AO_TAPS = this.quality === 'high' ? 12 : 8;
+    atmo.material.defines.RAY_TAPS = this.quality === 'high' ? 28 : 18;
+    const self = this;
+    atmo.render = function (renderer, writeBuffer, readBuffer, dt, mask) {
+      this.uniforms.tDepth.value = readBuffer.depthTexture;
+      self.updateAtmosphere(this.uniforms);
+      ShaderPass.prototype.render.call(this, renderer, writeBuffer, readBuffer, dt, mask);
+    };
+    comp.addPass(atmo); this.atmo = atmo;
     const vm = new RenderPass(this.vmScene, this.vmCamera);
     vm.clear = false; vm.clearDepth = true;
     comp.addPass(vm);
     this.vmPass = vm;
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), this.quality === 'high' ? 0.5 : 0.42, 0.7, 0.9);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), this.quality === 'high' ? 0.34 : 0.3, 0.55, 1.0);
     comp.addPass(this.bloom);
     comp.addPass(new OutputPass());
+    this.grade = new ShaderPass(GRADE_SHADER);
+    comp.addPass(this.grade);
     this.composer = comp;
+    if (this.amb) this.applyGrade(this.amb);
   }
+
+  private updateAtmosphere(u: Record<string, THREE.IUniform>): void {
+    const cam = this.camera;
+    u.projInv.value.copy(cam.projectionMatrixInverse);
+    u.camWorld.value.copy(cam.matrixWorld);
+    u.near.value = cam.near; u.far.value = cam.far; u.aspect.value = cam.aspect; u.projScale.value = cam.projectionMatrix.elements[5] * 0.5;
+    const d = this.tmpV.copy(this.sunOffset).normalize();
+    const sv = this.tmpV2.copy(d).transformDirection(cam.matrixWorldInverse);
+    u.sunView.value.copy(sv);
+    const p = this.tmpV3.copy(d).multiplyScalar(400).add(cam.position).project(cam);
+    u.sunUV.value.set(p.x * 0.5 + 0.5, p.y * 0.5 + 0.5);
+    // les rayons s'estompent quand le soleil sort largement de l'écran ou passe derrière la caméra
+    const off = Math.max(Math.abs(p.x), Math.abs(p.y));
+    u.sunVis.value = sv.z < 0 ? Math.max(0, Math.min(1, (2.2 - off) / 1.2)) * this.zoneLight : 0;
+    u.zone.value = this.zoneLight;
+    u.time.value = this.skyMat.uniforms.t.value;
+  }
+  private tmpV = new THREE.Vector3(); private tmpV2 = new THREE.Vector3(); private tmpV3 = new THREE.Vector3();
+
+  private applyGrade(a: Ambience): void {
+    if (this.atmo) {
+      const u = this.atmo.uniforms;
+      u.sunCol.value.setHex(a.sun).multiplyScalar(a.rays ?? 0.55);
+      // brume : entre la couleur du brouillard et celle de l'horizon, pour rester lumineuse
+      u.fogCol.value.setHex(a.fog).lerp(new THREE.Color(a.skyHorizon), 0.45);
+      u.mist.value = a.mist ?? 0.35;
+      u.aoStr.value = a.ao ?? 1;
+    }
+    if (this.grade) {
+      const u = this.grade.uniforms;
+      u.shadowTint.value.setHex(a.gradeShadow ?? 0x8496b0);
+      u.lightTint.value.setHex(a.gradeLight ?? 0xfff0dc);
+      u.contrast.value = a.contrast ?? 1.08; u.saturation.value = a.saturation ?? 0.9;
+    }
+  }
+
+  /** Capture le ciel du niveau dans une carte d'environnement : les reflets (sol mouillé, métal, arme) suivent l'ambiance. */
+  private bakeEnvironment(): void {
+    const old = this.envRT;
+    const rt = this.renderer.getRenderTarget();
+    this.skyMat.uniforms.envMode.value = 1;
+    this.envRT = this.pmrem.fromScene(this.envScene, 0.02, 0.1, 100);
+    this.skyMat.uniforms.envMode.value = 0;
+    this.renderer.setRenderTarget(rt);
+    this.scene.environment = this.envRT.texture; this.vmScene.environment = this.envRT.texture;
+    old?.dispose();
+  }
+
   private vmPass: RenderPass | null = null;
 
   resize(): void {
@@ -140,9 +203,18 @@ export class Renderer {
     this.skyMat.uniforms.sunDir.value.copy(this.sunOffset).normalize();
     this.hemi.color.setHex(a.hemiSky); this.hemi.groundColor.setHex(a.hemiGround); this.baseHemi = a.hemiIntensity;
     this.vmHemi.color.setHex(a.hemiSky).lerp(new THREE.Color(0xffffff), 0.5);
-    this.vmSun.color.setHex(a.sun).lerp(new THREE.Color(0xffffff), 0.4);
+    this.vmSun.color.setHex(a.sun).lerp(new THREE.Color(0xffffff), 0.3);
+    this.vmRim.color.setHex(a.skyHorizon).lerp(new THREE.Color(0xffffff), 0.35);
     this.zoneLight = this.zoneTarget = 1;
     this.scene.background = null;
+    this.amb = a;
+    this.skyMat.uniforms.storm.value = a.storm ?? 0.35;
+    SURFACE.wet.value = a.wet ?? 0;
+    this.envBase = a.env ?? 1.2;
+    this.renderer.toneMappingExposure = a.exposure ?? 1.0;
+    this.applyGrade(a);
+    this.bakeEnvironment();
+    this.weather.set(a.weather, this.quality === 'low' ? 0.4 : this.quality === 'high' ? 1 : 0.7);
   }
 
   setRift(v: number): void { this.skyMat.uniforms.rift.value = v; }
@@ -154,13 +226,22 @@ export class Renderer {
     this.zoneLight += (this.zoneTarget - this.zoneLight) * Math.min(1, dt * 2.5);
     const fog = this.scene.fog as THREE.FogExp2;
     fog.density += (this.fogTarget - fog.density) * Math.min(1, dt * 2);
-    this.hemi.intensity = this.baseHemi * (0.42 + 0.58 * this.zoneLight);
+    // intérieurs : l'ambiance du ciel s'efface au profit d'un éclairage artificiel neutre
+    const indoor = 1 - this.zoneLight;
+    this.hemi.intensity = this.baseHemi * (0.5 + 0.5 * this.zoneLight) + indoor * 0.9;
+    if (this.amb) { this.hemi.color.setHex(this.amb.hemiSky).lerp(this.indoorSky, indoor); this.hemi.groundColor.setHex(this.amb.hemiGround).lerp(this.indoorGround, indoor); }
     this.sun.intensity = this.baseSun * (0.25 + 0.75 * this.zoneLight);
-    this.scene.environmentIntensity = 0.08 + 0.24 * this.zoneLight;
-    this.vmScene.environmentIntensity = 0.35 + 0.4 * this.zoneLight;
-    this.vmHemi.intensity = 0.7 + 0.7 * this.zoneLight;
-    this.vmSun.intensity = 0.6 + 1.0 * this.zoneLight;
+    this.scene.environmentIntensity = this.envBase * (0.12 + 0.88 * this.zoneLight);
+    this.vmScene.environmentIntensity = 1.1 + 1.3 * this.zoneLight;
+    this.vmHemi.intensity = 1.0 + 0.9 * this.zoneLight;
+    this.vmSun.intensity = 0.8 + 2.2 * this.zoneLight;
+    this.vmRim.intensity = 0.5 + 0.9 * this.zoneLight;
+    // le soleil de la scène éclaire l'arme depuis sa vraie direction (repère caméra), jamais par-dessous
+    const sv = this.tmpV.copy(this.sunOffset).normalize().transformDirection(this.camera.matrixWorldInverse);
+    this.vmSun.position.set(sv.x, Math.max(sv.y, 0.25), sv.z).lerp(this.tmpV2.set(0.5, 1, 0.6), 1 - this.zoneLight * 0.85);
     this.skyMat.uniforms.t.value = time;
+    if (this.grade) this.grade.uniforms.time.value = time;
+    this.weather.update(this.camera.position, time, this.zoneLight, this.renderer.domElement.height);
     this.sky.position.copy(this.camera.position);
     this.sky.scale.setScalar(500);
     // la caméra d'ombre suit le joueur

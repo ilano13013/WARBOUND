@@ -28,10 +28,12 @@ let s2 = await st(page); ok('glissade', s2.sliding, `v=${s2.speed.toFixed(2)}`);
 await page.keyboard.up('Control'); await page.keyboard.up('z'); await page.keyboard.up('Shift'); await sleep(900);
 // saut
 const y0 = (await st(page)).pos[1];
-await page.keyboard.press('Space'); await sleep(250);
-ok('saut', (await st(page)).pos[1] > y0 + 0.4); await sleep(900);
+// en rendu logiciel une image peut dépasser 0,3 s : on suit la hauteur atteinte pendant le saut plutôt qu'un instant fixe
+await page.keyboard.down('Space'); await sleep(120); await page.keyboard.up('Space');
+const yMax = await page.evaluate(() => new Promise((res) => { let m = -1e9; const t0 = performance.now(); const f = () => { m = Math.max(m, window.WB.game.player.pos.y); if (performance.now() - t0 > 1500) res(m); else requestAnimationFrame(f); }; f(); }));
+ok('saut', yMax > y0 + 0.4, `h=${(yMax - y0).toFixed(2)}`); await sleep(900);
 // accroupi
-await page.keyboard.down('Control'); await sleep(300); ok('accroupissement', (await st(page)).crouching); await page.keyboard.up('Control'); await sleep(300);
+await page.keyboard.down('Control'); await sleep(900); ok('accroupissement', (await st(page)).crouching); await page.keyboard.up('Control'); await sleep(300);
 // --- tir sur cible (zone d'entraînement) ---
 await page.evaluate(() => { window.WB.tp(0, 0.1, -30, 0); });
 await sleep(400);
@@ -53,10 +55,12 @@ await page.mouse.down(); await sleep(150); await page.mouse.up(); await sleep(30
 ok('tir coup par coup', (await st(page)).ammo === 14);
 await page.keyboard.press('Digit1'); await sleep(700); ok('arme principale', (await st(page)).weapon === 'ar17');
 // --- compétences ---
+// départ dégagé : la ruée et la marche qui suit ne doivent rencontrer aucun obstacle
+await page.evaluate(() => window.WB.tp(0, 0.1, 21, 0)); await sleep(400);
 a = await st(page);
 await page.keyboard.press('a'); await sleep(400); b = await st(page);
 ok('compétence 1 : buff + coût + cooldown', b.buffs.includes('ember') && b.energy < a.energy && b.cds[0] > 0, `energy ${a.energy.toFixed(0)}->${b.energy.toFixed(0)} cd=${b.cds[0].toFixed(1)}`);
-await page.keyboard.down('z'); await page.keyboard.press('e'); await sleep(350); await page.keyboard.up('z'); c = await st(page);
+await page.keyboard.down('z'); await page.keyboard.down('e'); await sleep(150); await page.keyboard.up('e'); await sleep(900); await page.keyboard.up('z'); c = await st(page);
 ok('compétence 2 : ruée', c.pos[2] < b.pos[2] - 4, `dz=${(c.pos[2] - b.pos[2]).toFixed(1)}`);
 await page.keyboard.press('c'); await sleep(400); ok('compétence 3 : égide', (await st(page)).buffs.includes('aegis'));
 await page.evaluate(() => window.WB.setUlt(100)); await page.keyboard.press('x'); await sleep(400);

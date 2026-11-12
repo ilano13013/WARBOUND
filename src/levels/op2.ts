@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission, SpawnSpec } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { backdrop } from '../world/Detail';
 import { dressOp2 } from './dress';
 import { cmat, mat } from '../render/Materials';
 import { ammo, barrel, lore, REYES, ORACLE, MAREK } from './common';
@@ -10,7 +11,8 @@ import { ammo, barrel, lore, REYES, ORACLE, MAREK } from './common';
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp2(g: Game, m: Mission): Level {
-  const L = new Level('op2', 'Varsen', { skyTop: 0x12121e, skyHorizon: 0x5a4a6e, fog: 0x2a2636, fogDensity: 0.013, sun: 0xc8b8e8, sunIntensity: 1.7, sunDir: [0.45, 0.5, 0.5], hemiSky: 0x8a80a8, hemiGround: 0x24222a, hemiIntensity: 0.85, rift: true });
+  const L = new Level('op2', 'Varsen', { skyTop: 0x0e1018, skyHorizon: 0x62687a, fog: 0x30333c, fogDensity: 0.012, sun: 0xd0d6f4, sunIntensity: 2.4, sunDir: [0.45, 0.42, 0.5], hemiSky: 0x8a90a8, hemiGround: 0x2a2830, hemiIntensity: 1.0, rift: true, wet: 1, storm: 0.75, mist: 0.45, rays: 0.3, exposure: 1.3, gradeShadow: 0x7c8cb4, gradeLight: 0xf2ecff, weather: 'rain' });
+  L.theme = 'city';
   m.level = L;
   L.bounds = { minX: -48, minZ: -192, maxX: 48, maxZ: 44 };
   L.spawn.set(0, 0.1, 36); L.spawnYaw = 0;
@@ -97,12 +99,13 @@ export function buildOp2(g: Game, m: Mission): Level {
   bld(-44, -11, -190, -166, 24); bld(11, 44, -190, -166, 24);
   car(-4, -172, false, 0x6a3030); L.barrier(4, -176, true, 3); L.rubble(-5, -180, 2);
   L.box('hazard', 0, 0, -185, 8, 0.12, 6, { nav: false });
+  backdrop(L, 'city');
   dressOp2(L);
   L.finish();
 
   // ================= ENNEMIS =================
   m.spawn('street', [
-    ['grunt', -6, 0, { patrol: [V(-6, 0), V(6, -8)] }], ['grunt', 8, -10], ['grunt', -8, -20], ['devourer', -20, -17.5], ['devourer', -17, -16],
+    ['grunt', -6, 0, { patrol: [V(-6, 0), V(6, -8)] }], ['grunt', 8, -10], ['grunt', -8, -20], ['devourer', -17.4, -17.6], ['devourer', -17, -16],
     ['sniper', 0, -34, { static: true, y: 4.1 }], ['grunt', 4, -30], ['caster', -5, -44], ['grunt', 8, -50], ['breaker', 0, -56],
     ['devourer', 20, -30], ['grunt', -8, -66], ['commander', 3, -67], ['grunt', 9, -62],
   ]);

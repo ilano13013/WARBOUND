@@ -22,7 +22,8 @@ for (const cls of ['vanguard', 'bulwark', 'lifebinder', 'wraith', 'arcanist', 'r
       await new Promise((r) => setTimeout(r, 900));
       out.skills.push({ id: p.cls.skills[i].id, used, cost: Math.round(en - p.energy) > 0 || p.energy < p.maxEnergy, cd: p.cds[i] > 0, buffs: [...p.buffs.keys()], allies: g.allies.length, fields: g.combat.fields.length, ehp: Math.round(e.hp), mark: e.markT > 0, pos: p.pos.z.toFixed(1), hp: Math.round(p.hp) });
       W.tp(-6, 0.1, -30, 0);
-      await new Promise((r) => setTimeout(r, 400));
+      // la visée suit la caméra, mise à jour une fois par image : on laisse passer au moins deux images en rendu logiciel
+      await new Promise((r) => setTimeout(r, 1100));
     }
     W.setUlt(100); W.look(0, 0.02);
     const u = W.skill(3);

@@ -2,6 +2,7 @@
 // existantes pour ne jamais obstruer les passages ; seuls les grands objets reçoivent une collision.
 import * as THREE from 'three';
 import type { Level } from '../world/Level';
+import { artHub, artOp1, artOp2, artOp3, artOp4, artSurvival } from './art';
 
 const R = (a: number) => (a * Math.PI) / 180;
 /** Arbre mort avec tronc solide (la ramure reste traversable). */
@@ -9,6 +10,7 @@ function tree(L: Level, name: string, x: number, z: number, h: number, ry = 0): 
 function rocks(L: Level, pts: [number, number, number][], kind = 'Rock_Moss_'): void { pts.forEach(([x, z, h], i) => L.prop(`${kind}${(i % 7) + 1}`, x, 0, z, i * 1.7, h, h > 0.9, 'concrete')); }
 
 export function dressOp1(L: Level): void {
+  artOp1(L);
   // extérieur : forêt morte, rochers, épave de char, éclairage de la route
   ([[-30, 38, 7], [32, 24, 6], [-36, 14, 8], [36, 40, 7], [-22, 40, 6], [26, 36, 5], [-38, 30, 6]] as [number, number, number][]).forEach(([x, z, h], i) => tree(L, i % 2 ? 'CommonTree_Dead_' + ((i % 3) + 1) : 'Willow_Dead_' + ((i % 3) + 1), x, z, h, i));
   rocks(L, [[-12, 36, 0.8], [18, 32, 1.2], [-28, 22, 1.5], [30, 10, 0.9], [-40, 2, 1.6], [40, -4, 1.4], [-6, 40, 0.7], [12, 41, 1.1]]);
@@ -36,6 +38,7 @@ export function dressOp1(L: Level): void {
 }
 
 export function dressOp2(L: Level): void {
+  artOp2(L);
   // rues : lampadaires, feux, panneaux, poubelles, épaves blindées
   for (const z of [-2, -26, -46, -62]) { L.prop('Streetlight_Double', -11.4, 0, z, R(90), 6.5); }
   for (const z of [-14, -36, -58]) L.prop('Streetlight_Single', 11.4, 0, z, R(-90), 6);
@@ -52,6 +55,7 @@ export function dressOp2(L: Level): void {
 }
 
 export function dressOp3(L: Level): void {
+  artOp3(L);
   // ruines : colonnes brisées, rochers, ossements, torches
   for (const [x, z, n] of [[-14, 32, 'Column_Broken'], [15, 22, 'Column_Broken2'], [-24, 4, 'Column_Broken'], [26, -12, 'Column_Broken2'], [-30, -16, 'Column_Broken'], [32, 30, 'Column_Broken']] as [number, number, string][]) L.prop(n, x, 0, z, x, 3.4, true, 'concrete');
   for (const [x, z] of [[-10, 26], [12, 6], [-18, -10], [20, -26], [4, 38], [-4, -28]]) { L.prop('Bones', x, 0, z, x, 0.3); }
@@ -69,6 +73,7 @@ export function dressOp3(L: Level): void {
 }
 
 export function dressOp4(L: Level): void {
+  artOp4(L);
   // défenses : arbres morts, rochers, antennes, climatiseurs sur les bunkers
   ([[-44, 40, 7], [44, 14, 6], [-46, -22, 8], [46, 38, 6], [-30, 42, 5]] as [number, number, number][]).forEach(([x, z, h], i) => tree(L, 'CommonTree_Dead_' + ((i % 3) + 1), x, z, h, i));
   L.prop('Antenna_1', -22, 3.4, 4, 0, 2.6); L.prop('Antenna_1', 22, 3.4, -12, 0, 2.6);
@@ -85,6 +90,7 @@ export function dressOp4(L: Level): void {
 }
 
 export function dressHub(L: Level): void {
+  artHub(L);
   L.prop('Props_Shelf_Tall', -20, 0, -1, R(90), 2.8, true); L.prop('Props_Shelf_Tall', -20, 0, 2, R(90), 2.8, true);
   L.prop('Props_Crate', -12, 0, 15, 0.2, 1, true); L.prop('Props_CrateLong', -10, 0, 13.8, 0, 0.9, true);
   L.prop('Radio', -15.2, 0.93, 9.4, 0.3, 0.3); L.prop('FirstAidKit', -15.6, 0.93, 6.6, 0, 0.2);
@@ -95,6 +101,7 @@ export function dressHub(L: Level): void {
 }
 
 export function dressSurvival(L: Level): void {
+  artSurvival(L);
   for (const [x, z] of [[-28, -28], [28, 28], [-28, 28], [28, -28]]) L.prop('Props_Vessel_Tall', x, 0, z, 0, 3.2, true);
   for (const [x, z] of [[-30, 0], [30, 0], [0, -30], [0, 30]]) L.prop('Props_Base', x, 0, z, 0, 1.1);
 }

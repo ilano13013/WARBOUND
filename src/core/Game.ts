@@ -108,6 +108,7 @@ export class Game {
 
   applySettings(): void {
     this.r.applySettings(this.settings);
+    this.level?.setFx(this.settings.quality !== 'low');
     this.fx.setQuality(this.settings.quality);
     this.audio.applyVolumes();
     this.ui.settingsChanged();
@@ -152,6 +153,7 @@ export class Game {
   private load(level: Level, mission: Mission): void {
     this.level = level; this.mission = mission; mission.level = level;
     this.r.scene.add(level.root);
+    level.setFx(this.settings.quality !== 'low');
     this.r.setAmbience(level.ambience);
     this.player.refreshStats(true);
     this.applyRunMods();

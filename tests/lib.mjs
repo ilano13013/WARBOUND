@@ -22,4 +22,4 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function waitFor(page, fn, timeout = 60000, arg) {
   await page.waitForFunction(fn, arg, { timeout, polling: 200 });
 }
-export async function shot(page, name) { await page.screenshot({ path: SHOTS + name + '.png' }); }
+export async function shot(page, name) { await page.screenshot({ path: SHOTS + name + '.png', timeout: 180000 }); }

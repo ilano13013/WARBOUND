@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { Mission } from '../mission/Mission';
 import { Level } from '../world/Level';
+import { backdrop } from '../world/Detail';
 import { dressOp3 } from './dress';
 import { mat } from '../render/Materials';
 import { Archon } from '../ai/Boss';
@@ -11,7 +12,8 @@ import { ammo, lore, REYES, ORACLE, MAREK, ARCHON } from './common';
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 
 export function buildOp3(g: Game, m: Mission): Level {
-  const L = new Level('op3', 'Temple du Voile', { skyTop: 0x06041a, skyHorizon: 0x4a2a8a, fog: 0x1a1238, fogDensity: 0.012, sun: 0xa898ff, sunIntensity: 1.9, sunDir: [-0.4, 0.6, 0.5], hemiSky: 0x7a6ac0, hemiGround: 0x1c1626, hemiIntensity: 0.9, rift: true });
+  const L = new Level('op3', 'Temple du Voile', { skyTop: 0x070a18, skyHorizon: 0x4a4a7c, fog: 0x26283c, fogDensity: 0.011, sun: 0xdfe4ff, sunIntensity: 3.2, sunDir: [-0.5, 0.42, 0.45], hemiSky: 0x98a0c4, hemiGround: 0x302c34, hemiIntensity: 1.3, rift: true, wet: 0.35, storm: 0.3, mist: 0.5, rays: 0.4, exposure: 1.4, saturation: 0.86, gradeShadow: 0x8090b8, gradeLight: 0xfff0e0, weather: 'motes' });
+  L.theme = 'temple';
   m.level = L;
   L.bounds = { minX: -48, minZ: -202, maxX: 48, maxZ: 44 };
   L.spawn.set(0, 0.1, 36); L.spawnYaw = 0;
@@ -113,6 +115,7 @@ export function buildOp3(g: Game, m: Mission): Level {
   const bossCrystals = [L.crystal(-24, 0, -146, 190, 1.5, 'crystal_red'), L.crystal(24, 0, -146, 190, 1.5, 'crystal_red'), L.crystal(-24, 0, -176, 190, 1.5, 'crystal_red'), L.crystal(24, 0, -176, 190, 1.5, 'crystal_red')];
   for (const c of bossCrystals) { c.invulnerable = true; c.destroy(); }
   ammo(g, L, -27, -130); ammo(g, L, 27, -190);
+  backdrop(L, 'temple');
   dressOp3(L);
   L.finish();
 
