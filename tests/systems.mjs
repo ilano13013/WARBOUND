@@ -37,7 +37,7 @@ for (const cls of ['vanguard', 'bulwark', 'lifebinder', 'wraith', 'arcanist', 'r
 }
 
 // ---------- talents ----------
-await page.setViewportSize({ width: 1280, height: 720 });
+await page.setViewportSize({ width: 960, height: 540 });
 await page.evaluate(() => window.WB.newGame('bulwark')); await hub(); await sleep(400);
 let a = await st(page);
 await page.evaluate(() => window.WB.giveLevel(1)); await sleep(300);

@@ -1,7 +1,7 @@
 {
   "name": "warbound",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "WARBOUND — The Fracture Chronicles. FPS 3D / Action RPG militaire dark fantasy.",
   "type": "module",
   "scripts": {

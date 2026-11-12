@@ -20,7 +20,7 @@ export function buildOp3(g: Game, m: Mission): Level {
   L.maxLights = 9;
 
   L.floor('ash', 0, -79, 96, 246);
-  L.enclosure('stone', -47, -201, 47, 43, 9, [], 1.5);
+  L.enclosure('ruinwall', -47, -201, 47, 43, 9, [], 1.5);
   const arch = (x: number, z: number, w = 6, h = 7, alongX = true) => {
     const dx = alongX ? w / 2 : 0, dz = alongX ? 0 : w / 2;
     L.box('stone', x - dx, 0, z - dz, 1.2, h, 1.2); L.box('stone', x + dx, 0, z + dz, 1.2, h, 1.2);
@@ -49,7 +49,7 @@ export function buildOp3(g: Game, m: Mission): Level {
 
   // ================= B. SALLE DES SCEAUX (z -30..-80) =================
   L.box('stone', 0, -0.96, -55, 50, 1, 50, { nav: false });
-  L.enclosure('stone', -25, -80, 25, -30, 13, [{ side: 's', at: 0, gap: 6, h: 7 }, { side: 'n', at: 0, gap: 5, h: 5 }], 1.5);
+  L.enclosure('ruinwall', -25, -80, 25, -30, 13, [{ side: 's', at: 0, gap: 6, h: 7 }, { side: 'n', at: 0, gap: 5, h: 5 }], 1.5);
   for (const s of [-1, 1]) { L.box('rune', s * 24.1, 4, -55, 0.2, 1.5, 48, { collide: false }); for (const z of [-38, -47, -56, -65, -74]) L.column(s * 12, z, 12, 0.9, 'stone'); }
   L.box('rune', 0, 0, -55, 5, 0.3, 5, { nav: false });
   L.zones.push({ minX: -25, minZ: -80, maxX: 25, maxZ: -30, light: 0.6 });
@@ -86,7 +86,7 @@ export function buildOp3(g: Game, m: Mission): Level {
 
   // ================= C. ANTICHAMBRE ET GALERIES (z -80..-126) =================
   L.box('stone', 0, -0.96, -103, 80, 1, 46, { nav: false });
-  L.enclosure('stone', -40, -126, 40, -80.5, 11, [{ side: 's', at: 0, gap: 5, h: 5 }, { side: 'n', at: 0, gap: 7, h: 7 }], 1.5);
+  L.enclosure('ruinwall', -40, -126, 40, -80.5, 11, [{ side: 's', at: 0, gap: 5, h: 5 }, { side: 'n', at: 0, gap: 7, h: 7 }], 1.5);
   L.zones.push({ minX: -40, minZ: -126, maxX: 40, maxZ: -80, light: 0.55 });
   for (const [x, z] of [[-10, -90], [10, -90], [-10, -116], [10, -116], [-26, -103], [26, -103]]) L.column(x, z, 10, 1, 'rune');
   L.box('stone', -18, 0, -96, 0.9, 1.3, 7); L.box('stone', 18, 0, -110, 0.9, 1.3, 7); L.box('stone', 0, 0, -103, 6, 1.1, 0.9); L.box('stone', -30, 0, -90, 6, 1.2, 0.9); L.box('stone', 30, 0, -116, 6, 1.2, 0.9);
@@ -101,7 +101,7 @@ export function buildOp3(g: Game, m: Mission): Level {
   // ================= D. SANCTUAIRE (boss) =================
   L.box('stone', 0, -0.95, -160, 60, 1, 66, { nav: false });
   L.box('rune', 0, -0.94, -160, 14, 1, 14, { nav: false });
-  L.enclosure('stone', -30, -194, 30, -126.5, 16, [{ side: 's', at: 0, gap: 7, h: 7 }], 1.5);
+  L.enclosure('ruinwall', -30, -194, 30, -126.5, 16, [{ side: 's', at: 0, gap: 7, h: 7 }], 1.5);
   L.zones.push({ minX: -30, minZ: -194, maxX: 30, maxZ: -126, light: 0.7 });
   for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + 0.39; L.column(Math.cos(a) * 26, -160 + Math.sin(a) * 28, 15, 1.1, 'stone', i % 3 === 0); }
   for (const [x, z] of [[-10, -148], [10, -148], [-10, -172], [10, -172]]) L.box('stone', x, 0, z, 2.2, 1.5, 2.2);

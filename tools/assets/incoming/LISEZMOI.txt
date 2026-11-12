@@ -1,0 +1,3 @@
+Déposez ici les assets à téléchargement soumis à un compte (voir ASSETS.md) :
+  ak47/     AK-47 Assault rifle, Nneako (Sketchfab, CC BY 4.0) : archive glTF ou FBX + textures
+  quantum/  Quantum Modular Character Free Sample (Fab) : FBX + textures

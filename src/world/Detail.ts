@@ -211,8 +211,15 @@ function techBay(L: Level, f: Frame, u: number, span: number, side: number, k: n
   } else if (k < 0.5) {
     // grille de ventilation
     const w = Math.min(1.5, span * 0.6), y = Math.min(h - 1.5, 2.5);
-    wbox(L, f, 'trim', u, y, w, 0.9, 0.07, side);
-    for (let s = 0; s < 5; s++) wbox(L, f, 'black', u, y + 0.1 + s * 0.155, w - 0.16, 0.07, 0.05, side, 0.07);
+    const vs = th === 'helix' || th === 'military' ? L.propSize('ph_airduct#vent_01') : null;
+    if (vs) {
+      // bouche d'aération du kit Modular Airduct (Poly Haven, CC0)
+      const [vx, vz] = at(f, u, f.th / 2 + vs.z * 0.5, side), k = w / vs.x;
+      L.propM('ph_airduct#vent_01', new THREE.Matrix4().compose(new THREE.Vector3(vx, y + 0.45, vz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), f.ax ? (side > 0 ? 0 : Math.PI) : side > 0 ? Math.PI / 2 : -Math.PI / 2), new THREE.Vector3(k, k, 1)));
+    } else {
+      wbox(L, f, 'trim', u, y, w, 0.9, 0.07, side);
+      for (let s = 0; s < 5; s++) wbox(L, f, 'black', u, y + 0.1 + s * 0.155, w - 0.16, 0.07, 0.05, side, 0.07);
+    }
     wdecal(L, f, stainAtlas(), quad(w * 0.9, Math.min(2.2, y), 3, 2), u, y - Math.min(2.2, y) / 2, side, 0.02);
   } else if (k < 0.64) {
     // armoire électrique, gaine et voyant
@@ -302,8 +309,24 @@ export function detailRoof(L: Level, x0: number, z0: number, x1: number, z1: num
   if (short >= 5) {
     // gaine de ventilation avec brides
     const off = short * 0.28;
-    B('metal', 0, off, y - 0.86, long - 0.8, 0.7, 0.44);
-    for (let i = 0; i <= Math.round(long / 3); i++) B('trim', -long / 2 + 0.5 + (i * (long - 1)) / Math.max(1, Math.round(long / 3)), off, y - 0.9, 0.08, 0.78, 0.52);
+    // gaine Modular Airduct Rectangular 01 (Poly Haven, CC0) dans le laboratoire et le hangar ; boîtes simplifiées ailleurs ou en repli
+    const ds = L.theme === 'helix' || L.theme === 'military' ? L.propSize('ph_airduct#single_01') : null;
+    if (ds) {
+      const len = long - 0.8, n = Math.max(1, Math.round(len / (ds.x * 2))), seg = len / n, yc = y - 0.36 - ds.y / 2; // modules étirés ×2 : deux fois moins d'instances
+      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), longX ? 0 : Math.PI / 2);
+      const P = (along: number, across: number, yy: number) => new THREE.Vector3(longX ? cx + along : cx + across, yy, longX ? cz + across : cz + along);
+      const side = off > 0 ? -1 : 1; // grilles tournées vers le centre de la salle
+      const qv = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), longX ? (side > 0 ? 0 : Math.PI) : side > 0 ? Math.PI / 2 : -Math.PI / 2);
+      for (let i = 0; i < n; i++) {
+        const al = -len / 2 + (i + 0.5) * seg;
+        L.propM('ph_airduct#single_01', new THREE.Matrix4().compose(P(al, off, yc), q, new THREE.Vector3(seg / ds.x, 1, 1)));
+        if (i % 4 === 1) L.propM(i % 8 === 1 ? 'ph_airduct#vent_02' : 'ph_airduct#vent_01', new THREE.Matrix4().compose(P(al, off + side * (ds.z / 2 + 0.02), yc), qv, new THREE.Vector3(1, 1, 1)));
+        if (i % 3 === 0) for (const e of [-1, 1]) B('trim', al - seg / 2, off + e * (ds.z / 2 + 0.03), yc + ds.y / 2, 0.03, 0.03, 0.36);
+      }
+    } else {
+      B('metal', 0, off, y - 0.86, long - 0.8, 0.7, 0.44);
+      for (let i = 0; i <= Math.round(long / 3); i++) B('trim', -long / 2 + 0.5 + (i * (long - 1)) / Math.max(1, Math.round(long / 3)), off, y - 0.9, 0.08, 0.78, 0.52);
+    }
     // chemin de câbles
     B('trim', 0, -off, y - 0.5, long - 0.6, 0.36, 0.05);
     for (const c of [-0.1, 0, 0.1]) B('cable', 0, -off + c, y - 0.45, long - 0.6, 0.045, 0.045);
@@ -479,7 +502,7 @@ export function backdrop(L: Level, kind: BackdropKind): void {
 export function detailBuilding(L: Level, x: number, z: number, w: number, d: number, h: number): void {
   const N = { collide: false };
   // soubassement et chaînes d'angle
-  L.box('darkconcrete', x, 0, z, w + 0.2, 3.3, d + 0.2, N);
+  L.box('concrete_damaged', x, 0, z, w + 0.2, 3.3, d + 0.2, N); // soubassement en béton endommagé (Concrete 042 D)
   L.box('darkconcrete', x, 3.3, z, w + 0.5, 0.22, d + 0.5, N);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) L.box('plaster', x + sx * (w / 2 - 0.2), 3.5, z + sz * (d / 2 - 0.2), 0.7, h - 3.5, 0.7, N);
   for (let y = 12.2; y < h - 2; y += 9) L.box('darkconcrete', x, y - 0.3, z, w + 0.44, 0.24, d + 0.44, N);

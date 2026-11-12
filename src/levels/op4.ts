@@ -27,7 +27,7 @@ export function buildOp4(g: Game, m: Mission): Level {
   // ================= A. DÉFENSES HELIX (z 44..-40) =================
   L.box('asphalt', 0, -0.98, 2, 9, 1, 86, { nav: false });
   const bunker = (x: number, z: number, door: 'e' | 'w') => {
-    L.enclosure('concrete', x - 5, z - 4, x + 5, z + 4, 3.4, [{ side: door, at: z, gap: 2.4, h: 2.6 }], 0.6);
+    L.enclosure('concrete_damaged', x - 5, z - 4, x + 5, z + 4, 3.4, [{ side: door, at: z, gap: 2.4, h: 2.6 }], 0.6);
     L.roof('darkconcrete', x - 5, z - 4, x + 5, z + 4, 3.4, 0.5);
     L.box('glow_red', x, 3.0, z + 4.35, 6, 0.1, 0.05, { collide: false });
     L.zones.push({ minX: x - 5, minZ: z - 4, maxX: x + 5, maxZ: z + 4, light: 0.4 });

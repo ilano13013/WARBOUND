@@ -4,6 +4,20 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Nouveautés de la version 2.2 (modèles et matériaux Poly Haven / ambientCG)
+
+Sept assets CC0 téléchargés à la source et intégrés ; gameplay, collisions, objectifs, statistiques et sauvegardes inchangés. Les anciens décors restent en repli si un fichier manque.
+
+- **Tuyauterie** (*Modular Industrial Pipes 01*) : remplace les tuyaux cylindriques de diamètre moyen et gros dans toutes les cartes (CENDRES et POINT ZÉRO en premier lieu). Les conduits destructibles des objectifs ne sont pas touchés.
+- **Ventilation** (*Modular Airduct Rectangular 01*) : gaines et grilles au plafond du laboratoire de CENDRES et du hangar de Fort Aegis, bouches d'aération murales.
+- **Groupe électrogène** (*Portable Generator*) : à côté du terminal de remise sous tension de CENDRES, à sa taille réelle.
+- **Barrières** (*Concrete Road Barrier*) : habillage de toutes les barrières en béton ; la collision conserve les dimensions de couverture d'origine.
+- **Falaises** (*Rock Face 01*) : autour du TEMPLE DU VOILE et de la zone altérée de POINT ZÉRO ; remplace `WallRocks`.
+- **Maçonnerie ancienne** (*Rabdentse Ruins Wall*) : murs d'enceinte et de salles du temple ; colonnes, pilastres et sculptures gardent leur pierre.
+- **Béton endommagé** (*Concrete 042 D*) : enceinte et mur du portail de CENDRES, station et soubassements des immeubles de VILLE MORTE, bunkers de POINT ZÉRO. Le laboratoire garde ses surfaces propres.
+
+Non intégrés (téléchargement soumis à un compte) : l'AK-47 de Nneako et le personnage *Quantum Modular Character*. Voir `ASSETS.md` et `tools/assets/incoming/LISEZMOI.txt`.
+
 ## Nouveautés de la version 2.1 (refonte visuelle : ambiance, matériaux, densité)
 
 Gameplay, missions, cartes, classes, boss et sauvegardes inchangés. Aucun asset ajouté : tout vient du rendu et de l'habillage.

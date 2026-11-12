@@ -61,7 +61,8 @@ export function dressOp3(L: Level): void {
   for (const [x, z] of [[-10, 26], [12, 6], [-18, -10], [20, -26], [4, 38], [-4, -28]]) { L.prop('Bones', x, 0, z, x, 0.3); }
   for (const [x, z] of [[-8, 14], [9, -4], [-27, 28], [28, 14]]) L.prop('Skull', x, 0, z, x, 0.25);
   rocks(L, [[-40, 36, 2.2], [40, 20, 2], [-42, -8, 2.6], [42, -24, 2.4], [-36, -28, 1.8], [36, 40, 2.1]], 'Rock_Moss_');
-  L.prop('WallRocks', -44, 0, 12, R(90), 3); L.prop('WallRocks', 44, 0, -4, R(-90), 3);
+  // WallRocks : conservé en repli si la falaise Poly Haven (placée dans art.ts) n'est pas chargée
+  if (!L.propSize('ph_rockface#rock_face_01')) { L.prop('WallRocks', -44, 0, 12, R(90), 3); L.prop('WallRocks', 44, 0, -4, R(-90), 3); }
   // salle des sceaux : bannières, candélabres, torches murales
   for (const z of [-40, -56, -72]) { L.prop('Banner_wall', -24, 4.5, z, R(90), 3.4); L.prop('Banner_wall', 24, 4.5, z, R(-90), 3.4); }
   for (const [x, z] of [[-8, -34], [8, -34], [-8, -66], [8, -50]]) L.prop('Candelabrum_tall', x, 0, z, 0, 2.2, true);

@@ -9,8 +9,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, prune, resample, reorder, quantize, meshopt } from '@gltf-transform/functions';
-import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
+import { dedup, prune, resample, reorder, quantize, meshopt, weld, simplify } from '@gltf-transform/functions';
+import { MeshoptEncoder, MeshoptDecoder, MeshoptSimplifier } from 'meshoptimizer';
 
 const SRC = process.env.ASSET_SRC || '/tmp/claude-0/assets-dl';
 const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../public/assets');
@@ -103,6 +103,69 @@ async function buildModels() {
   console.log(`MODÈLES : ${(total / 1048576).toFixed(2)} Mo`);
 }
 
+// ---------------------------------------------------------------- Poly Haven (CC0) : modèles photogrammétriques, textures 2K
+// [sortie, dossier source, { ratio de simplification, nœuds conservés }]. Couleur et normale en 2K, ARM (AO/rugosité/métal) en 1K.
+const PH = `${SRC}/polyhaven`;
+const PH_MODELS = [
+  ['props/ph_pipes', 'modular_industrial_pipes_01', { ratio: 0.3, error: 0.02 }],   // pièces répétées des centaines de fois
+  ['props/ph_airduct', 'modular_airduct_rectangular_01', { drop: /fastener|brace_wire/, ratio: 0.1, error: 0.02 }],
+  ['props/ph_generator', 'portable_generator', { ratio: 0.45 }],
+  ['props/ph_barrier', 'concrete_road_barrier', { ratio: 0.02, error: 0.02 }],
+  ['props/ph_rockface', 'rock_face_01', { ratio: 0.22 }],
+];
+async function buildPolyhaven() {
+  await MeshoptEncoder.ready; await MeshoptDecoder.ready; await MeshoptSimplifier.ready;
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
+  let total = 0;
+  for (const [name, id, opt] of PH_MODELS) {
+    if (filter && !filter.test(name)) continue;
+    const src = `${PH}/${id}/${id}.gltf`;
+    if (!fs.existsSync(src)) { console.warn('MANQUANT', src); continue; }
+    const doc = await io.read(src); const root = doc.getRoot();
+    if (opt.drop) for (const n of root.listNodes()) if (opt.drop.test(n.getName())) n.dispose();
+    for (const t of root.listTextures()) {
+      const uri = t.getURI() || t.getName();
+      if (/_spec_/.test(uri)) { t.dispose(); continue; }
+      const px = /_arm_/.test(uri) ? 1024 : 2048;
+      const tmp = `/tmp/claude-0/ph-${Date.now()}.jpg`, out = tmp.replace('.jpg', '-r.jpg');
+      fs.writeFileSync(tmp, Buffer.from(t.getImage()));
+      execFileSync('convert', [tmp, '-resize', `${px}x${px}>`, '-quality', /_nor_/.test(uri) ? '84' : '80', out]);
+      t.setImage(new Uint8Array(fs.readFileSync(out))).setMimeType('image/jpeg');
+      fs.unlinkSync(tmp); fs.unlinkSync(out);
+    }
+    const steps = [dedup(), weld()];
+    if (opt.ratio) steps.push(simplify({ simplifier: MeshoptSimplifier, ratio: opt.ratio, error: opt.error ?? 0.004 }));
+    steps.push(prune({ keepLeaves: false }), reorder({ encoder: MeshoptEncoder }), quantize({ quantizeNormal: 10, quantizePosition: 14, quantizeTexcoord: 12 }), meshopt({ encoder: MeshoptEncoder }));
+    await doc.transform(...steps);
+    let tris = 0; for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() || 0) / 3;
+    const out = `${OUT}/models/${name}.glb`;
+    await io.write(out, doc);
+    const sz = fs.statSync(out).size; total += sz;
+    console.log(`${name.padEnd(22)} ${String(Math.round(tris)).padStart(7)} triangles  ${(sz / 1048576).toFixed(2)} Mo`);
+  }
+  console.log(`POLY HAVEN : ${(total / 1048576).toFixed(2)} Mo`);
+}
+
+/** Textures de surface 2K : Rabdentse Ruins Wall (Poly Haven, CC0) et Concrete 042 D (ambientCG, CC0). */
+function buildSurfaces2k() {
+  const dir = `${OUT}/textures`, size = '2048x2048';
+  const rw = `${PH}/rabdentse_ruins_wall`;
+  if (fs.existsSync(`${rw}/Diffuse.jpg`)) {
+    execFileSync('convert', [`${rw}/Diffuse.jpg`, '-resize', size, '-quality', '80', `${dir}/ruinwall_color.jpg`]);
+    execFileSync('convert', [`${rw}/nor_gl.jpg`, '-resize', size, '-quality', '84', `${dir}/ruinwall_normal.jpg`]);
+    // ARM Poly Haven : R = AO, G = rugosité, B = métal → même convention que nos ORM
+    execFileSync('convert', [`${rw}/arm.jpg`, '-resize', '1024x1024', '-quality', '84', `${dir}/ruinwall_orm.jpg`]);
+    console.log('texture ruinwall rabdentse_ruins_wall');
+  } else console.warn('MANQUANT rabdentse_ruins_wall');
+  const b = `${SRC}/ambientcg/Concrete042D/Concrete042D_2K-JPG_`;
+  if (fs.existsSync(b + 'Color.jpg')) {
+    execFileSync('convert', [b + 'Color.jpg', '-resize', size, '-quality', '80', `${dir}/concrete_damaged_color.jpg`]);
+    execFileSync('convert', [b + 'NormalGL.jpg', '-resize', size, '-quality', '84', `${dir}/concrete_damaged_normal.jpg`]);
+    execFileSync('convert', ['(', b + 'AmbientOcclusion.jpg', '-resize', '1024x1024!', '-colorspace', 'gray', ')', '(', b + 'Roughness.jpg', '-resize', '1024x1024!', '-colorspace', 'gray', ')', '(', '-size', '1024x1024', 'xc:black', ')', '-combine', '-quality', '86', `${dir}/concrete_damaged_orm.jpg`]);
+    console.log('texture concrete_damaged Concrete042D');
+  } else console.warn('MANQUANT Concrete042D');
+}
+
 // ---------------------------------------------------------------- textures PBR (ambientCG, CC0)
 const TEX = { concrete: 'Concrete034', concrete2: 'Concrete047A', metal: 'Metal049A', metal2: 'Metal055A', plate: 'Metal063', asphalt: 'Asphalt031', bricks: 'Bricks097', rock: 'Rock058', rock2: 'Rock063', ground: 'Ground037', dirt: 'Ground054', plaster: 'Plaster002', wood: 'Wood092', tiles: 'Concrete048', mud: 'Ground103', rubble: 'Rock064' };
 function buildTextures() {
@@ -162,6 +225,7 @@ function buildSounds() {
 
 if (only === 'all' || only === 'models') await buildModels();
 if (only === 'all' || only === 'textures') buildTextures();
+if (only === 'all' || only === 'polyhaven') { await buildPolyhaven(); buildSurfaces2k(); }
 if (only === 'all' || only === 'sounds') buildSounds();
 
 // ---------------------------------------------------------------- manifeste (liste chargée au démarrage du jeu)

@@ -21,7 +21,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   // ================= EXTÉRIEUR =================
   L.floor('dirt', 0, 2, 88, 88);
   L.box('asphalt', 0, -0.98, 12, 8, 1, 68, { nav: false });
-  L.enclosure('concrete', -43, -41, 43, 45, 7, [], 1);
+  L.enclosure('concrete_damaged', -43, -41, 43, 45, 7, [], 1);
   // zone d'insertion
   L.vehicle(-9, 30, false, 'truck', 0x3a3f36); L.vehicle(8, 22, true, 'apc', 0x2e3428);
   L.deadTree(-18, 34, 6); L.deadTree(20, 30, 5); L.deadTree(-26, 20, 7); L.deadTree(28, 16, 6); L.deadTree(14, 38, 5);
@@ -29,7 +29,7 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.barrier(-5.5, 15, true, 3); L.barrier(5.5, 15, true, 3); L.sandbags(-9, 12, true, 4); L.sandbags(9, 12, true, 4);
   L.crate(-7, 26, 1.2); L.crate(-6, 27.2, 1, 0, 'olive'); L.barrelDeco(4, 27);
   // enceinte et portail
-  L.wallDoor('concrete', -43, 8, 43, 8, 6, 0, 7, 5, 0.8);
+  L.wallDoor('concrete_damaged', -43, 8, 43, 8, 6, 0, 7, 5, 0.8);
   L.box('hazard', -3.9, 0, 8, 0.5, 5, 1, { collide: false }); L.box('hazard', 3.9, 0, 8, 0.5, 5, 1, { collide: false });
   L.box('glow_red', 0, 5.2, 8.45, 5, 0.25, 0.06, { collide: false });
   L.sign('HELIX — SITE CENDRES', 0, 5.6, 8.5, 'z+', '#ff8a5a', 6);

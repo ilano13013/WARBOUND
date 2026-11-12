@@ -236,6 +236,14 @@ export class Level {
     return true;
   }
 
+  /** Place un décor avec une transformation libre (pièces de kits modulaires, déjà centrées). */
+  propM(name: string, m: THREE.Matrix4): boolean {
+    if (!propInfo(name)) return false;
+    this.propList.push({ name, m });
+    return true;
+  }
+  propSize(name: string): THREE.Vector3 | null { return propInfo(name)?.size ?? null; }
+
   private buildProps(): void {
     const by = new Map<string, THREE.Matrix4[]>();
     for (const p of this.propList) { let a = by.get(p.name); if (!a) by.set(p.name, (a = [])); a.push(p.m); }
@@ -364,6 +372,18 @@ export class Level {
 
   barrier(x: number, z: number, alongX: boolean, len = 2.4): void {
     const w = alongX ? len : 0.5, d = alongX ? 0.5 : len;
+    // modèle Concrete Road Barrier (Poly Haven, CC0) : la collision garde les dimensions de couverture d'origine
+    const sz = this.propSize('ph_barrier');
+    if (sz) {
+      this.collider(x, 0, z, w, 0.9, d, 'concrete');
+      const n = Math.max(1, Math.round(len / sz.x)), seg = len / n;
+      for (let i = 0; i < n; i++) {
+        const o = (i - (n - 1) / 2) * seg, flip = (Math.round(x * 3 + z * 5) + i) % 2 ? Math.PI : 0;
+        this.propM('ph_barrier', new THREE.Matrix4().compose(new THREE.Vector3(alongX ? x + o : x, 0.45, alongX ? z : z + o),
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (alongX ? 0 : Math.PI / 2) + flip), new THREE.Vector3((seg / sz.x) * 0.995, 0.9 / sz.y, 1)));
+      }
+      return;
+    }
     this.box('concrete', x, 0, z, w, 0.9, d);
     this.box('concrete', x, 0, z, alongX ? len : 0.8, 0.3, alongX ? 0.8 : len, { collide: false });
   }
@@ -442,8 +462,16 @@ export class Level {
   pipe(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, r = 0.15, m: MatName = 'rust'): void {
     const a = new THREE.Vector3(x1, y1, z1), b = new THREE.Vector3(x2, y2, z2);
     const len = a.distanceTo(b);
-    const geo = new THREE.CylinderGeometry(r, r, len, 8);
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    // tuyauterie Modular Industrial Pipes 01 (Poly Haven, CC0) : tronçons droits à brides, répétés sur la longueur
+    const sz = r >= 0.09 ? this.propSize('ph_pipes#pipe02') : null; // petits diamètres : cylindres simples
+    if (sz) {
+      const k = (r * 2) / Math.min(sz.x, sz.z), n = Math.max(1, Math.round(len / (sz.y * k))), seg = len / n;
+      const dir = b.clone().sub(a).normalize(), sc = new THREE.Vector3(k, seg / sz.y, k);
+      for (let i = 0; i < n; i++) this.propM('ph_pipes#pipe02', new THREE.Matrix4().compose(a.clone().addScaledVector(dir, (i + 0.5) * seg), q, sc));
+      return;
+    }
+    const geo = new THREE.CylinderGeometry(r, r, len, 8);
     const e = new THREE.Euler().setFromQuaternion(q);
     const mid = a.add(b).multiplyScalar(0.5);
     this.deco(mat(m), geo, mid.x, mid.y, mid.z, e.x, e.y, e.z);
@@ -708,10 +736,18 @@ const propCache = new Map<string, PropInfo | null>();
 /** Géométries et matériaux d'un décor, partagés entre toutes ses instances. */
 function propInfo(name: string): PropInfo | null {
   if (propCache.has(name)) return propCache.get(name)!;
-  const g = Assets.gltf('props/' + name);
+  // « kit#piece » : une pièce d'un kit modulaire (Poly Haven), recentrée sur sa boîte englobante
+  const [file, piece] = name.split('#');
+  const g = Assets.gltf('props/' + file);
   if (!g) { propCache.set(name, null); return null; }
-  const scene = g.scene;
-  scene.updateMatrixWorld(true);
+  g.scene.updateMatrixWorld(true);
+  let scene: THREE.Object3D = g.scene;
+  if (piece) {
+    let found: THREE.Object3D | null = null;
+    g.scene.traverse((o) => { if (!found && o.name.endsWith(piece)) found = o; });
+    if (!found) { propCache.set(name, null); return null; }
+    scene = found;
+  }
   const parts: PropInfo['parts'] = [];
   let skinned = false;
   scene.traverse((o) => {
@@ -722,7 +758,12 @@ function propInfo(name: string): PropInfo | null {
     for (const mt of mats) {
       const ms = mt as THREE.MeshStandardMaterial;
       // aplats Quaternius : légère rugosité/métal pour réagir à l'éclairage d'environnement
-      if (ms.isMeshStandardMaterial && !ms.userData.wbTuned) { ms.roughness = Math.min(ms.roughness, 0.85); ms.userData.wbTuned = true; }
+      if (ms.isMeshStandardMaterial && !ms.userData.wbTuned && !ms.map) { ms.roughness = Math.min(ms.roughness, 0.85); ms.userData.wbTuned = true; }
+      // verre à transmission : il ferait redessiner toute la scène une seconde fois ; simple transparence à la place
+      const mp = mt as THREE.MeshPhysicalMaterial;
+      if (mp.isMeshPhysicalMaterial && mp.transmission > 0) { mp.transmission = 0; mp.transparent = true; mp.opacity = 0.35; mp.depthWrite = false; }
+      // tôle photogrammétrique : métal atténué, sinon elle ne reflète que le plafond sombre en intérieur
+      if (ms.isMeshStandardMaterial && !ms.userData.wbTuned && ms.metalnessMap) { ms.metalness = 0.45; ms.userData.wbTuned = true; }
     }
     if (!m.geometry.attributes.normal) m.geometry.computeVertexNormals();
     if (Array.isArray(m.material)) {
@@ -736,6 +777,11 @@ function propInfo(name: string): PropInfo | null {
   const box = new THREE.Box3(), pb = new THREE.Box3();
   for (const p of parts) { if (!p.geometry.boundingBox) p.geometry.computeBoundingBox(); pb.copy(p.geometry.boundingBox!).applyMatrix4(p.local); box.union(pb); }
   if (skinned) { box.setFromObject(scene); }
+  if (piece) {
+    const c = box.getCenter(new THREE.Vector3()), t = new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z);
+    for (const p of parts) p.local.premultiply(t);
+    box.translate(c.negate());
+  }
   const info: PropInfo = { skinned, parts, min: box.min.clone(), max: box.max.clone(), size: box.getSize(new THREE.Vector3()), h: Math.max(0.01, box.max.y - box.min.y) };
   propCache.set(name, info);
   return info;

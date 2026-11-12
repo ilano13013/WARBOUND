@@ -66,7 +66,7 @@ export function buildOp2(g: Game, m: Mission): Level {
   barrel(g, L, -16, -84); barrel(g, L, 15, -100);
   streetLamp(-28, -90, true); streetLamp(28, -80);
   // station
-  L.enclosure('concrete', -12, -112, 12, -99, 6, []);
+  L.enclosure('concrete_damaged', -12, -112, 12, -99, 6, []);
   L.roof('darkconcrete', -12, -112, 12, -99, 6);
   L.box('darkmetal', 0, 0, -98.7, 6, 3.4, 0.2, { collide: false });
   L.box('hazard', 0, 3.4, -98.6, 6.4, 0.3, 0.3, { collide: false });

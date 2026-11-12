@@ -68,7 +68,8 @@ export function installAutoTest(g: Game): void {
     tp: (x: number, y: number, z: number, yaw?: number) => { g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); if (yaw !== undefined) g.player.yaw = yaw; g.player.pitch = 0; },
     look: (yaw: number, pitch: number) => { g.player.yaw = yaw; g.player.pitch = pitch; },
     mouse: (dx: number, dy: number) => { g.input.mouseDX += dx; g.input.mouseDY += dy; },
-    quality: (q: 'low' | 'medium' | 'high') => { g.settings.quality = q; g.applySettings(); },
+    // en qualité « Bas », le mode test rend à demi-résolution : le rendu logiciel des tests reste assez rapide pour les délais des scénarios
+    quality: (q: 'low' | 'medium' | 'high') => { g.settings.quality = q; g.settings.renderScale = q === 'low' ? 0.5 : 1; g.applySettings(); },
     sim: (a: string, on: boolean) => g.input.sim(a, on),
     fire: (on: boolean) => { g.input.fire = on; if (on) g.input.firePressed = true; },
     ads: (on: boolean) => { g.input.ads = on; },

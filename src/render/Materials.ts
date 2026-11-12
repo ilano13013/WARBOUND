@@ -211,7 +211,7 @@ function tex(name: string): TexSet {
 export type MatName =
   | 'concrete' | 'darkconcrete' | 'metal' | 'darkmetal' | 'rust' | 'container_red' | 'container_blue' | 'container_green' | 'asphalt' | 'dirt' | 'ash'
   | 'stone' | 'rune' | 'tiles' | 'grate' | 'hazard' | 'facade' | 'crate' | 'fabric' | 'olive' | 'black' | 'glass' | 'sandbag'
-  | 'plaster' | 'wood' | 'rock' | 'rubble' | 'ground' | 'trim' | 'cable' | 'paint_yellow' | 'paint_red' | 'paint_white'
+  | 'ruinwall' | 'concrete_damaged' | 'plaster' | 'wood' | 'rock' | 'rubble' | 'ground' | 'trim' | 'cable' | 'paint_yellow' | 'paint_red' | 'paint_white'
   | 'glow_violet' | 'glow_blue' | 'glow_orange' | 'glow_green' | 'glow_red' | 'glow_white' | 'screen' | 'crystal' | 'crystal_red' | 'chitin' | 'bone';
 
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
@@ -219,7 +219,7 @@ const matCache = new Map<string, THREE.MeshStandardMaterial>();
 /** Taille en mètres d'une répétition de texture. */
 export const TILE: Partial<Record<MatName, number>> = {
   concrete: 4, darkconcrete: 4, metal: 3, darkmetal: 3, rust: 3, container_red: 2.4, container_blue: 2.4, container_green: 2.4,
-  asphalt: 5, dirt: 5, ash: 6, plaster: 4, wood: 2, rock: 4, rubble: 3, ground: 5, trim: 2, stone: 3, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
+  asphalt: 5, dirt: 5, ash: 6, ruinwall: 2, concrete_damaged: 3, plaster: 4, wood: 2, rock: 4, rubble: 3, ground: 5, trim: 2, stone: 3, rune: 4, tiles: 3, grate: 1.5, hazard: 1.2, facade: 12, crate: 1.2, fabric: 1.5, sandbag: 1,
 };
 
 /** Matériaux PBR photographiques (ambientCG, CC0) quand ils sont chargés. */
@@ -234,6 +234,10 @@ const PBR: Partial<Record<MatName, { set: string; color?: number; metal?: number
   ash: { set: 'mud', color: 0x5a4c66, emissive: 0x3a1a6a, ei: 0.3, emissiveFrom: 'ash' },
   stone: { set: 'bricks', color: 0xa0a4b8 },
   tiles: { set: 'tiles', color: 0xc8ccd0 },
+  // Rabdentse Ruins Wall (Poly Haven, CC0) : maçonnerie ancienne, dalle réelle de 2 m
+  ruinwall: { set: 'ruinwall', color: 0xb4b0b8 },
+  // Concrete 042 D (ambientCG, CC0) : béton endommagé
+  concrete_damaged: { set: 'concrete_damaged', color: 0xa8a6a2 },
   plaster: { set: 'plaster', color: 0xb8b2a8 },
   wood: { set: 'wood', color: 0xa89880 },
   rock: { set: 'rock', color: 0x9a9aa2 },
@@ -341,6 +345,8 @@ export function mat(name: MatName): THREE.MeshStandardMaterial {
     case 'paint_yellow': m = new THREE.MeshStandardMaterial({ color: 0xc89a1e, roughness: 0.55, metalness: 0.3 }); break;
     case 'paint_red': m = new THREE.MeshStandardMaterial({ color: 0x8a2a22, roughness: 0.55, metalness: 0.3 }); break;
     case 'paint_white': m = new THREE.MeshStandardMaterial({ color: 0xb8bcc0, roughness: 0.5, metalness: 0.2 }); break;
+    case 'ruinwall': return mat('stone');
+    case 'concrete_damaged': return mat('concrete');
     case 'plaster': case 'wood': case 'rock': case 'rubble': case 'ground': m = T('concrete'); break;
     case 'trim': m = T('darkmetal', { metalness: 0.8, color: 0x888888 }); break;
     case 'olive': m = new THREE.MeshStandardMaterial({ color: 0x4a5236, roughness: 0.7, metalness: 0.2 }); break;

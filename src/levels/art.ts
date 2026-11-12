@@ -2,7 +2,7 @@
 // Placés hors des axes de circulation ; les pièces sans collision sont en hauteur, contre les murs ou hors limites.
 import type { Level } from '../world/Level';
 import {
-  banner, brazier, collapsedSlab, crystalCluster, fire, floatingRocks, floodlight, floorCables, hesco, obelisk, pipeRack, powerLine,
+  banner, brazier, cliff, collapsedSlab, crystalCluster, generator, fire, floatingRocks, floodlight, floorCables, hesco, obelisk, pipeRack, powerLine,
   razorWire, riftCrack, serverRack, silo, smokeColumn, statue, supplies, tankTrap, tendrils, watchtower,
 } from '../world/SetPieces';
 
@@ -25,6 +25,8 @@ export function artOp1(L: Level): void {
   floodlight(L, -40.6, -3, 9, R(110)); floodlight(L, 40.6, -34, 9, R(-60));
   supplies(L, 17.5, -3.4, 0.5, true); supplies(L, -18.6, -6.2, 1.2);
   riftCrack(L, -14, -31, 7, R(60)); crystalCluster(L, -19.5, -33.5, 0.7);
+  // groupe électrogène près du terminal de remise sous tension (le terminal et son interaction sont inchangés)
+  generator(L, 27.2, -16.4, R(200)); floorCables(L, [[27.4, -16.9], [27.9, -18], [28.3, -18.8]], 2, 0.03);
   // --- laboratoire : baies de calcul, câbles d'alimentation, contamination
   serverRack(L, -13, -72.9, true, 3); serverRack(L, 13, -72.9, true, 3);
   floorCables(L, [[-17.6, -77.4], [-13, -84], [-5, -92], [-1.2, -96.6]]); floorCables(L, [[17.6, -77.4], [12, -86], [5, -93], [1.2, -96.6]]);
@@ -57,6 +59,11 @@ export function artOp2(L: Level): void {
 }
 
 export function artOp3(L: Level): void {
+  // --- falaises périphériques (Rock Face 01) : dominent l'enceinte du site
+  for (let i = 0; i < 11; i++) { const z = 34 - i * 23, h = 17 + ((i * 7) % 5) * 1.6; cliff(L, -58, z, h, R(90)); cliff(L, 58, z - 9, h + 1.5, R(-90)); }
+  for (const x of [-34, -11, 12, 35]) { cliff(L, x, 55, 16, R(180)); cliff(L, x + 6, -213, 22, 0); }
+  // affleurements au pied des murs (remplacent WallRocks)
+  cliff(L, -43.4, 12, 5.5, R(90), 0.06, true); cliff(L, 43.4, -4, 5.5, R(-90), 0.06, true);
   // --- ruines : gardiens de pierre, obélisques, braseros, bannières du culte
   statue(L, -40, 34, 12, R(120)); statue(L, 40, 34, 12, R(-120)); statue(L, -41, -22, 10, R(90)); statue(L, 41, -24, 10, R(-90));
   obelisk(L, -20, 26, 7); obelisk(L, 21, 12, 6); obelisk(L, -30, -12, 8); obelisk(L, 34, 22, 7); obelisk(L, 36, -24, 6);
@@ -101,6 +108,11 @@ export function artOp4(L: Level): void {
   serverRack(L, -47.6, -50, false, 4); serverRack(L, 47.6, -100, false, 4);
   tendrils(L, -49.2, 0.2, -70, 1, 0, 8, 7); tendrils(L, 49.2, 0.2, -80, -1, 0, 8, 7); tendrils(L, 0, 0.2, -110.6, 0, 1, 9, 7);
   crystalCluster(L, -48, -108, 1.2, 'crystal_red'); crystalCluster(L, 48, -44.6, 1.1);
+  // falaises soulevées par la Fracture autour de la zone altérée et du noyau (Rock Face 01)
+  for (const z of [-118, -140, -162]) { cliff(L, -62, z, 17, R(90)); cliff(L, 62, z - 8, 18, R(-90)); }
+  for (const z of [-200, -226]) { cliff(L, -62, z, 21, R(90)); cliff(L, 62, z - 10, 20, R(-90)); }
+  for (const x of [-30, 0, 30]) cliff(L, x, -258, 24, 0);
+  cliff(L, -47.6, -148, 6, R(90), 0.06, true); cliff(L, 47.8, -130, 6, R(-90), 0.06, true);
   // --- zone altérée : sol éventré, roches en lévitation, cristaux géants
   for (const [x, z, a, c] of [[-30, -118, 80, 0], [10, -122, 150, 1], [-16, -140, 20, 0], [24, -134, -60, 1], [-36, -154, 110, 1], [6, -156, 200, 0], [38, -160, -20, 0], [-4, -128, 60, 1]] as [number, number, number, number][]) riftCrack(L, x, z, 11, R(a), c ? 'red' : 'violet', 0.26);
   crystalCluster(L, -44, -124, 2.2, 'crystal', true); crystalCluster(L, 45, -142, 2.4, 'crystal_red', true); crystalCluster(L, -45, -158, 1.8, 'crystal_red', true); crystalCluster(L, 44, -116, 1.6, 'crystal', true);

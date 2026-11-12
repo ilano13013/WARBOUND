@@ -36,7 +36,7 @@ export class Renderer {
   private atmo: ShaderPass | null = null;
   private grade: ShaderPass | null = null;
   private amb: Ambience | null = null;
-  private indoorSky = new THREE.Color(0xc4d0dc); private indoorGround = new THREE.Color(0x4a4640);
+  private indoorSky = new THREE.Color(0xc4d0dc); private indoorGround = new THREE.Color(0x77736c);
   private weather = new Weather(this.scene);
   private envBase = 0.5;
   private baseHemi = 1; private baseSun = 2; private zoneLight = 1; private zoneTarget = 1;

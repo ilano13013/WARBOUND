@@ -163,7 +163,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.1</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.2</span></div>`, {
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
@@ -281,6 +281,7 @@ export class UI {
       ${ending ? '<p class="brief">La Fracture de Point Zéro est scellée. Seize autres restent ouvertes.<br>L’unité Warbound reste en alerte : le Protocole Infini et les opérations en difficulté Vétéran vous attendent à Fort Aegis.</p>' : ''}
       <h3>WARBOUND — The Fracture Chronicles</h3>Un FPS / Action-RPG militaire dark fantasy original
       <h3>Conception, programmation, direction artistique, level design, audio</h3>Claude (Anthropic) — création autonome à partir du cahier des charges
+      <h3>Modèles et textures libres (CC0)</h3>Quaternius · Poly Haven (Jorge Camacho, James Ray Cock, Amal Kumar, Dario Barresi) · ambientCG — détail dans ASSETS.md
       <h3>Technologies</h3>TypeScript · Three.js (licence MIT) · Vite (licence MIT) · Web Audio API · IndexedDB
       <h3>Ressources</h3>Tous les modèles 3D, textures, effets, sons et musiques sont générés procéduralement par le code du jeu.<br>Aucune ressource externe sous droits n’est utilisée.
       <h3>Remerciements</h3>À vous, opérateur.

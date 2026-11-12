@@ -88,7 +88,7 @@ function floodlightHead(L: Level, x: number, y: number, z: number, ry: number, h
 export function hesco(L: Level, x: number, z: number, alongX: boolean, n = 3, h = 1.5): void {
   for (let i = 0; i < n; i++) {
     const o = (i - (n - 1) / 2) * 1.3, px = alongX ? x + o : x, pz = alongX ? z : z + o;
-    L.box('sandbag', px, 0, pz, 1.24, h, 1.24, N); L.box('dirt', px, h - 0.02, pz, 1.1, 0.12, 1.1, N);
+    L.box('fabric', px, 0, pz, 1.24, h, 1.24, N); L.box('dirt', px, h - 0.02, pz, 1.1, 0.12, 1.1, N);
     for (const s of [-1, 1]) { L.box('trim', px + s * 0.62, 0, pz, 0.03, h, 1.26, N); L.box('trim', px, 0, pz + s * 0.62, 1.26, h, 0.03, N); }
     for (let y = 0.4; y < h; y += 0.4) L.box('trim', px, y, pz, 1.27, 0.025, 1.27, N);
   }
@@ -302,4 +302,24 @@ export function collapsedSlab(L: Level, x: number, z: number, ry = 0, w = 5, sol
   for (let i = 0; i < 7; i++) L.deco(mat('rust'), new THREE.CylinderGeometry(0.02, 0.02, 1.2 + rnd(i, x), 4), x + (rnd(i, 1, z) - 0.5) * w * Math.cos(ry), 2.1 + rnd(i, 2) * 0.4, z - (rnd(i, 1, z) - 0.5) * w * Math.sin(ry) + 1.3 * Math.cos(ry), 0.9 + rnd(i, 3) * 0.6, ry, rnd(i, 4) - 0.5);
   L.rubble(x, z + 0.4, 2.2, 'rubble', 9);
   if (solid) L.collider(x, 0, z, Math.abs(Math.cos(ry)) * w + Math.abs(Math.sin(ry)) * 3, 1.5, Math.abs(Math.sin(ry)) * w + Math.abs(Math.cos(ry)) * 3, 'concrete');
+}
+
+// ---------------------------------------------------------------- assets Poly Haven (CC0)
+
+/**
+ * Falaise Rock Face 01 (Poly Haven, CC0). (x, z) = centre de la masse, `h` = hauteur, `ry` = direction vers laquelle la paroi regarde.
+ * Retourne false si l'asset manque (l'appelant garde alors son décor de repli).
+ */
+export function cliff(L: Level, x: number, z: number, h: number, ry: number, sink = 0.06, solid = false): boolean {
+  const sz = L.propSize('ph_rockface#rock_face_01');
+  if (!sz) return false;
+  const k = h / sz.y;
+  L.propM('ph_rockface#rock_face_01', new THREE.Matrix4().compose(V3(x, h * (0.5 - sink), z), new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), ry), V3(k, k, k)));
+  if (solid) { const q = Math.round(ry / (Math.PI / 2)) % 2 !== 0; L.collider(x, 0, z, (q ? sz.z : sz.x) * k * 0.8, h * 0.8, (q ? sz.x : sz.z) * k * 0.8, 'concrete'); }
+  return true;
+}
+
+/** Groupe électrogène portable (Poly Haven, CC0), à sa taille réelle (0,8 m × 0,58 m). Repli : petit caisson. */
+export function generator(L: Level, x: number, z: number, ry = 0): void {
+  if (!L.prop('ph_generator', x, 0, z, ry, 0.585, true, 'metal')) { L.box('trim', x, 0, z, 0.8, 0.55, 0.55); L.box('paint_yellow', x, 0.55, z, 0.7, 0.04, 0.45, N); }
 }

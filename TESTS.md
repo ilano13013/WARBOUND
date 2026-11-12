@@ -1,5 +1,41 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.2 (assets Poly Haven et ambientCG)
+
+Exécution complète `npm test` sur le build de production, Chromium piloté par Playwright, rendu logiciel. Les six scénarios ont passé dans la même exécution.
+
+| Scénario | Résultat |
+| --- | --- |
+| `gameplay` | 27 / 27 |
+| `systems` | 29 / 29 |
+| `boss` | 3 / 3 |
+| `survival` | 6 / 6 |
+| `layout` (points d'apparition, interactions accessibles dont le terminal du générateur) | 21 / 21 |
+| `campaign` (4 opérations jusqu'aux crédits) | 4 / 4, aucune erreur JavaScript |
+
+### Ce qui a été vérifié sur captures
+Groupe électrogène près du terminal de CENDRES, tuyaux et bouches d'aération sur les murs, gaine au plafond du laboratoire et du hangar, barrières en béton, béton endommagé du portail, falaises au-dessus de l'enceinte du temple.
+
+### Problèmes rencontrés pendant l'intégration
+- **Vitre du groupe électrogène** : son matériau « à transmission » faisait redessiner toute la scène deux fois (877 appels de rendu au lieu de 454 sur CENDRES). Remplacé par une transparence simple.
+- **Pièces modulaires trop lourdes** : un module de gaine pèse 3 100 triangles et une barrière 61 000 à l'origine. Répétés des centaines de fois, ils dépassaient 1,4 million de triangles. Simplifiés (gaine 530, tuyau 370, barrière 1 200, falaise 4 400 triangles) ; le relief vient des cartes de normales 2K. Les tuyaux de moins de 9 cm de rayon restent des cylindres.
+- **Tests** : trois vérifications étaient fausses ou trop sensibles et ont été corrigées, sans défaut du jeu. Le saut était mesuré après sa fin ; le bouclier du Souverain (3 s) était échantillonné trop rarement ; le menu de l'atelier dépassait son délai en 1280×720. Le mode test rend désormais à demi-résolution en qualité « Bas » pour garder des images assez rapides ; la logique de jeu est identique.
+
+### Mesures indicatives (rendu logiciel, qualité Bas)
+CENDRES : 459 appels de rendu, 598 000 triangles (302 000 en 2.1). QG : 209 appels, 132 000 triangles (89 000 en 2.1). Poids du build : 37 Mo (23 Mo en 2.1), surtout les textures 2K.
+
+### Non vérifié en 2.2
+- Fréquence d'images et mémoire vidéo sur une vraie carte graphique : les textures 2K ajoutent environ 20 textures de 2048 px.
+- Rendu des nouveaux matériaux en jeu réel : jugé sur des captures 960×540 en rendu logiciel. La gaine de plafond et le béton endommagé du portail paraissent sombres sur ces captures.
+- L'AK-47 et le personnage Quantum ne sont pas intégrés (fichiers non accessibles sans compte) : rien n'a été testé pour eux.
+
+### Limites
+- Les modules de gaine sont étirés ×2 en longueur pour diviser le nombre d'instances par deux.
+- Tous les tuyaux utilisent la même texture ; les variantes de couleur (rouille, jaune) de la 2.1 ont disparu pour les gros diamètres.
+- Les falaises sont hors de la zone jouable, sauf quatre affleurements avec collision au pied des murs.
+
+---
+
 ## Version 2.1 (refonte visuelle : ambiance, matériaux, densité)
 
 Exécution sur le build de production, Chromium piloté par Playwright, rendu logiciel (SwiftShader, pas de GPU dans l'environnement de développement).

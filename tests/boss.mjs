@@ -18,11 +18,14 @@ for (const id of (process.argv[2] || 'op1,op3,op4').split(',')) {
   for (let i = 0; i < 40 && !hurt; i++) { await sleep(500); const s = await st(page); if (s.hp < hp0 || s.state === 'dead') hurt = true; }
   if ((await st(page)).state === 'dead') { await page.evaluate(() => window.WB.game.respawn()); await sleep(800); }
   // 2) combat complet avec le pilote (dégâts modérés) : suivi des phases
+  // le bouclier du Souverain ne dure que 3 s de jeu (1 s réelle à vitesse ×3) : en rendu logiciel il peut s'activer et tomber
+  // dans la même image ; on enregistre donc toute activation à la source plutôt que de l'échantillonner
+  await page.evaluate(() => { const b = window.WB.game.mission.boss; window.__sh = false; if (b) { let v = b.shielded; window.__sh = !!v; Object.defineProperty(b, 'shielded', { get() { return v; }, set(x) { v = x; if (x) window.__sh = true; }, configurable: true }); } });
   await page.evaluate(() => { window.WB.bot(true, true, 0.12); window.WB.speed(3); });
   const seen = { phases: new Set(), shield: false, exposed: false, hazMax: 0, addsMax: 0 }; const t0 = Date.now(); let dead = false;
   while (Date.now() - t0 < 240000) {
     await sleep(250);
-    const s = await page.evaluate(() => { const g = window.WB.game, b = g.mission.boss; return { boss: b ? { hp: b.hp, phase: b.phase, shielded: b.shielded, alive: b.alive, exposed: b.exposedT > 0 } : null, haz: window.WB.hazards(), enemies: g.enemies.filter((e) => e.alive).length, idx: g.mission.index, state: g.state }; });
+    const s = await page.evaluate(() => { const g = window.WB.game, b = g.mission.boss; return { boss: b ? { hp: b.hp, phase: b.phase, shielded: b.shielded || window.__sh, alive: b.alive, exposed: b.exposedT > 0 } : null, haz: window.WB.hazards(), enemies: g.enemies.filter((e) => e.alive).length, idx: g.mission.index, state: g.state }; });
     if (!s.boss) break;
     seen.phases.add(s.boss.phase); seen.shield ||= s.boss.shielded; seen.exposed ||= s.boss.exposed; seen.hazMax = Math.max(seen.hazMax, s.haz); seen.addsMax = Math.max(seen.addsMax, s.enemies - 1);
     if (!s.boss.alive) { dead = true; break; }
