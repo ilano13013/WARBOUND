@@ -24,6 +24,9 @@ Groupe électrogène près du terminal de CENDRES, tuyaux et bouches d'aération
 ### Mesures indicatives (rendu logiciel, qualité Bas)
 CENDRES : 459 appels de rendu, 598 000 triangles (302 000 en 2.1). QG : 209 appels, 132 000 triangles (89 000 en 2.1). Poids du build : 37 Mo (23 Mo en 2.1), surtout les textures 2K.
 
+### Défaut signalé sur une vraie carte graphique (corrigé, non revérifié sur cette machine)
+Sur le PC de test (Edge, Windows), le menu, la création de personnage et la cinématique d'introduction affichaient de grands rectangles noirs emboîtés. Cause retenue : le shader de ciel divisait par zéro juste sous la ligne d'horizon ; la valeur invalide était ensuite étalée par le bloom. Le rendu logiciel des tests ne reproduit pas ce défaut. Correctif : dénominateur borné, et valeurs invalides ou démesurées éliminées avant le bloom. À confirmer sur la machine concernée.
+
 ### Non vérifié en 2.2
 - Fréquence d'images et mémoire vidéo sur une vraie carte graphique : les textures 2K ajoutent environ 20 textures de 2048 px.
 - Rendu des nouveaux matériaux en jeu réel : jugé sur des captures 960×540 en rendu logiciel. La gaine de plafond et le béton endommagé du portail paraissent sombres sur ces captures.

@@ -16,7 +16,8 @@ void main(){
   col+=sunCol*hor*pow(s,3.0)*0.9*(1.0-y*0.7);
   col+=sunCol*(pow(s,24.0)*0.35+pow(s,6.0)*0.12);
   // nuages en deux couches, dessous sombre et bords argentés face au soleil
-  vec2 cp=d.xz/(d.y+0.18);
+  // dénominateur borné : sous l'horizon (d.y = -0,18) la division par zéro produisait des valeurs invalides que le bloom étalait en rectangles noirs
+  vec2 cp=d.xz/max(d.y+0.18,0.06);
   float c1=fbm(cp*0.9+vec2(t*0.006,0.0)), c2=fbm(cp*2.3-vec2(0.0,t*0.01)+c1);
   float cov=smoothstep(0.62-storm*0.34,0.9-storm*0.2,c1*0.65+c2*0.45);
   float thick=smoothstep(0.45,0.95,c2);
@@ -31,6 +32,7 @@ void main(){
     col+=rift*(vec3(0.75,0.5,1.0)*core*2.4+vec3(0.35,0.15,0.8)*halo*(0.7+0.3*sin(t*1.3))); }
   // sous l'horizon : brume puis sol sombre (sert aussi aux reflets)
   col=mix(hor*mix(0.6,0.22,smoothstep(0.0,-0.5,d.y)),col,smoothstep(-0.1,0.02,d.y));
+  col=clamp(col,0.0,40.0);
   gl_FragColor=vec4(col,1.0);
 }`;
 
@@ -67,7 +69,7 @@ void main(){
   float noise=ign(gl_FragCoord.xy);
   if(!sky){
     // --- occlusion ambiante (hémisphère orienté par la normale reconstruite)
-    vec3 nrm=normalize(cross(dFdx(p),dFdy(p)));
+    vec3 nc=cross(dFdx(p),dFdy(p)); vec3 nrm=nc/max(length(nc),1e-9);
     float rad=0.75;
     float pr=min(rad*projScale/max(-p.z,0.3),0.09);
     float ang=noise*6.2831853, occ=0.0;
@@ -108,6 +110,9 @@ void main(){
     vec2 q0=dl*vec2(aspect,1.0);
     col+=sunCol*acc*sunVis*(0.5+0.5*exp(-dot(q0,q0)*1.5))*1.05;
   }
+  // garde-fou : aucune valeur invalide ou démesurée ne doit atteindre le bloom
+  if(any(isnan(col))||any(isinf(col))) col=vec3(0.0);
+  col=clamp(col,0.0,60.0);
   gl_FragColor=vec4(col,src.a);
 }`,
 };
