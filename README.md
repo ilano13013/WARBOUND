@@ -4,6 +4,26 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Nouveautés de la version 2.3 (performances et sensibilité)
+
+**Moins de ralentissements**
+- **Résolution dynamique** (activée par défaut) : sous 50 images/s, la résolution interne baisse par paliers, jusqu'à 55 % ; elle remonte quand le jeu tient 60 images/s. Désactivable dans *Paramètres → Graphismes*. La résolution réelle s'affiche avec les FPS.
+- **Densité de pixels plafonnée** : 1 en Faible et Moyen, 1,5 en Élevé. Sur un écran à 150 %, le jeu ne calcule plus 2,25 fois plus de pixels que nécessaire.
+- **Personnages** : les pièces d'un même tissu sont fusionnées, l'arme des ennemis est figée en un seul maillage, les personnages hors champ ne sont plus dessinés ni projetés en ombre, et l'animation est allégée au-delà de 25 m. Soit 46 appels de dessin au lieu de 178 au départ de CENDRES, et 22 au lieu de 124 pour les ombres.
+- **Lumières** : un nombre fixe de lumières réelles (2, 4 ou 8 selon la qualité) est attribué aux lampes les plus proches. Les lumières d'éclair passent de 4 à 2. Changer de classe dans le menu ne recompile plus tous les shaders.
+- **Ombres** : recalculées une image sur deux en Moyen, en version simple ; les petits décors, les débris et l'horizon n'en projettent plus.
+- **Post-traitement Moyen** : anticrénelage FXAA au lieu du multi-échantillonnage, occlusion et rayons du soleil allégés.
+- **Saccades supprimées** : les shaders des effets (explosions, impacts, traçantes) sont compilés au chargement et non plus à leur première apparition. L'autodiagnostic graphique ne relit plus l'image qu'une fois par scène : en 2.2.3, il provoquait une saccade toutes les 12 secondes.
+- Au total : de 43 à 68 % d'appels de dessin en moins par image selon l'endroit (mesures dans `TESTS.md`).
+
+**Sensibilité** (*Paramètres → Contrôles*)
+- Sensibilité générale de 0,05 à 5, au centième près.
+- Sensibilité verticale (rapport vertical / horizontal).
+- Sensibilité en visée et sensibilité dans la lunette, séparées.
+- Inversion de l'axe vertical.
+- Entrée brute : le mouvement de la souris sans l'accélération de Windows (actif par défaut si le navigateur le permet).
+- Bouton de retour aux valeurs par défaut.
+
 ## Nouveautés de la version 2.2 (modèles et matériaux Poly Haven / ambientCG)
 
 Sept assets CC0 téléchargés à la source et intégrés ; gameplay, collisions, objectifs, statistiques et sauvegardes inchangés. Les anciens décors restent en repli si un fichier manque.

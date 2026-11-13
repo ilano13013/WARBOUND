@@ -659,6 +659,7 @@ export class Enemy implements Damageable {
     const sp = Math.hypot(this.vel.x, this.vel.z);
     const ranged = this.def.attack !== 'melee';
     rig.setMotion(this.stunT > 0 || this.rootT > 0 ? 0 : sp, ranged && (this.state === 'combat' || this.aiming), dt);
+    rig.far = this.pos.distanceTo(this.g.r.camera.position);
     rig.update(dt);
     const aura = rig.root.userData.aura as THREE.Mesh | undefined;
     if (aura) { this.walkPhase += dt; aura.scale.setScalar(11 + Math.sin(this.walkPhase * 3) * 0.6); aura.rotation.y += dt; }

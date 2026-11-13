@@ -71,8 +71,12 @@ export class Input {
     if (this.testMode) { this.locked = true; return; }
     if (document.pointerLockElement !== this.canvas) {
       try {
-        const p: any = this.canvas.requestPointerLock();
-        if (p && p.catch) p.catch(() => { /* l'utilisateur devra cliquer */ });
+        // entrée brute (sans accélération du pointeur Windows) si demandée et prise en charge, sinon verrouillage simple
+        const plain = () => { try { const q: any = this.canvas.requestPointerLock(); if (q && q.catch) q.catch(() => undefined); } catch { /* l'utilisateur devra cliquer */ } };
+        if (this.settings.rawInput) {
+          const p: any = (this.canvas.requestPointerLock as any)({ unadjustedMovement: true });
+          if (p && p.catch) p.catch(() => plain());
+        } else plain();
       } catch { /* ignore */ }
     }
   }

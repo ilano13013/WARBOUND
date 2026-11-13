@@ -376,14 +376,14 @@ export function detailGround(L: Level): void {
     m4.compose(p.set(x, y + s * 0.3, z), q, sc.set(s * (0.7 + rnd(i, 20, 3)), s * 0.55, s));
     im.setMatrixAt(k++, m4);
   }
-  im.count = k; im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere();
+  im.count = k; im.castShadow = false; im.receiveShadow = true; im.computeBoundingSphere();
   L.fxMeshes.push(im);
   L.root.add(im);
 }
 
 // ---------------------------------------------------------------- arrière-plans lointains
 
-const silhouette = (c: number, e = 0, ei = 1) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, metalness: 0, flatShading: true, emissive: e, emissiveIntensity: ei });
+const silhouette = (c: number, e = 0, ei = 1) => { const m = new THREE.MeshStandardMaterial({ color: c, roughness: 1, metalness: 0, flatShading: true, emissive: e, emissiveIntensity: ei }); m.userData.noShadow = true; return m; };
 const SIL: Record<string, THREE.MeshStandardMaterial> = {};
 const sil = (k: string, c: number, e = 0, ei = 1) => (SIL[k] ||= silhouette(c, e, ei));
 

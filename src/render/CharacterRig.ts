@@ -1,6 +1,7 @@
 // Personnage animé à partir d'un modèle glTF : locomotion, visée et tir superposés au haut du corps,
 // sorts, attaques, réactions aux dégâts et mort. Les humanoïdes utilisent les clips retargetés de la UAL.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Assets } from '../assets/Assets';
 import { retargetClips, splitClip } from '../assets/Retarget';
 import { buildEnemyGun } from '../player/GunAssets';
@@ -37,6 +38,10 @@ export class CharacterRig {
   dead = false;
   scale = 1;
 
+  /** Distance à la caméra, renseignée par l'entité : règle la fréquence de mise à jour de l'animation. */
+  far = 0;
+  private animAcc = 0; private animN = 0;
+
   constructor(public def: RigDef) {
     const m = Assets.clone(def.model)!;
     this.model = m;
@@ -53,7 +58,7 @@ export class CharacterRig {
     m.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      mesh.castShadow = true; mesh.receiveShadow = false; mesh.frustumCulled = false;
+      mesh.castShadow = true; mesh.receiveShadow = false;
       if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals();
       const conv = (src: THREE.Material) => {
         const ms = src as THREE.MeshStandardMaterial;
@@ -79,6 +84,18 @@ export class CharacterRig {
       if (/^HandR$|^LowerArmR$/.test(o.name) && (!this.hand || o.name === 'HandR')) this.hand = o;
       if (/^HandL$/.test(o.name) && !this.handL) this.handL = o;
       if (/^Head$/.test(o.name) && !this.head) this.head = o;
+    });
+    this.mergeParts(m);
+    // élimination hors champ : chaque pièce reçoit la sphère du personnage entier, élargie pour couvrir les animations.
+    // Avant, toutes les pièces (une quinzaine par personnage) étaient dessinées et projetées en ombre en permanence.
+    m.updateMatrixWorld(true);
+    const ws = new THREE.Box3().setFromObject(m).getBoundingSphere(new THREE.Sphere());
+    const _s = new THREE.Vector3();
+    m.traverse((o) => {
+      const mesh = o as THREE.SkinnedMesh;
+      if (!mesh.isMesh) return;
+      mesh.frustumCulled = true;
+      if (mesh.isSkinnedMesh) mesh.boundingSphere = new THREE.Sphere(mesh.worldToLocal(ws.center.clone()), (ws.radius * 1.7 + 0.4) / Math.max(1e-4, mesh.getWorldScale(_s).x));
     });
     this.mixer = new THREE.AnimationMixer(m);
     // clips
@@ -209,7 +226,91 @@ export class CharacterRig {
       const sh = this.acts.get('shoot'); if (sh) sh.setEffectiveWeight(shootW * (1 - hitW));
       for (const k of ['hit', 'hitHead']) { const a = this.acts.get(k); if (a && a.isRunning()) a.setEffectiveWeight(hitW); }
     }
-    this.mixer.update(dt);
+    // animation allégée au loin : au-delà de 25 m une image sur deux, au-delà de 50 m une sur quatre (temps cumulé, sans ralentir le mouvement)
+    this.animAcc += dt;
+    const every = this.far > 50 ? 4 : this.far > 25 ? 2 : 1;
+    if (++this.animN >= every) { this.mixer.update(this.animAcc); this.animAcc = 0; this.animN = 0; }
+  }
+
+  /**
+   * Fusionne les pièces animées qui partagent un matériau (tête, torse, bras… d'un même tissu) en une seule : un personnage
+   * modulaire passe d'une quinzaine d'appels de dessin à quelques-uns. Chaque pièce est ramenée dans un repère commun
+   * (matrice de liaison appliquée), ses indices d'os sont renumérotés sur un squelette unique. Si deux pièces ne donnent pas
+   * la même pose de référence à un os commun, le groupe n'est pas fusionné (rendu inchangé).
+   */
+  private mergeParts(model: THREE.Object3D): void {
+    model.updateMatrixWorld(true);
+    const groups = new Map<string, THREE.SkinnedMesh[]>();
+    model.traverse((o) => {
+      const sm = o as THREE.SkinnedMesh;
+      if (!sm.isSkinnedMesh || Array.isArray(sm.material) || !sm.visible || sm.morphTargetInfluences) return;
+      const mt = sm.material as THREE.MeshStandardMaterial;
+      const g = sm.geometry;
+      const key = [mt.name, mt.color?.getHex(), mt.emissive?.getHex(), mt.emissiveIntensity, mt.transparent, mt.opacity, mt.map?.uuid, Object.keys(g.attributes).sort().join(','), !!g.index].join('|');
+      let a = groups.get(key); if (!a) groups.set(key, (a = [])); a.push(sm);
+    });
+    for (const parts of groups.values()) {
+      if (parts.length < 2) continue;
+      // Les modèles sont quantifiés (glTF) : chaque pièce a son propre repère de déquantification D, intégré à ses matrices
+      // inverses d'os (inv_p = B⁻¹·D_p). Pour une pièce p et la référence r : X_p = inv_r⁻¹·inv_p = D_r⁻¹·D_p, identique pour tous
+      // les os communs. La géométrie de p est ramenée dans le repère de r par G_p = X_p·bindMatrix_p ; les os partagent inv_r.
+      const bones: THREE.Bone[] = [], inv: THREE.Matrix4[] = [], at = new Map<THREE.Bone, number>();
+      const remaps: number[][] = [], xs: THREE.Matrix4[] = [];
+      let ok = true;
+      const close = (a: THREE.Matrix4, b: THREE.Matrix4) => a.elements.every((e, k) => Math.abs(e - b.elements[k]) <= 1e-3 * Math.max(1, Math.abs(e), Math.abs(b.elements[k])));
+      for (const sm of parts) {
+        const sk = sm.skeleton, map: number[] = [];
+        // X_p à partir du premier os déjà connu (référence : identité)
+        let X = new THREE.Matrix4();
+        const k0 = sk.bones.findIndex((b) => at.has(b));
+        if (bones.length && k0 < 0) { ok = false; break; }
+        if (k0 >= 0) X = inv[at.get(sk.bones[k0])!].clone().invert().multiply(sk.boneInverses[k0]);
+        const Xi = X.clone().invert(), t = new THREE.Matrix4();
+        sk.bones.forEach((b, i) => {
+          const j = at.get(b);
+          if (j === undefined) { at.set(b, bones.length); map.push(bones.length); bones.push(b); inv.push(sk.boneInverses[i].clone().multiply(Xi)); }
+          else { map.push(j); if (!close(t.multiplyMatrices(inv[j], X), sk.boneInverses[i])) ok = false; }
+        });
+        remaps.push(map); xs.push(X);
+      }
+      if (!ok) continue;
+      const v = new THREE.Vector3(), nm = new THREE.Matrix3();
+      const geos = parts.map((sm, n) => {
+        const src = sm.geometry, G = xs[n].clone().multiply(sm.bindMatrix);
+        nm.setFromMatrix4(G);
+        const g = new THREE.BufferGeometry();
+        if (src.index) g.setIndex(Array.from(src.index.array as ArrayLike<number>));
+        // attributs convertis en flottants (déquantifiés) avant toute transformation
+        const P = src.attributes.position, N = src.attributes.normal, W = src.attributes.skinWeight, I = src.attributes.skinIndex;
+        const pos = new Float32Array(P.count * 3), nor = new Float32Array(P.count * 3), wei = new Float32Array(P.count * 4), idx = new Uint16Array(P.count * 4);
+        const map = remaps[n];
+        for (let i = 0; i < P.count; i++) {
+          v.set(P.getX(i), P.getY(i), P.getZ(i)).applyMatrix4(G); pos.set([v.x, v.y, v.z], i * 3);
+          if (N) { v.set(N.getX(i), N.getY(i), N.getZ(i)).applyMatrix3(nm).normalize(); nor.set([v.x, v.y, v.z], i * 3); }
+          wei.set([W.getX(i), W.getY(i), W.getZ(i), W.getW(i)], i * 4);
+          idx.set([map[I.getX(i)] ?? 0, map[I.getY(i)] ?? 0, map[I.getZ(i)] ?? 0, map[I.getW(i)] ?? 0], i * 4);
+        }
+        g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        if (N) g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        g.setAttribute('skinWeight', new THREE.BufferAttribute(wei, 4));
+        g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
+        if (src.attributes.uv) { const U = src.attributes.uv, uv = new Float32Array(U.count * 2); for (let i = 0; i < U.count; i++) uv.set([U.getX(i), U.getY(i)], i * 2); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
+        return g;
+      });
+      const merged = mergeGeometries(geos, false);
+      for (const g of geos) g.dispose();
+      if (!merged) continue;
+      const first = parts[0];
+      const mesh = new THREE.SkinnedMesh(merged, first.material);
+      mesh.name = first.name + '_fusion';
+      mesh.castShadow = first.castShadow; mesh.receiveShadow = first.receiveShadow;
+      first.parent!.add(mesh);
+      mesh.bind(new THREE.Skeleton(bones, inv), new THREE.Matrix4());
+      for (const sm of parts) {
+        sm.removeFromParent();
+        if (sm !== first) { const i = this.materials.indexOf(sm.material as THREE.MeshStandardMaterial); if (i >= 0) this.materials.splice(i, 1); (sm.material as THREE.Material).dispose(); }
+      }
+    }
   }
 
   dispose(): void { this.mixer.stopAllAction(); for (const m of this.materials) m.dispose(); }

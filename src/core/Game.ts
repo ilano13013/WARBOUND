@@ -16,7 +16,7 @@ import { MISSION_BY_ID, MISSIONS } from '../data/missions';
 import { SaveStore, defaultSettings, type Profile, type Settings } from '../save/Save';
 import { addXp } from '../rpg/Stats';
 import { rollLoot, scrapValue, type Item } from '../rpg/items';
-import type { Level } from '../world/Level';
+import { Level } from '../world/Level';
 import { Mission } from '../mission/Mission';
 import { UI } from '../ui/UI';
 import { buildHub } from '../levels/hub';
@@ -108,6 +108,7 @@ export class Game {
   }
 
   applySettings(): void {
+    Level.lightCap = this.settings.quality === 'low' ? 2 : this.settings.quality === 'high' ? 8 : 4;
     this.r.applySettings(this.settings);
     this.level?.setFx(this.settings.quality !== 'low' && !DIAG.has('nofx'));
     this.fx.setQuality(this.settings.quality);
@@ -156,6 +157,7 @@ export class Game {
     this.r.scene.add(level.root);
     level.setFx(this.settings.quality !== 'low' && !DIAG.has('nofx'));
     this.r.setAmbience(level.ambience);
+    this.r.precompile();
     this.player.refreshStats(true);
     this.applyRunMods();
     this.player.spawn(level.spawn, level.spawnYaw, true);
@@ -417,7 +419,7 @@ export class Game {
     } else if (this.state === 'menu' || this.state === 'cinematic' || this.state === 'results') {
       this.cine.update(realDt);
       this.fx.update(realDt);
-      if (this.level) this.level.update(realDt);
+      if (this.level) { this.level.viewer.copy(this.r.camera.position); this.level.update(realDt); }
     }
     this.ui.update(realDt);
     if (this.saveT > 0) { this.saveT -= realDt; if (this.saveT <= 0) this.save(); }
@@ -443,6 +445,7 @@ export class Game {
     for (const a of this.allies) a.update(dt);
     for (let i = this.allies.length - 1; i >= 0; i--) if (!this.allies[i].alive) this.allies.splice(i, 1);
     this.combat.update(dt);
+    level.viewer.copy(this.r.camera.position);
     level.update(dt);
     this.fx.update(dt);
     this.mission?.update(dt);

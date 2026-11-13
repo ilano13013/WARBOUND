@@ -111,6 +111,8 @@ export class HUD {
   }
 
   private set(key: string, e: HTMLElement, v: string): void { if (this.cache[key] !== v) { this.cache[key] = v; e.textContent = v; } }
+  /** Variable CSS mise à jour seulement si sa valeur change (évite un recalcul de style à chaque image). */
+  private prop(key: string, e: HTMLElement, name: string, v: string): void { if (this.cache[key] !== v) { this.cache[key] = v; e.style.setProperty(name, v); } }
   private style(key: string, e: HTMLElement, prop: string, v: string): void { if (this.cache[key] !== v) { this.cache[key] = v; (e.style as any)[prop] = v; } }
 
   // ---------- événements ----------
@@ -203,13 +205,15 @@ export class HUD {
     const gap = 4 + g.weapons.spreadNow * 7 + this.fireKick * 3;
     const hide = g.weapons.adsK > 0.6 || p.sprinting || p.dead;
     this.style('crossO', this.cross, 'opacity', hide ? '0' : '1');
-    if (!hide) {
+    const gk = Math.round(gap * 4) / 4;
+    if (!hide && this.cache.gap !== String(gk)) {
+      this.cache.gap = String(gk);
       const L = 8;
       const c = this.crossLines;
-      c[0].style.cssText = `left:${-gap - L}px;top:-1px;width:${L}px;height:2px`;
-      c[1].style.cssText = `left:${gap}px;top:-1px;width:${L}px;height:2px`;
-      c[2].style.cssText = `left:-1px;top:${-gap - L}px;width:2px;height:${L}px`;
-      c[3].style.cssText = `left:-1px;top:${gap}px;width:2px;height:${L}px`;
+      c[0].style.cssText = `left:${-gk - L}px;top:-1px;width:${L}px;height:2px`;
+      c[1].style.cssText = `left:${gk}px;top:-1px;width:${L}px;height:2px`;
+      c[2].style.cssText = `left:-1px;top:${-gk - L}px;width:2px;height:${L}px`;
+      c[3].style.cssText = `left:-1px;top:${gk}px;width:2px;height:${L}px`;
     }
     if (this.hitT > 0) { this.hitT -= dt; if (this.hitT <= 0) this.hit.style.opacity = '0'; }
     this.scope.classList.toggle('hidden', !g.weapons.scopeOverlay || p.dead);
@@ -237,12 +241,12 @@ export class HUD {
     for (let i = 0; i < 3; i++) {
       const s = this.skills[i]; if (!s) continue;
       const cd = p.cds[i], k = cd / p.cdMax[i];
-      this.style('cd' + i, s.cd, '--cd' as any, Math.min(1, k).toFixed(3)); s.cd.style.setProperty('--cd', Math.min(1, k).toFixed(3));
+      this.prop('cd' + i, s.cd, '--cd', Math.min(1, k).toFixed(2));
       this.set('cdt' + i, s.cdt, cd > 0 ? (cd < 10 ? cd.toFixed(1) : String(Math.ceil(cd))) : '');
       s.root.classList.toggle('noen', cd <= 0 && p.energy < p.cls.skills[i].cost);
       s.root.classList.toggle('act', p.has(p.cls.skills[i].id));
     }
-    this.ult.cd.style.setProperty('--cd', (1 - p.ult / 100).toFixed(3));
+    this.prop('ultcd', this.ult.cd, '--cd', (1 - p.ult / 100).toFixed(2));
     this.set('ultt', this.ult.cdt, p.ult < 100 ? `${Math.floor(p.ult)}%` : '');
     this.ult.root.classList.toggle('ready', p.ult >= 100);
     this.set('gren', this.gren.querySelector('.cdt') as HTMLElement, String(p.grenades));
@@ -258,7 +262,7 @@ export class HUD {
     // vignette de dégâts
     this.vigT = Math.max(0, this.vigT - dt * 1.3);
     const low = hpK < 0.3 ? 0.35 + Math.sin(performance.now() / 180) * 0.12 : 0;
-    this.vignette.style.opacity = String(Math.min(1, Math.max(this.vigT, low, p.dead ? 0.9 : 0)));
+    this.style('vig', this.vignette, 'opacity', Math.min(1, Math.max(this.vigT, low, p.dead ? 0.9 : 0)).toFixed(2));
     if (this.flashT > 0) { this.flashT -= dt; this.flashEl.style.opacity = String(Math.max(0, this.flashT / 0.3)); }
     for (let i = this.dirs.length - 1; i >= 0; i--) { const d = this.dirs[i]; d.t -= dt; d.el.style.opacity = String(Math.max(0, d.t)); if (d.t <= 0) { d.el.remove(); this.dirs.splice(i, 1); } }
     // nombres de dégâts
@@ -305,7 +309,7 @@ export class HUD {
       rel = Math.max(-90, Math.min(90, rel));
       cobj.style.display = 'block'; cobj.style.transform = `translateX(${(rel / 22.5) * 40}px)`;
     } else cobj.style.display = 'none';
-    if (g.settings.showFps) this.set('fps', this.fpsEl, `${g.fps} FPS · ${g.r.info.calls} appels · ${(g.r.info.tris / 1000).toFixed(0)}k tri`); else this.set('fps', this.fpsEl, '');
+    if (g.settings.showFps) this.set('fps', this.fpsEl, `${g.fps} FPS · résolution ${g.r.resPct} % · ${g.r.info.calls} appels · ${(g.r.info.tris / 1000).toFixed(0)}k tri`); else this.set('fps', this.fpsEl, '');
   }
 
   private updateBoss(b: Boss | null): void {

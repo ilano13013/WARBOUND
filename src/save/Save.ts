@@ -32,6 +32,16 @@ export interface Settings {
   quality: 'low' | 'medium' | 'high';
   renderScale: number;
   sens: number;
+  /** Rapport vertical / horizontal de la sensibilité. */
+  sensY: number;
+  /** Multiplicateurs en visée (ADS) et dans une lunette. */
+  adsSens: number;
+  scopeSens: number;
+  invertY: boolean;
+  /** Entrée brute : mouvement de la souris sans l'accélération du système. */
+  rawInput: boolean;
+  /** Résolution dynamique : baisse la résolution interne quand les images ralentissent. */
+  dynRes: boolean;
   fov: number;
   volMaster: number;
   volMusic: number;
@@ -64,7 +74,7 @@ export function defaultBinds(layout: 'azerty' | 'qwerty'): Record<string, string
 
 export function defaultSettings(): Settings {
   return {
-    version: SAVE_VERSION, quality: 'medium', renderScale: 1, sens: 1, fov: 100, volMaster: 0.8, volMusic: 0.5, volSfx: 0.9,
+    version: SAVE_VERSION, quality: 'medium', renderScale: 1, sens: 1, sensY: 1, adsSens: 1, scopeSens: 1, invertY: false, rawInput: true, dynRes: true, fov: 100, volMaster: 0.8, volMusic: 0.5, volSfx: 0.9,
     showFps: false, reduceMotion: false, layout: 'azerty', binds: defaultBinds('azerty'),
   };
 }
@@ -154,7 +164,13 @@ export function validateSettings(raw: any): Settings {
   const s: Settings = { ...d };
   if (['low', 'medium', 'high'].includes(raw.quality)) s.quality = raw.quality;
   s.renderScale = num(raw.renderScale, 1, 0.5, 1.5);
-  s.sens = num(raw.sens, 1, 0.1, 4);
+  s.sens = num(raw.sens, 1, 0.05, 6);
+  s.sensY = num(raw.sensY, 1, 0.3, 3);
+  s.adsSens = num(raw.adsSens, 1, 0.2, 2.5);
+  s.scopeSens = num(raw.scopeSens, 1, 0.2, 2.5);
+  s.invertY = !!raw.invertY;
+  s.rawInput = raw.rawInput === undefined ? true : !!raw.rawInput;
+  s.dynRes = raw.dynRes === undefined ? true : !!raw.dynRes;
   s.fov = num(raw.fov, 100, 70, 120);
   s.volMaster = num(raw.volMaster, 0.8, 0, 1);
   s.volMusic = num(raw.volMusic, 0.5, 0, 1);

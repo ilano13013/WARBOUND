@@ -214,7 +214,7 @@ export class FX {
       m.visible = false; this.group.add(m);
       this.decals.push({ mesh: m, life: 0 });
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) { // deux suffisent (tir + explosion) : chaque lumière pèse sur chaque pixel affiché
       const l = new THREE.PointLight(0xffffff, 0, 14, 1.8);
       this.group.add(l);
       this.flashes.push({ light: l, life: 0, max: 1, intensity: 0 });

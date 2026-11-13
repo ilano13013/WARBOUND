@@ -1,5 +1,47 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.3 (performances et sensibilité)
+
+| Scénario | Résultat |
+| --- | --- |
+| `gameplay` | 27 / 27 |
+| `systems` | 29 / 29 |
+| `settings` (nouveau : sensibilité générale, verticale, en visée, inversion, résolution dynamique, persistance, panneau) | 10 / 10 |
+| `boss` | 3 / 3 |
+| `survival` | 6 / 6 |
+| `layout` | 21 / 21 |
+| `campaign` | 4 / 4, aucune erreur JavaScript |
+
+### Mesures (rendu logiciel, qualité Moyen, 640×360)
+Les temps d'image du rendu logiciel ne reflètent pas une vraie carte graphique : le processeur y empile les images en retard. On mesure donc les **appels de dessin** (coût processeur, souvent le facteur limitant sur un portable) et les triangles. Valeur par image, avec la passe d'ombre une image sur deux :
+
+| Vue | 2.2.3 | 2.3 |
+| --- | --- | --- |
+| CENDRES, départ | 772 | 437 |
+| CENDRES, cour | 754 | 375 |
+| CENDRES, laboratoire | 616 | 202 |
+| VILLE MORTE, départ | 966 | 499 |
+| POINT ZÉRO, départ | 928 | 510 |
+| POINT ZÉRO, zone altérée | 801 | 254 |
+
+Détail au départ de CENDRES : personnages animés 178 → 46 appels (ombres 124 → 22).
+
+### Défauts trouvés et corrigés pendant ce travail
+- **Saccade périodique** : l'autodiagnostic de la 2.2.3 relisait l'image toutes les 12 s, ce qui bloque la carte graphique. Il ne le fait plus qu'une fois par scène.
+- **Recompilation des shaders sur l'écran de création** : chaque clic sur une classe ajoutait ou retirait une lumière.
+- **Résolution dynamique inactive sur les machines les plus lentes** (trouvé par le nouveau test) : les images de plus de 120 ms étaient ignorées.
+- **Première version du test `settings` invalide** : arguments inversés, tout passait. Corrigé avant toute conclusion.
+
+### Fusion des pièces des personnages
+Les modèles sont compressés (quantification glTF) : chaque pièce garde ses positions en entiers normalisés, et sa déquantification est intégrée à ses propres matrices d'os. La fusion convertit les attributs en flottants et transfère exactement chaque pièce dans le repère d'une pièce de référence, en vérifiant la cohérence sur tous les os communs. Si la vérification échoue, le groupe n'est pas fusionné. Un premier essai qui ignorait ce point déformait les personnages ; il a été vu sur capture et corrigé avant tout envoi. Rendu vérifié sur quatre types d'ennemis.
+
+### Non vérifié en 2.3
+- **Gain réel en images/s sur votre machine** : aucune carte graphique ici. Les gains sur la carte graphique (pixels, lumières, anticrénelage) ne sont pas chiffrés.
+- **Entrée brute** : l'option demande au navigateur le mouvement sans accélération ; si le navigateur la refuse, le verrouillage classique est utilisé. Non testable sans souris réelle.
+- **Lisibilité de l'image à résolution dynamique basse** (55 %) : plus floue, non jugée en jeu réel.
+
+---
+
 ## Version 2.2 (assets Poly Haven et ambientCG)
 
 Exécution complète `npm test` sur le build de production, Chromium piloté par Playwright, rendu logiciel. Les six scénarios ont passé dans la même exécution.

@@ -33,6 +33,8 @@ export class Cinematics {
   }
 
   /** Décor 3D animé du menu principal : une Fracture ouverte au-dessus d'un champ de bataille. */
+  private opLight: THREE.PointLight | null = null;
+
   menuBackdrop(): void {
     const g = this.g;
     const L = new Level('menu', 'Menu', { skyTop: 0x0a0a1e, skyHorizon: 0x3a2850, fog: 0x1a1428, fogDensity: 0.018, sun: 0xb090ff, sunIntensity: 1.6, sunDir: [-0.4, 0.5, -0.6], hemiSky: 0x6a5a9a, hemiGround: 0x18141c, hemiIntensity: 0.9, rift: true });
@@ -45,6 +47,7 @@ export class Cinematics {
     L.rubble(-4, -8, 2.5, 'stone'); L.rubble(3, -11, 2, 'stone'); L.deadTree(-11, -1, 6); L.deadTree(12, 2, 5);
     L.lamp(0, 4.2, -15, 'violet', true, 60, 40);
     L.lamp(2, 2.6, 5, 'white', true, 10, 12);
+    this.opLight = new THREE.PointLight(0xffffff, 0, 4, 1.6); L.root.add(this.opLight);
     L.bounds = { minX: -20, minZ: -30, maxX: 20, maxZ: 12 };
     L.finish();
     g.level = L;
@@ -60,14 +63,16 @@ export class Cinematics {
     const g = this.g;
     if (this.operator) { this.operator.removeFromParent(); this.operator = null; }
     this.opClass = id;
+    if (this.opLight && !id) this.opLight.intensity = 0;
     if (!id || !g.level) return;
     const rig = buildOperatorRig(CLASSES[id].color, id === 'wraith' || id === 'lifebinder' || id === 'ranger');
     this.opRig = rig;
     this.operator = rig ? rig.root : buildOperatorModel(CLASSES[id].color);
     // halo de la couleur de la classe aux pieds de l'opérateur
-    if (rig) { const l = new THREE.PointLight(CLASSES[id].color, 6, 4, 1.6); l.position.set(0, 1.2, 0.6); rig.root.add(l); }
     this.operator.position.set(-1.2, 0.02, 3.2);
     this.operator.rotation.y = Math.PI * 0.9;
+    // halo de la classe : la lumière persistante est déplacée et recolorée (aucune lumière ajoutée)
+    if (this.opLight) { this.opLight.color.setHex(CLASSES[id].color); this.opLight.intensity = rig ? 6 : 0; this.operator.updateMatrixWorld(); this.opLight.position.set(0, 1.2, 0.6).applyMatrix4(this.operator.matrix); }
     g.level.root.add(this.operator);
     g.fx.ring(this.operator.position, 0.3, 2.2, CLASSES[id].color, 0.6);
   }

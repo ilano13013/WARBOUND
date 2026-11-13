@@ -188,9 +188,11 @@ export class Player {
     if (this.mod('hpRegen')) this.hp = Math.min(this.maxHp, this.hp + this.mod('hpRegen') * dt);
 
     // visée
-    const sens = 0.0022 * g.settings.sens * (g.weapons.adsK > 0.5 ? 0.35 + 0.65 * g.weapons.zoomNow : 1);
+    // sensibilité : générale, puis en visée (suivant le zoom, multipliée par le réglage ADS ou lunette), puis rapport vertical
+    const st = g.settings, ads = g.weapons.adsK > 0.5;
+    const sens = 0.0022 * st.sens * (ads ? (0.35 + 0.65 * g.weapons.zoomNow) * (g.weapons.w?.st.scoped ? st.scopeSens : st.adsSens) : 1);
     this.yaw -= inp.mouseDX * sens;
-    const dp = inp.mouseDY * sens;
+    const dp = inp.mouseDY * sens * st.sensY * (st.invertY ? -1 : 1);
     this.pitch -= dp;
     if (dp > 0 && this.recoilAccum > 0) this.recoilAccum = Math.max(0, this.recoilAccum - dp);
     // application progressive du recul

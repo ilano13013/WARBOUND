@@ -102,6 +102,13 @@ export class Level {
   private lightCount = 0;
   private propList: { name: string; m: THREE.Matrix4 }[] = [];
   maxLights = 8;
+  /** Plafond global de lumières réelles, fixé par la qualité graphique (Faible 2, Moyen 4, Élevé 8). */
+  static lightCap = 4;
+  /** Position de la caméra, fournie par le jeu : les lumières réelles sont attribuées aux lampes les plus proches. */
+  viewer = new THREE.Vector3();
+  private lampList: { pos: THREE.Vector3; color: number; intensity: number; dist: number }[] = [];
+  private lightPool: { light: THREE.PointLight; lamp: number; k: number }[] = [];
+  private lightT = 0;
   /** Maillages d'ambiance (halos, cônes, taches, débris) : coupés en qualité « Bas ». */
   fxMeshes: THREE.Object3D[] = [];
   setFx(on: boolean): void { for (const m of this.fxMeshes) m.visible = on; }
@@ -166,6 +173,7 @@ export class Level {
   /** Finalise le niveau : fusionne la géométrie et construit la navigation. */
   finish(): void {
     if (this.autoDetail) detailGround(this);
+    this.buildLightPool();
     for (const [m, b] of this.batches) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
@@ -181,7 +189,8 @@ export class Level {
       const g = mergeGeometries(geos, false);
       if (!g) continue;
       const mesh = new THREE.Mesh(g, material);
-      mesh.castShadow = !(material as any).transparent; mesh.receiveShadow = true;
+      // ombres portées : ni pour les transparents, ni pour les silhouettes lointaines (hors de la zone d'ombre)
+      mesh.castShadow = !(material as any).transparent && !material.userData.noShadow; mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       // halos, cônes de lumière, taches : effets d'ambiance masquables en qualité « Bas »
       if ((material as any).transparent && (material as any).depthWrite === false) { mesh.userData.wbFx = true; this.fxMeshes.push(mesh); }
@@ -194,8 +203,35 @@ export class Level {
     this.world.buildNav(b.minX, b.minZ, b.maxX, b.maxZ, 0);
   }
 
+  /** Crée l'ensemble fixe de lumières réelles (nombre constant : aucune recompilation des shaders en cours de partie). */
+  private buildLightPool(): void {
+    const n = Math.min(this.maxLights, Level.lightCap, this.lampList.length);
+    for (let i = 0; i < n; i++) { const l = new THREE.PointLight(0xffffff, 0, 10, 1.8); this.root.add(l); this.lightPool.push({ light: l, lamp: -1, k: 0 }); }
+    this.assignLights(true);
+  }
+
+  /** Attribue les lumières aux lampes qui comptent le plus pour le joueur (proches et puissantes). */
+  private assignLights(snap = false): void {
+    if (!this.lightPool.length) return;
+    const v = this.viewer;
+    const order = this.lampList.map((l, i) => ({ i, s: l.pos.distanceTo(v) / Math.max(4, l.dist) })).sort((a, b) => a.s - b.s).slice(0, this.lightPool.length).map((o) => o.i);
+    const want = new Set(order);
+    const free = this.lightPool.filter((p) => !want.has(p.lamp));
+    for (const p of this.lightPool) want.delete(p.lamp);
+    for (const i of want) {
+      const p = free.shift(); if (!p) break;
+      const d = this.lampList[i];
+      p.lamp = i; p.k = snap ? 1 : 0;
+      p.light.position.copy(d.pos); p.light.color.setHex(d.color); p.light.distance = d.dist;
+    }
+  }
+
   update(dt: number): void {
     this.time += dt;
+    if (this.lightPool.length) {
+      if ((this.lightT -= dt) <= 0) { this.lightT = 0.3; this.assignLights(); }
+      for (const p of this.lightPool) { p.k = Math.min(1, p.k + dt * 3); const d = this.lampList[p.lamp]; p.light.intensity = d ? d.intensity * p.k : 0; }
+    }
     for (const d of this.doors) d.update(dt);
     for (const u of this.updaters) u(dt, this.time);
     for (const d of this.destructibles) if (d.flash > 0) d.flash -= dt;
@@ -255,10 +291,13 @@ export class Level {
         for (const m of list) { const o = Assets.clone('props/' + name); if (!o) continue; m.decompose(o.position, o.quaternion, o.scale); o.traverse((n) => { n.castShadow = true; n.receiveShadow = true; }); this.root.add(o); }
         continue;
       }
+      // petits décors (moins de 0,9 m) : pas d'ombre portée, ils doublaient le coût de la passe d'ombre pour un effet invisible
+      let hMax = 0; for (const m of list) hMax = Math.max(hMax, info.h * m.getMaxScaleOnAxis());
+      const cast = hMax > 0.9;
       for (const part of info.parts) {
         const im = new THREE.InstancedMesh(part.geometry, part.material, list.length);
         list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, part.local)));
-        im.castShadow = true; im.receiveShadow = true;
+        im.castShadow = cast; im.receiveShadow = true;
         im.computeBoundingSphere();
         this.root.add(im);
       }
@@ -486,12 +525,8 @@ export class Level {
     // lumière visible dans l'air et flaque au sol
     const gy = this.world.groundAt(x, z, y - 0.4), hgt = y - gy;
     if (gy > -50 && hgt > 1.6 && hgt < 9) { lightCone(this, x, y - 0.05, z, hgt - 0.05, Math.min(hgt * 0.55, 3.2), hex[color]); glowPatch(this, x, gy + 0.025, z, Math.min(hgt * 0.9, 5), hex[color]); }
-    if (real && this.lightCount < this.maxLights) {
-      this.lightCount++;
-      const l = new THREE.PointLight(hex[color], intensity, dist, 1.8);
-      l.position.set(x, y - 0.3, z);
-      this.root.add(l);
-    }
+    // lumière réelle : enregistrée, puis servie par un ensemble fixe de lumières réattribuées selon la position du joueur
+    if (real) { this.lightCount++; this.lampList.push({ pos: new THREE.Vector3(x, y - 0.3, z), color: hex[color], intensity, dist }); }
   }
 
   crystalDeco(x: number, y: number, z: number, s = 1, m: MatName = 'crystal'): void {

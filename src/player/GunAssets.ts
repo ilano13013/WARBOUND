@@ -264,5 +264,51 @@ export function buildEnemyGun(id = 'enemy_rifle'): { root: THREE.Group; muzzle: 
   const muzzle = new THREE.Object3D();
   if (mz) mz.getWorldPosition(muzzle.position); else muzzle.position.set(0, 0.05, -0.5);
   root.add(muzzle);
+  flattenToVertexColors(root);
   return { root, muzzle };
+}
+
+let flatMat: THREE.MeshStandardMaterial | null = null;
+/**
+ * Fige un modèle (pièces articulées comprises) en un seul maillage à couleurs par sommet, exprimé dans le repère de `root`.
+ * Arme des ennemis : une dizaine de pièces et de matériaux unis deviennent un seul appel de dessin (et un seul en ombre).
+ * Les nœuds (bouche du canon, os) sont conservés ; seuls les maillages sont remplacés.
+ */
+export function flattenToVertexColors(root: THREE.Object3D): THREE.Mesh | null {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert();
+  const meshes: THREE.Mesh[] = [];
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+  if (meshes.length < 2) return null;
+  const pos: number[] = [], col: number[] = [];
+  const v = new THREE.Vector3(), c = new THREE.Color(), mw = new THREE.Matrix4();
+  for (const m of meshes) {
+    const sk = m as THREE.SkinnedMesh;
+    if (sk.isSkinnedMesh) sk.skeleton.update();
+    const g = m.geometry, idx = g.index, n = idx ? idx.count : g.attributes.position.count;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    const groups = g.groups.length ? g.groups : [{ start: 0, count: n, materialIndex: 0 }];
+    mw.multiplyMatrices(inv, m.matrixWorld);
+    for (const gr of groups) {
+      const mt = mats[gr.materialIndex ?? 0] as THREE.MeshStandardMaterial | undefined;
+      if (!mt || mt.transparent) continue;
+      c.copy(mt.color ?? c.setRGB(1, 1, 1));
+      const end = Math.min(n, gr.start + gr.count);
+      for (let k = gr.start; k < end; k++) {
+        m.getVertexPosition(idx ? idx.getX(k) : k, v).applyMatrix4(mw);
+        pos.push(v.x, v.y, v.z); col.push(c.r, c.g, c.b);
+      }
+    }
+  }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  if (!flatMat) flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.55 });
+  const out = new THREE.Mesh(geo, flatMat);
+  out.castShadow = true;
+  for (const m of meshes) m.removeFromParent();
+  root.add(out);
+  return out;
 }

@@ -163,7 +163,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.2.3</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.3.0</span></div>`, {
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
@@ -294,7 +294,7 @@ export class UI {
     const g = this.g, s = g.settings;
     this.settingsBack = back;
     const slider = (id: string, label: string, min: number, max: number, step: number, val: number, fmt: (v: number) => string) => `<div class="statline" style="grid-template-columns:190px 1fr 60px"><span>${label}</span><input type="range" data-i="rng" data-v="${id}" min="${min}" max="${max}" step="${step}" value="${val}"><span id="val-${id}">${fmt(val)}</span></div>`;
-    const fmts: Record<string, (v: number) => string> = { renderScale: (v) => Math.round(v * 100) + ' %', sens: (v) => v.toFixed(2), fov: (v) => v + '°', volMaster: (v) => Math.round(v * 100) + ' %', volMusic: (v) => Math.round(v * 100) + ' %', volSfx: (v) => Math.round(v * 100) + ' %' };
+    const fmts: Record<string, (v: number) => string> = { renderScale: (v) => Math.round(v * 100) + ' %', sens: (v) => v.toFixed(2), sensY: (v) => '×' + v.toFixed(2), adsSens: (v) => '×' + v.toFixed(2), scopeSens: (v) => '×' + v.toFixed(2), fov: (v) => v + '°', volMaster: (v) => Math.round(v * 100) + ' %', volMusic: (v) => Math.round(v * 100) + ' %', volSfx: (v) => Math.round(v * 100) + ' %' };
     const render = () => {
       const q = (id: string, l: string) => `<button class="btn small ${s.quality === id ? 'primary' : ''}" data-a="quality" data-v="${id}">${l}</button>`;
       const binds = ACTIONS.map((a) => `<div class="keybind"><span>${a.label}</span><button class="btn small" data-a="bind" data-v="${a.id}">${bindLabel(s.binds[a.id])}</button></div>`).join('');
@@ -303,12 +303,19 @@ export class UI {
           <div class="label">Graphismes</div>
           <div class="row"><span style="width:190px;font-size:13px">Qualité graphique</span>${q('low', 'Faible')}${q('medium', 'Moyen')}${q('high', 'Élevé')}</div>
           ${slider('renderScale', 'Échelle de rendu', 0.5, 1.5, 0.05, s.renderScale, fmts.renderScale)}
+          <div class="row"><span style="width:190px;font-size:13px">Résolution dynamique (anti-ralentissement)</span><button class="btn small ${s.dynRes ? 'primary' : ''}" data-a="toggle" data-v="dynRes">${s.dynRes ? 'Oui' : 'Non'}</button></div>
           ${slider('fov', 'Champ de vision', 70, 120, 1, s.fov, fmts.fov)}
           <div class="row"><span style="width:190px;font-size:13px">Afficher les FPS</span><button class="btn small ${s.showFps ? 'primary' : ''}" data-a="toggle" data-v="showFps">${s.showFps ? 'Oui' : 'Non'}</button></div>
           <div class="row"><span style="width:190px;font-size:13px">Réduire les mouvements de caméra</span><button class="btn small ${s.reduceMotion ? 'primary' : ''}" data-a="toggle" data-v="reduceMotion">${s.reduceMotion ? 'Oui' : 'Non'}</button></div>
           <div class="row"><span style="width:190px;font-size:13px">Plein écran</span><button class="btn small" data-a="fullscreen">Basculer</button></div>
           <div class="label" style="margin-top:10px">Contrôles</div>
-          ${slider('sens', 'Sensibilité souris', 0.2, 3, 0.05, s.sens, fmts.sens)}
+          ${slider('sens', 'Sensibilité souris', 0.05, 5, 0.01, s.sens, fmts.sens)}
+          ${slider('sensY', 'Sensibilité verticale', 0.3, 3, 0.05, s.sensY, fmts.sensY)}
+          ${slider('adsSens', 'Sensibilité en visée', 0.2, 2.5, 0.05, s.adsSens, fmts.adsSens)}
+          ${slider('scopeSens', 'Sensibilité dans la lunette', 0.2, 2.5, 0.05, s.scopeSens, fmts.scopeSens)}
+          <div class="row"><span style="width:190px;font-size:13px">Inverser l’axe vertical</span><button class="btn small ${s.invertY ? 'primary' : ''}" data-a="toggle" data-v="invertY">${s.invertY ? 'Oui' : 'Non'}</button></div>
+          <div class="row"><span style="width:190px;font-size:13px">Entrée brute (sans accélération Windows)</span><button class="btn small ${s.rawInput ? 'primary' : ''}" data-a="toggle" data-v="rawInput">${s.rawInput ? 'Oui' : 'Non'}</button></div>
+          <div class="row"><span style="width:190px;font-size:13px"></span><button class="btn small" data-a="sensReset">Sensibilité par défaut</button><span class="label" style="margin-left:8px">L’entrée brute s’applique au prochain clic dans le jeu</span></div>
           <div class="label" style="margin-top:10px">Audio</div>
           ${slider('volMaster', 'Volume principal', 0, 1, 0.05, s.volMaster, fmts.volMaster)}
           ${slider('volMusic', 'Volume musique', 0, 1, 0.05, s.volMusic, fmts.volMusic)}
@@ -321,6 +328,7 @@ export class UI {
         </div></div>
         <div class="panel-foot"><button class="btn primary" data-a="back">Valider</button><span class="label">Les paramètres sont enregistrés automatiquement</span></div></div>`, {
         quality: (v) => { s.quality = v as any; g.applySettings(); g.saveSettings(); render(); },
+        sensReset: () => { s.sens = 1; s.sensY = 1; s.adsSens = 1; s.scopeSens = 1; s.invertY = false; g.saveSettings(); render(); },
         toggle: (v) => { (s as any)[v] = !(s as any)[v]; g.applySettings(); g.saveSettings(); render(); },
         fullscreen: () => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().then(() => (navigator as any).keyboard?.lock?.().catch(() => undefined)).catch(() => undefined); },
         rng: (v, el) => { const val = parseFloat((el as HTMLInputElement).value); (s as any)[v] = val; const lab = document.getElementById('val-' + v); if (lab) lab.textContent = fmts[v](val); g.applySettings(); g.saveSettings(); },
