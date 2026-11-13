@@ -44,22 +44,27 @@ ok(a.opp_name === 'Bravo' && b.opp_name === 'Alpha', 'noms échangés', `${a.opp
 ok(a.weapon === 'ar17' && b.weapon === 'ar17', 'première arme de l’échelle pour les deux', `${a.weapon} / ${b.weapon}`);
 
 // synchronisation des positions
-await B.evaluate(() => window.WB.tp(6, 0.1, -3, 0));
+await B.evaluate(() => window.WB.tp(12, 0.1, -13.3, 0));
 await sleep(1500);
 a = await ds(A);
-ok(a.rival && Math.hypot(a.rival.x - 6, a.rival.z + 3) < 0.6, 'position de l’adversaire synchronisée', JSON.stringify(a.rival));
+ok(a.rival && Math.hypot(a.rival.x - 12, a.rival.z + 13.3) < 0.6, 'position de l’adversaire synchronisée', JSON.stringify(a.rival));
 
+// étage : depuis la base ouest, l'escalier mène sur le conteneur puis sur la plate-forme centrale
+await A.evaluate(() => { window.WB.tp(-19, 0.1, 0, -Math.PI / 2); window.WB.sim('forward', true); });
+await sleep(4500);
+const up = await A.evaluate(() => { window.WB.sim('forward', false); const p = window.WB.game.player.pos; return { x: +p.x.toFixed(1), y: +p.y.toFixed(2) }; });
+ok(up.y > 2.4 && up.x > -6, 'à pied : escalier, conteneur puis étage central', JSON.stringify(up));
 // l'hôte vise l'invité et tire jusqu'à l'élimination, pour chaque arme
 async function killOnce(round) {
   // invité immobile à 9 m devant (allée centrale dégagée) l'hôte, sans invulnérabilité d'apparition
-  await B.evaluate(() => { window.WB.tp(0, 0.1, 3, 0); });
-  await A.evaluate(() => { window.WB.tp(0, 0.1, 12, 0); window.WB.look(0, -0.06); });
+  await B.evaluate(() => { window.WB.tp(3, 0.1, 13, 0); });
+  await A.evaluate(() => { window.WB.tp(12, 0.1, 12.6, Math.PI / 2); window.WB.look(Math.PI / 2, -0.06); });
   const before = await ds(A);
-  await A.waitForFunction(() => { const s = window.WB.duelState(); return s.rival && s.rival.alive && !s.rival.inv && Math.abs(s.rival.z - 3) < 0.4; }, null, { timeout: 15000 });
+  await A.waitForFunction(() => { const s = window.WB.duelState(); return s.rival && s.rival.alive && !s.rival.inv && Math.abs(s.rival.x - 3) < 0.4; }, null, { timeout: 15000 });
   const t0 = Date.now();
   let hpSeen = 100;
   while (Date.now() - t0 < 25000) {
-    await A.evaluate(() => { window.WB.look(0, -0.06); window.WB.fire(true); });
+    await A.evaluate(() => { window.WB.look(Math.PI / 2, -0.06); window.WB.fire(true); });
     await sleep(160);
     const s = await ds(B);
     hpSeen = Math.min(hpSeen, s.hp);
