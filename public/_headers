@@ -1,0 +1,13 @@
+# En-têtes Netlify, lus aussi lors d'un dépôt manuel du dossier dist/ (glisser-déposer).
+/assets/*.js
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+/assets/models/*
+  Cache-Control: public, max-age=604800
+  Content-Type: model/gltf-binary
+/assets/textures/*
+  Cache-Control: public, max-age=604800
+/assets/sounds/*
+  Cache-Control: public, max-age=604800
+  Content-Type: audio/ogg
