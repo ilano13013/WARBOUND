@@ -213,7 +213,7 @@ export class WeaponSystem {
     if (this.adsK < 0.9 || !st.scoped) g.fx.tracer(_m, end, tcol, st.def.family === 'sniper' ? 0.05 : 0.022, st.def.family === 'sniper' ? 0.16 : 0.06);
     else g.fx.tracer(_r.copy(_o).addScaledVector(_d, 2), end, tcol, 0.05, 0.16);
 
-    if (g.duel.active) g.duel.onShot(end, st.def.id);
+    if (g.duel.active) g.duel.onShot(end, st.def.id, st.silent);
     if (hit) {
       if (hit.enemy) {
         const dist = hit.t;

@@ -17,6 +17,8 @@ Deux navigateurs (contextes séparés) sur la même machine, sans réseau extér
 
 Arène refaite en « trois voies, un étage » : le test vérifie aussi qu'on monte à pied de la base à l'étage central (escalier, toit du conteneur, plate-forme). Vérifié à part : on grimpe sur l'étage depuis les voies A et C par les caisses (franchissement). Test du duel : 20/20.
 
+Duel passé aux fusils de précision uniquement (échelle de 6 étapes). Le test joue les 3 premières (Requiem, Frostbite, Requiem silencieux), en visant à la lunette. Un premier essai ratait tous les tirs : l'invité était placé 40 cm à côté de l'axe visé par le test, soit plus que la largeur de la silhouette. Les positions ont été alignées ; 20/20.
+
 ### Mini-carte
 Capture en 1280×720 sur VILLE MORTE avec des ennemis en alerte : obstacles, objectif (losange) et points rouges des ennemis qui viennent de tirer. Dans le duel, l'adversaire n'y apparaît que lorsqu'il tire, et la grande carte (M) ne révèle plus sa position.
 

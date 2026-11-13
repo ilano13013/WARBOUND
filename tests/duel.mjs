@@ -1,5 +1,5 @@
 // Défi d'armes : deux navigateurs (contextes séparés) se connectent par échange de codes, puis l'hôte
-// élimine l'invité à chaque arme de l'échelle (raccourcie à 3 armes pour le test) jusqu'à la victoire.
+// élimine l'invité à chaque arme de l'échelle (fusils de précision ; échelle raccourcie à 3 étapes pour le test) jusqu'à la victoire.
 import { chromium, GAME_URL, sleep, shot } from './lib.mjs';
 
 let pass = 0, fail = 0;
@@ -22,7 +22,7 @@ const A = await page('hôte'), B = await page('invité');
 for (const [p, cls, name] of [[A, 'vanguard', 'Alpha'], [B, 'wraith', 'Bravo']]) {
   await p.evaluate(([c, n]) => window.WB.newGame(c, n), [cls, name]);
   await p.waitForFunction(() => window.WB.state().level === 'hub' && window.WB.state().state === 'play', null, { timeout: 90000 });
-  await p.evaluate(() => { window.WB.duelLadder(['ar17', 'frostbite', 'ash']); window.WB.game.toMenu(); });
+  await p.evaluate(() => { window.WB.duelLadder(3); window.WB.game.toMenu(); });
 }
 const ds = (p) => p.evaluate(() => window.WB.duelState());
 
@@ -41,7 +41,7 @@ for (const p of [A, B]) await p.waitForFunction(() => window.WB.state().level ==
 ok(true, 'connexion établie, les deux joueurs sont dans l’arène');
 let a = await ds(A), b = await ds(B);
 ok(a.opp_name === 'Bravo' && b.opp_name === 'Alpha', 'noms échangés', `${a.opp_name} / ${b.opp_name}`);
-ok(a.weapon === 'ar17' && b.weapon === 'ar17', 'première arme de l’échelle pour les deux', `${a.weapon} / ${b.weapon}`);
+ok(a.weapon === 'requiem' && b.weapon === 'requiem', 'première arme de l’échelle pour les deux', `${a.weapon} / ${b.weapon}`);
 
 // synchronisation des positions
 await B.evaluate(() => window.WB.tp(12, 0.1, -13.3, 0));
@@ -57,20 +57,20 @@ ok(up.y > 2.4 && up.x > -6, 'à pied : escalier, conteneur puis étage central',
 // l'hôte vise l'invité et tire jusqu'à l'élimination, pour chaque arme
 async function killOnce(round) {
   // invité immobile à 9 m devant (allée centrale dégagée) l'hôte, sans invulnérabilité d'apparition
-  await B.evaluate(() => { window.WB.tp(3, 0.1, 13, 0); });
+  await B.evaluate(() => { window.WB.tp(3, 0.1, 12.6, 0); });
   await A.evaluate(() => { window.WB.tp(12, 0.1, 12.6, Math.PI / 2); window.WB.look(Math.PI / 2, -0.06); });
   const before = await ds(A);
   await A.waitForFunction(() => { const s = window.WB.duelState(); return s.rival && s.rival.alive && !s.rival.inv && Math.abs(s.rival.x - 3) < 0.4; }, null, { timeout: 15000 });
   const t0 = Date.now();
   let hpSeen = 100;
   while (Date.now() - t0 < 25000) {
-    await A.evaluate(() => { window.WB.look(Math.PI / 2, -0.06); window.WB.fire(true); });
+    await A.evaluate(() => { window.WB.ads(true); window.WB.look(Math.PI / 2, -0.06); if (window.WB.game.weapons.adsK > 0.95) window.WB.fire(true); else window.WB.fire(false); });
     await sleep(160);
     const s = await ds(B);
     hpSeen = Math.min(hpSeen, s.hp);
     if (s.dead) break;
   }
-  await A.evaluate(() => window.WB.fire(false));
+  await A.evaluate(() => { window.WB.fire(false); window.WB.ads(false); });
   const bs = await ds(B);
   if (!bs.dead && bs.deaths <= round) console.log('  diag', JSON.stringify(await A.evaluate(() => ({ st: window.WB.game.mission.stats, pos: window.WB.game.player.pos, yaw: window.WB.game.player.yaw, ammo: window.WB.game.weapons.w.ammo }))));
   ok(bs.dead || bs.deaths > round, `manche ${round + 1} : l’invité est éliminé (arme ${before.weapon})`, `santé minimale vue ${Math.round(hpSeen)}`);
@@ -86,7 +86,7 @@ await shot(A, 'duel-hote');
 await killOnce(1);
 await B.waitForFunction(() => !window.WB.duelState().dead, null, { timeout: 10000 });
 a = await ds(A);
-ok(a.my === 2 && a.weapon === 'ash', 'dernière arme (revolver)', `${a.my} ${a.weapon}`);
+ok(a.my === 2 && a.weapon === 'requiem', 'dernière arme (Requiem DMR silencieux)', `${a.my} ${a.weapon}`);
 await killOnce(2);
 await A.waitForFunction(() => window.WB.duelState().phase === 'over', null, { timeout: 10000 });
 await B.waitForFunction(() => window.WB.duelState().phase === 'over', null, { timeout: 10000 });

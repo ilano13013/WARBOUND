@@ -231,10 +231,10 @@ export class UI {
     const g = this.g, d = g.duel;
     d.cancel();
     d.status = 'Choisissez : créer une partie (hôte) ou rejoindre celle d’un ami.';
-    const ladder = d.ladder.map((id, i) => `${i + 1}. ${WEAPONS[id].name}`).join(' · ');
+    const ladder = d.ladder.map((s, i) => `${i + 1}. ${s.label}`).join(' · ');
     this.show('duel', 'overlay', `<div class="panel"><div class="panel-head"><h2>Défi d’armes</h2><span class="sub">Duel 1 contre 1 — connexion directe entre vos deux navigateurs</span><span class="spacer"></span><button class="btn small" data-a="back">Retour</button></div>
       <div class="panel-body col scroll">
-        <p class="brief">Chaque élimination vous fait passer à l’arme suivante. Le premier qui élimine son adversaire avec la dernière arme gagne. Santé de base pour les deux joueurs, sans talent, équipement, compétence ni grenade.</p>
+        <p class="brief">Duel aux fusils de précision uniquement. Chaque élimination vous fait passer à l’arme suivante ; le premier qui élimine son adversaire avec la dernière gagne. Les tirs silencieux n’apparaissent pas sur la mini-carte adverse. Santé de base pour les deux joueurs, sans talent, équipement, compétence ni grenade.</p>
         <div class="label" style="text-transform:none;letter-spacing:.03em">${ladder}</div>
         <div class="duel-cols">
           <div class="col grow"><div class="label">Créer une partie</div>

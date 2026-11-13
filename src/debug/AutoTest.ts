@@ -1,5 +1,6 @@
 // Mode de test automatique (activé uniquement avec ?autotest dans l'URL).
 // Expose le jeu aux scripts Playwright et fournit un pilote capable de terminer les missions sans joueur humain.
+import { LADDER } from '../net/Duel';
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { ClassId } from '../data/classes';
@@ -96,7 +97,7 @@ export function installAutoTest(g: Game): void {
     duelHost: () => g.duel.host(),
     duelJoin: (code: string) => g.duel.join(code),
     duelAccept: (code: string) => g.duel.accept(code),
-    duelLadder: (ids: string[]) => { g.duel.ladder = ids; },
+    duelLadder: (n: number) => { g.duel.ladder = LADDER.slice(0, n); },
     duelState: () => { const d = g.duel, r = d.rival; return { phase: d.phase, status: d.status, role: d.role, my: d.myRung, opp: d.oppRung, kills: d.kills, deaths: d.deaths, opp_name: d.oppName, weapon: g.weapons.w?.st.def.id, rival: r ? { alive: r.alive, hp: r.hp, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), inv: r.invulnerable } : null, hp: g.player.hp, dead: g.player.dead, state: g.state, result: d.lastResult }; },
     duelLeave: () => g.duel.leave(),
     survival: () => g.startSurvival(),

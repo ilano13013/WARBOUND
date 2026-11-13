@@ -12,8 +12,19 @@ import { makeWeaponItem } from '../rpg/items';
 import { BUILD } from '../render/Renderer';
 import { DUEL_SPAWNS } from '../levels/duel';
 
-/** Échelle d'armes : familles variées, du fusil d'assaut au revolver. */
-export const LADDER = ['ar17', 'vesper', 'titan', 'requiem', 'spectre', 'aegis762', 'frostbite', 'ash'];
+/** Une étape de l'échelle : un fusil de précision et ses accessoires. */
+export interface LadderStep { base: string; attach: Record<string, string>; label: string }
+
+/** Échelle d'armes du duel : uniquement des fusils de précision, en alternant le Requiem DMR (semi-automatique)
+ *  et le Frostbite .50 (à verrou, mortel en une balle), avec des accessoires différents à chaque étape. */
+export const LADDER: LadderStep[] = [
+  { base: 'requiem', attach: {}, label: 'Requiem DMR' },
+  { base: 'frostbite', attach: {}, label: 'Frostbite .50' },
+  { base: 'requiem', attach: { muzzle: 'silencer' }, label: 'Requiem DMR silencieux' },
+  { base: 'frostbite', attach: { muzzle: 'heavybarrel' }, label: 'Frostbite .50 canon lourd' },
+  { base: 'requiem', attach: { optic: 'longscope', mag: 'fastmag' }, label: 'Requiem DMR lunette x8' },
+  { base: 'frostbite', attach: { optic: 'longscope', muzzle: 'silencer' }, label: 'Frostbite .50 silencieux, lunette x8' },
+];
 const RESPAWN = 3;
 const SEND_HZ = 20;
 const TIMEOUT = 10;
@@ -33,7 +44,7 @@ export class Duel {
   myRung = 0; oppRung = 0;
   kills = 0; deaths = 0;
   rival: Rival | null = null;
-  ladder = LADDER;
+  ladder: LadderStep[] = LADDER;
   private respawnT = -1;
   private sendT = 0;
   private oppHello = false;
@@ -137,9 +148,9 @@ export class Duel {
         r.center(_a); _a.y += 0.35;
         _b.set(m.ex, m.ey, m.ez);
         g.fx.tracer(_a, _b, 0xffd0a0, def.family === 'sniper' ? 0.05 : 0.02, def.family === 'sniper' ? 0.16 : 0.06);
-        g.fx.flash(_a, 0xffc890, 10, 0.05, 8);
-        g.audio.gunshot(def.sound, false, r.pos, 1, def.rec);
-        r.firedT = 3;
+        // tir silencieux : pas d'éclair, son étouffé, pas de signal sur la mini-carte
+        if (!m.sil) { g.fx.flash(_a, 0xffc890, 10, 0.05, 8); r.firedT = 3; }
+        g.audio.gunshot(def.sound, !!m.sil, r.pos, 1, def.rec);
         return;
       }
       case 'hit': {
@@ -174,7 +185,7 @@ export class Duel {
     m.custom({
       text: `Défi d’armes contre ${this.oppName}`,
       done: () => false,
-      progress: () => `Vous : arme ${this.myRung + 1}/${this.ladder.length} (${WEAPONS[this.ladder[this.myRung]].name}) · ${this.oppName} : ${this.oppRung + 1}/${this.ladder.length}`,
+      progress: () => `Vous : arme ${this.myRung + 1}/${this.ladder.length} (${this.ladder[this.myRung].label}) · ${this.oppName} : ${this.oppRung + 1}/${this.ladder.length}`,
     });
   }
 
@@ -185,7 +196,7 @@ export class Duel {
     this.place(me);
     this.spawnRival(them.pos);
     this.setRung(0, false);
-    g.ui.hud.banner('DÉFI D’ARMES', `${this.ladder.length} armes — une élimination pour passer à la suivante`);
+    g.ui.hud.banner('DÉFI D’ARMES', `Fusils de précision uniquement — ${this.ladder.length} étapes, une élimination pour passer à la suivante`);
   }
 
   /** Conditions égales : santé de base, aucun talent, équipement, compétence ni grenade. */
@@ -209,14 +220,17 @@ export class Duel {
   private setRung(i: number, announce = true): void {
     const g = this.g;
     this.myRung = i;
-    const item = makeWeaponItem(this.ladder[i], 'common', 1);
+    const step = this.ladder[i];
+    const item = makeWeaponItem(step.base, 'common', 1);
+    item.attach = { ...step.attach } as typeof item.attach;
+    item.name = step.label;
     g.weapons.override = [item];
     g.weapons.rebuild();
     for (const s of g.weapons.slots) s.reserve = s.st.mag * 5;
     g.ui.hud.weaponChanged();
     if (announce) {
       const last = i === this.ladder.length - 1;
-      g.ui.hud.banner(last ? 'DERNIÈRE ARME' : `ARME ${i + 1} / ${this.ladder.length}`, WEAPONS[this.ladder[i]].name);
+      g.ui.hud.banner(last ? 'DERNIÈRE ARME' : `ARME ${i + 1} / ${this.ladder.length}`, step.label);
       g.audio.swap();
     }
   }
@@ -261,8 +275,8 @@ export class Duel {
   }
 
   /** Coup de feu local : l'adversaire affiche le traceur et entend le tir. */
-  onShot(end: THREE.Vector3, weaponId: string): void {
-    this.peer?.send({ t: 'shot', w: weaponId, ex: +end.x.toFixed(2), ey: +end.y.toFixed(2), ez: +end.z.toFixed(2) }, true);
+  onShot(end: THREE.Vector3, weaponId: string, silent = false): void {
+    this.peer?.send({ t: 'shot', w: weaponId, sil: silent, ex: +end.x.toFixed(2), ey: +end.y.toFixed(2), ez: +end.z.toFixed(2) }, true);
   }
 
   /** Appelé à chaque image tant que la partie est en cours (même en pause : l'adversaire continue de jouer). */
