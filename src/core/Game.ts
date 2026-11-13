@@ -9,6 +9,7 @@ import { Combat } from './Combat';
 import { Player } from '../player/Player';
 import { WeaponSystem } from '../player/WeaponSystem';
 import { Abilities } from '../player/Abilities';
+import { Marksman } from '../ai/Marksman';
 import { Enemy, type SpawnOpts } from '../ai/Enemy';
 import type { Ally } from '../ai/Ally';
 import { DIFFICULTIES, type DifficultyDef, type EnemyKind } from '../data/enemies';
@@ -241,7 +242,7 @@ export class Game {
   }
 
   spawnEnemy(kind: EnemyKind, x: number, z: number, o: SpawnOpts = {}): Enemy {
-    const e = new Enemy(this, kind, x, z, o);
+    const e = kind === 'marksman' ? new Marksman(this, x, z, o) : new Enemy(this, kind, x, z, o);
     this.enemies.push(e);
     return e;
   }

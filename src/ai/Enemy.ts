@@ -13,7 +13,7 @@ export type AIState = 'idle' | 'patrol' | 'alert' | 'combat' | 'search';
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3();
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-export interface SpawnOpts { patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number; siege?: THREE.Vector3 }
+export interface SpawnOpts { perches?: THREE.Vector3[]; patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number; siege?: THREE.Vector3 }
 
 export class Enemy implements Damageable {
   def: EnemyDef;
