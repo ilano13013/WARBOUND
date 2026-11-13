@@ -5,11 +5,17 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { ATMOSPHERE_SHADER, GRADE_SHADER, SKY_FRAGMENT } from './PostFX';
+import { ATMOSPHERE_SHADER, GRADE_SHADER, SANITIZE_SHADER, SKY_FRAGMENT } from './PostFX';
 import type { Ambience } from '../world/Level';
 import type { Settings } from '../save/Save';
 import { SURFACE, setSurfaceDetail } from './Materials';
 import { Weather } from './Weather';
+
+/**
+ * Interrupteurs de diagnostic graphique, par l'adresse : ?fx=off (aucun post-traitement) ou une liste parmi
+ * noatmo, nobloom, nograde, nomsaa, noenv, nosurf, noweather (ex. ?fx=nobloom,noatmo). Sans effet en usage normal.
+ */
+export const DIAG: Set<string> = new Set((typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fx') || '' : '').split(',').filter(Boolean));
 
 export class Renderer {
   renderer: THREE.WebGLRenderer;
@@ -85,7 +91,7 @@ export class Renderer {
     const changed = s.quality !== this.quality || s.renderScale !== this.scale || (!this.composer && s.quality !== 'low');
     this.quality = s.quality; this.scale = s.renderScale;
     const q = s.quality;
-    setSurfaceDetail(q !== 'low');
+    setSurfaceDetail(q !== 'low' && !DIAG.has('nosurf'));
     this.renderer.shadowMap.enabled = q !== 'low';
     this.sun.castShadow = q !== 'low';
     const size = q === 'high' ? 2048 : 1024;
@@ -94,39 +100,45 @@ export class Renderer {
     const cam = this.sun.shadow.camera;
     cam.left = -ext; cam.right = ext; cam.top = ext; cam.bottom = -ext; cam.near = 1; cam.far = 160;
     cam.updateProjectionMatrix();
-    if (changed) { this.buildComposer(); if (this.amb) this.weather.set(this.amb.weather, q === 'low' ? 0.4 : q === 'high' ? 1 : 0.7); }
+    if (changed) { this.buildComposer(); if (this.amb) this.weather.set(DIAG.has('noweather') ? undefined : this.amb.weather, q === 'low' ? 0.4 : q === 'high' ? 1 : 0.7); }
     this.resize();
   }
 
   private buildComposer(): void {
     this.composer?.dispose();
     this.composer = null; this.bloom = null; this.atmo = null; this.grade = null;
-    if (this.quality === 'low') return;
+    if (this.quality === 'low' || DIAG.has('off')) return;
+    const D = DIAG;
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     const depth = new THREE.DepthTexture(size.x, size.y);
-    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: this.quality === 'high' ? 4 : 2, depthTexture: depth });
+    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: D.has('nomsaa') ? 0 : this.quality === 'high' ? 4 : 2, depthTexture: depth });
     const comp = new EffectComposer(this.renderer, rt);
     comp.addPass(new RenderPass(this.scene, this.camera));
-    // atmosphère : occlusion ambiante, rayons du soleil et brume au sol, calculés depuis la profondeur de la scène
-    const atmo = new ShaderPass(ATMOSPHERE_SHADER);
-    atmo.material.defines.AO_TAPS = this.quality === 'high' ? 12 : 8;
-    atmo.material.defines.RAY_TAPS = this.quality === 'high' ? 28 : 18;
-    const self = this;
-    atmo.render = function (renderer, writeBuffer, readBuffer, dt, mask) {
-      this.uniforms.tDepth.value = readBuffer.depthTexture;
-      self.updateAtmosphere(this.uniforms);
-      ShaderPass.prototype.render.call(this, renderer, writeBuffer, readBuffer, dt, mask);
-    };
-    comp.addPass(atmo); this.atmo = atmo;
+    if (!D.has('noatmo')) {
+      // atmosphère : occlusion ambiante, rayons du soleil et brume au sol, calculés depuis la profondeur de la scène
+      const atmo = new ShaderPass(ATMOSPHERE_SHADER);
+      atmo.material.defines.AO_TAPS = this.quality === 'high' ? 12 : 8;
+      atmo.material.defines.RAY_TAPS = this.quality === 'high' ? 28 : 18;
+      const self = this;
+      atmo.render = function (renderer, writeBuffer, readBuffer, dt, mask) {
+        this.uniforms.tDepth.value = readBuffer.depthTexture;
+        self.updateAtmosphere(this.uniforms);
+        ShaderPass.prototype.render.call(this, renderer, writeBuffer, readBuffer, dt, mask);
+      };
+      comp.addPass(atmo); this.atmo = atmo;
+    }
     const vm = new RenderPass(this.vmScene, this.vmCamera);
     vm.clear = false; vm.clearDepth = true;
     comp.addPass(vm);
     this.vmPass = vm;
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), this.quality === 'high' ? 0.34 : 0.3, 0.55, 1.0);
-    comp.addPass(this.bloom);
+    // aucune valeur invalide ou infinie ne doit atteindre le bloom (voir SANITIZE_SHADER)
+    comp.addPass(new ShaderPass(SANITIZE_SHADER));
+    if (!D.has('nobloom')) {
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), this.quality === 'high' ? 0.34 : 0.3, 0.55, 1.0);
+      comp.addPass(this.bloom);
+    }
     comp.addPass(new OutputPass());
-    this.grade = new ShaderPass(GRADE_SHADER);
-    comp.addPass(this.grade);
+    if (!D.has('nograde')) { this.grade = new ShaderPass(GRADE_SHADER); comp.addPass(this.grade); }
     this.composer = comp;
     if (this.amb) this.applyGrade(this.amb);
   }
@@ -174,7 +186,7 @@ export class Renderer {
     this.envRT = this.pmrem.fromScene(this.envScene, 0.02, 0.1, 100);
     this.skyMat.uniforms.envMode.value = 0;
     this.renderer.setRenderTarget(rt);
-    this.scene.environment = this.envRT.texture; this.vmScene.environment = this.envRT.texture;
+    if (DIAG.has('noenv')) { this.scene.environment = null; this.vmScene.environment = null; } else { this.scene.environment = this.envRT.texture; this.vmScene.environment = this.envRT.texture; }
     old?.dispose();
   }
 
@@ -214,7 +226,7 @@ export class Renderer {
     this.renderer.toneMappingExposure = a.exposure ?? 1.0;
     this.applyGrade(a);
     this.bakeEnvironment();
-    this.weather.set(a.weather, this.quality === 'low' ? 0.4 : this.quality === 'high' ? 1 : 0.7);
+    this.weather.set(DIAG.has('noweather') ? undefined : a.weather, this.quality === 'low' ? 0.4 : this.quality === 'high' ? 1 : 0.7);
   }
 
   setRift(v: number): void { this.skyMat.uniforms.rift.value = v; }

@@ -285,7 +285,7 @@ float wbPuddle=0.0; float wbDamp=0.0;`)
   float fine=wbN(hp*1.7);
   diffuseColor.rgb*=0.74+0.42*macro+0.1*(fine-0.5);
   // salissures : pied de mur encrassé et coulures verticales
-  float foot=smoothstep(1.1,0.0,vWP.y)*(0.35+0.65*wbN(vec2(hp.x*0.9,1.3)));
+  float foot=(1.0-smoothstep(0.0,1.1,vWP.y))*(0.35+0.65*wbN(vec2(hp.x*0.9,1.3)));
   float streak=smoothstep(0.52,0.85,wbN(vec2(hp.x*2.6,vWP.y*0.16+macro)))*smoothstep(0.35,0.75,wbN(hp*0.23+11.0));
   diffuseColor.rgb*=1.0-side*(foot*0.42+streak*0.3);
   // humidité : flaques dans les creux, sol assombri
@@ -295,7 +295,7 @@ float wbPuddle=0.0; float wbDamp=0.0;`)
   diffuseColor.rgb*=mix(1.0,0.55,wbDamp)*mix(1.0,0.5,wbPuddle);
 }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-roughnessFactor=mix(roughnessFactor*(1.0-0.45*wbDamp),0.035,wbPuddle);`)
+roughnessFactor=mix(roughnessFactor*(1.0-0.45*wbDamp),0.08,wbPuddle);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 normal=normalize(mix(normal,nonPerturbedNormal,wbPuddle*0.96));`);
   };

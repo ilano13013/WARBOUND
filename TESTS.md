@@ -24,8 +24,17 @@ Groupe électrogène près du terminal de CENDRES, tuyaux et bouches d'aération
 ### Mesures indicatives (rendu logiciel, qualité Bas)
 CENDRES : 459 appels de rendu, 598 000 triangles (302 000 en 2.1). QG : 209 appels, 132 000 triangles (89 000 en 2.1). Poids du build : 37 Mo (23 Mo en 2.1), surtout les textures 2K.
 
-### Défaut signalé sur une vraie carte graphique (corrigé, non revérifié sur cette machine)
-Sur le PC de test (Edge, Windows), le menu, la création de personnage et la cinématique d'introduction affichaient de grands rectangles noirs emboîtés. Cause retenue : le shader de ciel divisait par zéro juste sous la ligne d'horizon ; la valeur invalide était ensuite étalée par le bloom. Le rendu logiciel des tests ne reproduit pas ce défaut. Correctif : dénominateur borné, et valeurs invalides ou démesurées éliminées avant le bloom. À confirmer sur la machine concernée.
+### Défaut signalé sur une vraie carte graphique (2.2.2 : corrigé à la source, non revérifié sur cette machine)
+Sur le PC de test (Edge, Windows), de grands rectangles noirs emboîtés couvraient le menu, la création de personnage, la cinématique et les cartes. C'est la signature d'une valeur invalide (NaN) dans l'image, étalée par le bloom. Le rendu logiciel des tests ne la produit pas : une sonde ajoutée au mode test (`WB.hdrScan()`) ne trouve ni valeur invalide ni dépassement ici.
+
+Un premier correctif (division par zéro du ciel sous l'horizon) n'a pas suffi. Causes corrigées en 2.2.2, toutes des opérations au résultat indéfini selon la norme GLSL :
+- `atan(0, 0)` au centre exact du disque des portails (présent depuis la 1.0, et les zones noires des photos sont centrées sur le portail), au zénith du ciel, et dans deux shaders d'effets ;
+- `smoothstep` à bornes inversées dans sept shaders ;
+- puissance d'une base pouvant devenir négative dans deux shaders.
+
+Garde-fou ajouté : une passe d'assainissement élimine toute valeur invalide, infinie ou démesurée avant le bloom, quelle qu'en soit la source.
+
+Diagnostic par l'adresse si le défaut persistait : `?fx=off` (aucun post-traitement), ou une liste parmi `noatmo`, `nobloom`, `nograde`, `nomsaa`, `noenv`, `nosurf`, `noweather` (exemple : `?fx=nobloom`). Le numéro de version est affiché en bas à droite du menu.
 
 ### Non vérifié en 2.2
 - Fréquence d'images et mémoire vidéo sur une vraie carte graphique : les textures 2K ajoutent environ 20 textures de 2048 px.

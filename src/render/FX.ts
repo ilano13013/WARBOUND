@@ -170,7 +170,7 @@ export class FX {
       const m = new THREE.ShaderMaterial({
         uniforms: { color: { value: new THREE.Color() }, opacity: { value: 1 } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-        fragmentShader: 'uniform vec3 color; uniform float opacity; varying vec2 vUv; void main(){ float d=abs(vUv.y*2.0-1.0); float core=smoothstep(0.35,0.0,d); float glow=pow(1.0-d,2.0); vec3 c=color*glow*1.6+vec3(1.0)*core*1.3; gl_FragColor=vec4(c, (glow*0.8+core)*opacity); }',
+        fragmentShader: 'uniform vec3 color; uniform float opacity; varying vec2 vUv; void main(){ float d=abs(vUv.y*2.0-1.0); float core=(1.0-smoothstep(0.0,0.35,d)); float glow=pow(max(1.0-d,0.0),2.0); vec3 c=color*glow*1.6+vec3(1.0)*core*1.3; gl_FragColor=vec4(c, (glow*0.8+core)*opacity); }',
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
       });
       const l = new THREE.Mesh(g, m); l.visible = false; l.frustumCulled = false; this.group.add(l);
@@ -186,7 +186,7 @@ export class FX {
           float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
           float n(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y); }
           float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){ v+=a*n(p); p*=2.1; a*=0.5; } return v; }
-          void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); float a=atan(p.y,p.x);
+          void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); float a=r<1e-4?0.0:atan(p.y,p.x);
             float nz=fbm(vec2(a*1.6+seed, r*3.0-t*4.0)+seed);
             float edge=0.62+0.38*nz; float d=smoothstep(edge,edge*0.35,r);
             float heat=clamp((1.0-t*1.5)*(1.15-r)+nz*0.25,0.0,1.0);

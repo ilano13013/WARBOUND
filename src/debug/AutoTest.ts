@@ -53,6 +53,31 @@ export function installAutoTest(g: Game): void {
       screen: g.ui.current, blocking: g.ui.blocking, paused: g.paused, errors: g.errors.slice(-5), fps: g.fps, calls: g.r.info.calls, tris: g.r.info.tris,
       cds: g.player.cds.slice(), buffs: [...g.player.buffs.keys()], allies: g.allies.length, fields: g.combat.fields.length, survival: (g.mission as any)?.survival || null,
     }),
+    /**
+     * Sonde HDR : rend la scène (et l'arme) dans un tampon flottant 32 bits et compte les pixels invalides (NaN), infinis,
+     * ou supérieurs à 65 504, limite du tampon demi-flottant du post-traitement, au-delà de laquelle une carte graphique écrit l'infini.
+     */
+    hdrScan: () => {
+      const r = g.r, w = 480, h = 270;
+      const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.FloatType });
+      const buf = new Float32Array(w * h * 4);
+      const out: Record<string, unknown> = {};
+      const scan = (label: string, scene: THREE.Scene, cam: THREE.Camera) => {
+        r.renderer.setRenderTarget(rt); r.renderer.clear(); r.renderer.render(scene, cam);
+        r.renderer.readRenderTargetPixels(rt, 0, 0, w, h, buf);
+        let nan = 0, inf = 0, over = 0, max = 0, where: number[] | null = null;
+        for (let i = 0; i < buf.length; i += 4) for (let k = 0; k < 3; k++) {
+          const v = buf[i + k];
+          if (Number.isNaN(v)) { nan++; where ||= [(i / 4) % w, Math.floor(i / 4 / w)]; } else if (!Number.isFinite(v)) { inf++; where ||= [(i / 4) % w, Math.floor(i / 4 / w)]; }
+          else { if (v > 65504) { over++; where ||= [(i / 4) % w, Math.floor(i / 4 / w)]; } if (v > max) max = v; }
+        }
+        out[label] = { nan, inf, over, max: Math.round(max * 100) / 100, where };
+      };
+      const tm = r.renderer.toneMapping; r.renderer.toneMapping = THREE.NoToneMapping;
+      scan('scene', r.scene, r.camera); scan('arme', r.vmScene, r.vmCamera);
+      r.renderer.toneMapping = tm; r.renderer.setRenderTarget(null); rt.dispose();
+      return out;
+    },
     newGame: (cls: ClassId, name = 'Testeur') => { g.profile = newProfile(cls, name); g.profile.introSeen = true; g.startHub(); },
     hub: () => g.startHub(),
     mission: (id: string) => g.startMission(id),

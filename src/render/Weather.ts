@@ -42,7 +42,7 @@ export class Weather {
           gl_PointSize=max(1.0,size*px/max(-mv.z,0.5)*(0.6+seed.z*0.8));
           vA=edge*smoothstep(0.6,2.0,-mv.z)*(0.5+0.5*fract(seed.x*91.7)); }`,
       fragmentShader: `uniform vec3 color; uniform float alpha; uniform float streak; varying float vA;
-        void main(){ float a=vA*alpha; if(streak<=0.0){ vec2 c=gl_PointCoord-0.5; a*=smoothstep(0.5,0.1,length(c)); } gl_FragColor=vec4(color*(streak>0.0?1.0:1.6),a); }`,
+        void main(){ float a=vA*alpha; if(streak<=0.0){ vec2 c=gl_PointCoord-0.5; a*=(1.0-smoothstep(0.1,0.5,length(c))); } gl_FragColor=vec4(color*(streak>0.0?1.0:1.6),a); }`,
       transparent: true, depthWrite: false, blending: c.add ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     this.obj = line ? new THREE.LineSegments(g, this.mat) : new THREE.Points(g, this.mat);

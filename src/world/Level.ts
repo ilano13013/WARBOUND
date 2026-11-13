@@ -672,9 +672,9 @@ export class Level {
       uniforms: { t: { value: 0 }, c: { value: new THREE.Color(color) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `uniform float t; uniform vec3 c; varying vec2 vUv;
-        void main(){ vec2 p=vUv-0.5; float r=length(p)*2.0; float a=atan(p.y,p.x);
+        void main(){ vec2 p=vUv-0.5; float r=length(p)*2.0; float a=r<1e-4?0.0:atan(p.y,p.x); // atan(0,0) est indéfini : valeur invalide au centre du disque sur certaines cartes graphiques
           float s=sin(a*5.0+r*14.0-t*3.5)*0.5+0.5; float s2=sin(a*-3.0+r*9.0-t*2.0)*0.5+0.5;
-          float core=smoothstep(1.0,0.0,r); vec3 col=c*(0.35+s*0.9+s2*0.5)*core*1.6+vec3(1.0)*pow(core,6.0)*0.8;
+          float core=(1.0-smoothstep(0.0,1.0,r)); vec3 col=c*(0.35+s*0.9+s2*0.5)*core*1.6+vec3(1.0)*pow(max(core,0.0),6.0)*0.8;
           gl_FragColor=vec4(col, core*0.92); }`,
       transparent: true, side: THREE.DoubleSide, depthWrite: false,
     }));

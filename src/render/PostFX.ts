@@ -26,12 +26,13 @@ void main(){
   vec3 cloud=mix(cloudLit,cloudDark,thick*(0.55+0.45*(1.0-s)));
   col=mix(col,cloud,cov*smoothstep(0.0,0.22,d.y)*0.92);
   if(envMode<0.5) col+=sunCol*pow(s,900.0)*6.0*(1.0-cov*0.85);
-  if(rift>0.0){ float a=atan(d.z,d.x); float w=sin(d.y*11.0+t*0.4)*0.05+sin(d.y*23.0-t*0.7)*0.02;
-    float c=abs(a+1.42+w); float core=smoothstep(0.05,0.0,c)*smoothstep(0.02,0.25,d.y);
-    float halo=smoothstep(0.5,0.0,c)*smoothstep(0.0,0.3,d.y)*0.35;
+  // atan(0,0) est indéfini : garde au zénith
+  if(rift>0.0){ float a=(abs(d.x)+abs(d.z))<1e-5?0.0:atan(d.z,d.x); float w=sin(d.y*11.0+t*0.4)*0.05+sin(d.y*23.0-t*0.7)*0.02;
+    float c=abs(a+1.42+w); float core=(1.0-smoothstep(0.0,0.05,c))*smoothstep(0.02,0.25,d.y);
+    float halo=(1.0-smoothstep(0.0,0.5,c))*smoothstep(0.0,0.3,d.y)*0.35;
     col+=rift*(vec3(0.75,0.5,1.0)*core*2.4+vec3(0.35,0.15,0.8)*halo*(0.7+0.3*sin(t*1.3))); }
   // sous l'horizon : brume puis sol sombre (sert aussi aux reflets)
-  col=mix(hor*mix(0.6,0.22,smoothstep(0.0,-0.5,d.y)),col,smoothstep(-0.1,0.02,d.y));
+  col=mix(hor*mix(0.6,0.22,(1.0-smoothstep(-0.5,0.0,d.y))),col,smoothstep(-0.1,0.02,d.y));
   col=clamp(col,0.0,40.0);
   gl_FragColor=vec4(col,1.0);
 }`;
@@ -112,7 +113,7 @@ void main(){
   }
   // garde-fou : aucune valeur invalide ou démesurée ne doit atteindre le bloom
   if(any(isnan(col))||any(isinf(col))) col=vec3(0.0);
-  col=clamp(col,0.0,60.0);
+  col=min(max(col,vec3(0.0)),vec3(60.0));
   gl_FragColor=vec4(col,src.a);
 }`,
 };
@@ -152,4 +153,20 @@ void main(){
   col+=(h(gl_FragCoord.xy+fract(time)*91.7)-0.5)*grain*(1.0-l*0.6);
   gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);
 }`,
+};
+
+/**
+ * Assainissement avant le bloom : une seule valeur invalide (NaN) ou infinie dans l'image HDR, par exemple un reflet spéculaire
+ * qui dépasse la capacité du tampon demi-flottant, est étalée par le bloom en grands rectangles noirs. On les élimine ici.
+ * min/max sont utilisés en plus de isnan/isinf : certains compilateurs de shaders suppriment ces tests.
+ */
+export const SANITIZE_SHADER = {
+  name: 'SanitizeShader',
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: /* glsl */ `uniform sampler2D tDiffuse; varying vec2 vUv;
+void main(){ vec4 c=texture2D(tDiffuse,vUv); vec3 col=c.rgb;
+  if(any(isnan(col))||any(isinf(col))) col=vec3(0.0);
+  col=min(max(col,vec3(0.0)),vec3(48.0));
+  gl_FragColor=vec4(col,1.0); }`,
 };

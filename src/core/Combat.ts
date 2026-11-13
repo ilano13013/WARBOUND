@@ -322,7 +322,7 @@ export class Combat {
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: line
         ? 'uniform vec3 color; uniform float t; uniform float k; varying vec2 vUv; void main(){ float ch=step(0.5,fract(vUv.y*8.0+t*3.0+abs(vUv.x-0.5)*2.0)); float e=smoothstep(0.42,0.5,abs(vUv.x-0.5)); float fill=step(vUv.y,k); float a=(0.12+0.22*ch)*0.6+e*0.7+fill*0.25; gl_FragColor=vec4(color*(1.0+fill),a); }'
-        : 'uniform vec3 color; uniform float t; uniform float k; varying vec2 vUv; void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); if(r>1.0) discard; float a=atan(p.y,p.x); float st=step(0.5,fract(a*1.91+t*1.5-r*2.0)); float rim=smoothstep(0.86,1.0,r); float fill=1.0-smoothstep(k-0.02,k,r); float pulse=0.6+0.4*sin(t*14.0*(0.3+k)); float al=(0.08+0.14*st)+rim*0.9*pulse+fill*0.32; gl_FragColor=vec4(color*(1.0+fill*0.8),al); }',
+        : 'uniform vec3 color; uniform float t; uniform float k; varying vec2 vUv; void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); if(r>1.0) discard; float a=r<1e-4?0.0:atan(p.y,p.x); float st=step(0.5,fract(a*1.91+t*1.5-r*2.0)); float rim=smoothstep(0.86,1.0,r); float fill=1.0-smoothstep(k-0.02,k,r); float pulse=0.6+0.4*sin(t*14.0*(0.3+k)); float al=(0.08+0.14*st)+rim*0.9*pulse+fill*0.32; gl_FragColor=vec4(color*(1.0+fill*0.8),al); }',
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2,
     });
   }

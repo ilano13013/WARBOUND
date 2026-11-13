@@ -163,7 +163,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.2</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.2.2</span></div>`, {
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
