@@ -22,8 +22,13 @@ export class Rival extends Enemy {
   /** Appelé quand une touche locale doit être transmise. */
   onHit: (dmg: number, head: boolean) => void = () => {};
 
-  constructor(g: Game, x: number, y: number, z: number, public displayName: string) {
-    super(g, 'rival', x, z, { y, noLoot: true });
+  /** Coéquipier (4v4) : jamais visé ni touché par le joueur local, toujours visible sur la mini-carte. */
+  friendly = false;
+  team: 'red' | 'blue' | null = null;
+
+  constructor(g: Game, x: number, y: number, z: number, public displayName: string, team: 'red' | 'blue' | null = null, friendly = false) {
+    super(g, team === 'red' ? 'rival_red' : team === 'blue' ? 'rival_blue' : 'rival', x, z, { y, noLoot: true });
+    this.team = team; this.friendly = friendly;
     this.name = displayName;
     this.maxHp = this.hp = 100;
     this.target.set(x, y, z);
@@ -43,7 +48,7 @@ export class Rival extends Enemy {
   }
 
   override takeDamage(amount: number, info: DamageInfo): number {
-    if (!this.alive || info.source !== 'player') return -1;
+    if (!this.alive || info.source !== 'player' || this.friendly) return -1;
     const g = this.g;
     if (this.invulnerable) { g.ui.hud.immune(); return -1; }
     const dmg = Math.max(1, Math.round(amount));

@@ -19,7 +19,7 @@ new_sqlite_classes = ["Lobby", "Guard"]
 
 [vars]
 # origines autorisées à ouvrir un salon (séparées par des virgules)
-ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http://localhost:4173,http://localhost:5173"
+ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http://localhost:4173,http://localhost:4174,http://localhost:5173"
 # garde-fous de quotas (offre gratuite : 100 000 requêtes par jour pour les Workers et pour les Durable Objects)
 MAX_ROOMS_PER_DAY = "1500"
 MAX_JOINS_PER_DAY = "12000"

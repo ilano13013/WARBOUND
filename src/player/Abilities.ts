@@ -49,7 +49,7 @@ export class Abilities {
     p.cloaked = p.has('cloak');
     this.aegisMesh.visible = p.has('aegis') && !p.dead;
     if (this.aegisMesh.visible) { const k = (p.buffs.get('aegisPool') || 0) / (150 * (1 + p.mod('aegisPower'))); (this.aegisMesh.material as THREE.MeshBasicMaterial).opacity = 0.06 + 0.16 * k; this.aegisMesh.rotation.z += dt * 0.4; }
-    if (!g.canAct || p.dead || g.duel.active) return;
+    if (!g.canAct || p.dead || g.duel.active || g.match.active) return;
     if (inp.pressed('skill1')) this.useSkill(0);
     if (inp.pressed('skill2')) this.useSkill(1);
     if (inp.pressed('skill3')) this.useSkill(2);

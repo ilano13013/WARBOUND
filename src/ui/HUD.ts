@@ -1,5 +1,6 @@
 // HUD en jeu : santé, énergie, ultime, munitions, compétences, réticule dynamique, objectifs, boss, indicateurs de dégâts.
 import { Minimap } from './Minimap';
+import { MatchHUD } from './MatchHUD';
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { bindLabel } from '../core/Input';
@@ -26,6 +27,7 @@ function el(tag: string, cls = '', parent?: HTMLElement, html = ''): HTMLElement
 
 export class HUD {
   minimap: Minimap;
+  matchHud: MatchHUD;
   root: HTMLElement;
   private cross: HTMLElement; private crossLines: HTMLElement[] = []; private hit: HTMLElement; private hitT = 0;
   private scope: HTMLElement; private hp: HTMLElement; private hpLag: HTMLElement; private sh: HTMLElement; private en: HTMLElement; private xp: HTMLElement;
@@ -65,6 +67,7 @@ export class HUD {
     this.bc = el('div', 'hud-bc', r);
     const tl = el('div', 'hud-tl', r); this.objH = el('div', 'obj-h', tl); this.objT = el('div', 'obj-t', tl); this.objP = el('div', 'obj-p', tl);
     this.minimap = new Minimap(g, r);
+    this.matchHud = new MatchHUD(g, r);
     this.feedBox = el('div', 'hud-tr', r);
     this.toasts = el('div', '', r); this.toasts.id = 'toasts';
     this.radioEl = el('div', 'hidden', r); this.radioEl.id = 'radio';
@@ -203,6 +206,7 @@ export class HUD {
     const g = this.g, p = g.player, w = g.weapons.w;
     if (!p.cls || !w) return;
     this.minimap.update(dt);
+    this.matchHud.update();
     this.clickHint.classList.toggle('hidden', g.input.locked || g.state !== 'play' || g.ui.blocking || g.testMode);
     // réticule
     this.fireKick = Math.max(0, this.fireKick - dt * 8);

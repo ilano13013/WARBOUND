@@ -21,6 +21,19 @@ export const DUEL_SPAWNS: { pos: THREE.Vector3; yaw: number }[] = [
   [-25.5, 0], [25.5, 0], [-25, 7.5], [25, -7.5], [-25, -7.5], [25, 7.5],
 ].map(([x, z]) => ({ pos: new THREE.Vector3(x, 0.1, z), yaw: Math.atan2(x, z * 0.25) }));
 
+/** Apparitions par équipe en 4v4 : rouge à l'ouest, bleu à l'est (y = sol). */
+export const TEAM_SPAWNS: Record<'red' | 'blue', { pos: THREE.Vector3; yaw: number }[]> = {
+  red: [[-25.5, 0], [-25, 7.5], [-25, -7.5], [-28.4, 3.6], [-28.4, -3.6], [-21.5, 12.6], [-21.5, -12.6]].map(([x, z]) => ({ pos: new THREE.Vector3(x, 0.1, z), yaw: Math.atan2(x, z * 0.25) })),
+  blue: [[25.5, 0], [25, -7.5], [25, 7.5], [28.4, -3.6], [28.4, 3.6], [21.5, -12.6], [21.5, 12.6]].map(([x, z]) => ({ pos: new THREE.Vector3(x, 0.1, z), yaw: Math.atan2(x, z * 0.25) })),
+};
+
+/** Zones de Domination : A et C dans les voies (côté de chaque camp), B sur l'étage central. */
+export const DOM_ZONES: { id: 'A' | 'B' | 'C'; pos: THREE.Vector3; r: number }[] = [
+  { id: 'A', pos: new THREE.Vector3(-13, 0, 10.5), r: 4 },
+  { id: 'B', pos: new THREE.Vector3(0, 2.6, 0), r: 4.2 },
+  { id: 'C', pos: new THREE.Vector3(13, 0, -10.5), r: 4 },
+];
+
 const tireGeo = new THREE.TorusGeometry(0.36, 0.15, 8, 16).rotateX(Math.PI / 2);
 
 export function buildDuel(_g: Game, m: Mission): Level {

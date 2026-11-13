@@ -29,17 +29,20 @@ import { buildOp5 } from '../levels/op5';
 import { buildSurvival } from '../levels/survival';
 import { buildDuel } from '../levels/duel';
 import { Duel } from '../net/Duel';
+import { Match, LOADOUTS } from '../net/Match';
+import { MODES } from '../net/lobbyProtocol';
 import { Cinematics } from '../cinematic/Cinematics';
 import { Assets } from '../assets/Assets';
 
 export type GameState = 'boot' | 'menu' | 'cinematic' | 'play' | 'dead' | 'results';
 
 export interface ResultsData {
-  title: string; subtitle: string; victory: boolean; mode: 'campaign' | 'survival' | 'duel';
+  title: string; subtitle: string; victory: boolean; mode: 'campaign' | 'survival' | 'duel' | 'match';
   time: number; kills: number; accuracy: number; deaths: number; headshots: number;
   xp: number; items: Item[]; materials: number; levelBefore: number; levelAfter: number;
   wave?: number; score?: number; record?: boolean; final?: boolean;
   duel?: { me: number; opp: number; total: number; oppName: string };
+  match?: { board: ReturnType<Match['scoreboard']>; teams: boolean; red: number; blue: number };
 }
 
 export const INVENTORY_CAP = 48;
@@ -59,6 +62,7 @@ export class Game {
   abilities: Abilities;
   cine: Cinematics;
   duel: Duel;
+  match: Match;
   level: Level | null = null;
   mission: Mission | null = null;
   enemies: Enemy[] = [];
@@ -95,6 +99,7 @@ export class Game {
     this.abilities = new Abilities(this);
     this.cine = new Cinematics(this);
     this.duel = new Duel(this);
+    this.match = new Match(this);
     this.ui = new UI(this);
     this.input.onEscape = () => this.ui.onEscape();
     this.input.onLockChange = (locked) => { if (!locked && this.state === 'play' && !this.paused && !this.ui.blocking && !this.testMode) this.ui.showPause(); };
@@ -112,6 +117,12 @@ export class Game {
     this.ui.showLoading(0, '');
     await Assets.loadAll((k, label) => this.ui.showLoading(k, label));
     this.toMenu();
+    // lien d'invitation : ?salon=CODE
+    const salon = new URLSearchParams(location.search).get('salon');
+    if (salon && /^[A-Za-z0-9]{6}$/.test(salon) && !this.testMode) {
+      if (this.profile) this.ui.showLobby(salon.toUpperCase());
+      else this.ui.confirm('Invitation à un salon', 'Créez d’abord votre opérateur (Nouvelle partie), puis rouvrez le lien d’invitation.', () => this.ui.showMenu(), () => this.ui.showMenu());
+    }
     this.last = performance.now();
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -266,6 +277,54 @@ export class Game {
     }));
   }
 
+  /** Partie en ligne (salon) : arène chargée quand la liaison avec l'hôte est établie. */
+  startMatch(): void {
+    if (!this.profile) return;
+    const mt = this.match;
+    this.ui.fade(() => this.safeBuild(() => {
+      this.unload();
+      this.runMods = {};
+      this.diff = DIFFICULTIES.soldat;
+      const m = new Mission(this, 'match', MODES[mt.mode].name.toUpperCase(), 'match');
+      m.custom({
+        text: MODES[mt.mode].name,
+        done: () => false,
+        progress: () => {
+          const me = mt.mine;
+          if (mt.mode === 'duel') return `Arme ${(me?.rung ?? 0) + 1}/${mt.rules.score} — ${me?.step.label ?? ''}`;
+          return `${mt.mode === 'dom' ? 'Tenez les zones' : 'Éliminez l’équipe adverse'} — objectif ${mt.rules.score}`;
+        },
+      });
+      const level = buildDuel(this, m);
+      this.load(level, m);
+      mt.onLoaded();
+      this.ui.hud.root.classList.add('duel-mode');
+      this.audio.setMusic('combat');
+      this.ui.hud.banner(MODES[mt.mode].name.toUpperCase(), mt.mine?.team ? `Vous êtes dans l’équipe ${mt.mine.team === 'red' ? 'ROUGE' : 'BLEUE'}` : `Arme : ${mt.mine?.step.label ?? ''}`);
+    }));
+  }
+
+  finishMatch(): void {
+    const m = this.mission, p = this.profile!, mt = this.match;
+    if (!m || m.mode !== 'match' || this.state === 'results') return;
+    this.state = 'results';
+    this.timeScale = 1;
+    this.input.unlock();
+    const r = mt.result!;
+    this.gainXp(r.victory ? 300 : 120, 'Partie en ligne');
+    p.stats.playtime += m.stats.time;
+    this.save();
+    this.audio.setMusic('menu');
+    this.ui.hud.setVisible(false);
+    const me = mt.mine;
+    this.ui.showResults({
+      title: r.title, subtitle: r.sub, victory: r.victory !== false, mode: 'match',
+      time: m.stats.time, kills: me?.k ?? 0, accuracy: m.stats.shots ? m.stats.hits / m.stats.shots : 0, deaths: me?.d ?? 0, headshots: m.stats.headshots,
+      xp: m.stats.xp, items: [], materials: 0, levelBefore: this.levelStartLevel, levelAfter: p.level,
+      match: { board: mt.scoreboard(), teams: mt.mode !== 'duel', red: mt.teamScore.red, blue: mt.teamScore.blue },
+    });
+  }
+
   finishDuel(victory: boolean, reason: string): void {
     const m = this.mission, p = this.profile!, d = this.duel;
     if (!m || m.mode !== 'duel' || this.state === 'results') return;
@@ -369,7 +428,7 @@ export class Game {
     this.input.lock();
   }
 
-  abandon(): void { if (this.duel.active) { this.duel.leave(); return; } this.save(); this.startHub(); }
+  abandon(): void { if (this.match.active) { this.match.quit(); return; } if (this.duel.active) { this.duel.leave(); return; } this.save(); this.startHub(); }
 
   onMissionComplete(): void {
     const m = this.mission!, p = this.profile!;
@@ -467,6 +526,7 @@ export class Game {
       if (sim) this.simulate(dt, realDt);
       else this.weaponsIdle();
       if (this.duel.active && this.level) this.duel.tick(realDt, sim, dt);
+      if (this.match.active && this.level) this.match.frame(realDt, sim);
     } else if (this.state === 'menu' || this.state === 'cinematic' || this.state === 'results') {
       this.cine.update(realDt);
       this.fx.update(realDt);

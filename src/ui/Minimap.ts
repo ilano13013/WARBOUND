@@ -58,9 +58,24 @@ export class Minimap {
     x.translate(-p.pos.x, -p.pos.z);
     x.imageSmoothingEnabled = false;
     x.drawImage(this.background(level), nav.minX, nav.minZ, nav.w, nav.h);
+    // zones de Domination
+    for (const z of g.match.active ? g.match.zones : []) {
+      x.globalAlpha = 0.85;
+      x.strokeStyle = z.owner === 'red' ? '#ff4a3a' : z.owner === 'blue' ? '#4a8aff' : '#d8d8d8';
+      x.lineWidth = 2 / s;
+      x.beginPath(); x.arc(z.pos.x, z.pos.z, z.r, 0, Math.PI * 2); x.stroke();
+    }
+    x.globalAlpha = 1;
+    // alliés (toujours visibles)
+    for (const e of g.enemies) {
+      const f = e as { friendly?: boolean; team?: string | null };
+      if (!e.alive || !f.friendly) continue;
+      x.fillStyle = f.team === 'red' ? '#ff8a7a' : '#7ab8ff';
+      x.beginPath(); x.arc(e.pos.x, e.pos.z, 3 / s, 0, Math.PI * 2); x.fill();
+    }
     // ennemis qui viennent de tirer
     for (const e of g.enemies) {
-      if (!e.alive || e.firedT <= 0) continue;
+      if (!e.alive || e.firedT <= 0 || (e as { friendly?: boolean }).friendly) continue;
       x.globalAlpha = Math.min(1, e.firedT / FADE);
       x.fillStyle = e.isBoss ? '#ff9a2a' : '#ff3a2a';
       x.beginPath(); x.arc(e.pos.x, e.pos.z, (e.isBoss ? 5 : 3.2) / s, 0, Math.PI * 2); x.fill();

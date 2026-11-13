@@ -45,6 +45,8 @@ export class Peer {
   /** Canal non fiable : positions (une perte est remplacée par l'état suivant). */
   fast: RTCDataChannel | null = null;
   onMessage: (m: any) => void = () => {};
+  /** Messages binaires (positions, instantanés : voir wire.ts). */
+  onBinary: (b: ArrayBuffer) => void = () => {};
   onOpen: () => void = () => {};
   onClose: (why: string) => void = () => {};
   open = false;
@@ -66,7 +68,14 @@ export class Peer {
 
   private bind(ch: RTCDataChannel): void {
     if (ch.label === 'fast') this.fast = ch; else this.rel = ch;
-    ch.onmessage = (e) => { this.lastRecv = performance.now(); try { this.onMessage(JSON.parse(String(e.data))); } catch { /* message illisible ignoré */ } };
+    ch.binaryType = 'arraybuffer';
+    ch.onmessage = (e) => {
+      this.lastRecv = performance.now();
+      if (e.data instanceof ArrayBuffer) { this.onBinary(e.data); return; }
+      let m: unknown;
+      try { m = JSON.parse(String(e.data)); } catch { return; /* message illisible ignoré */ }
+      this.onMessage(m);
+    };
     ch.onopen = () => { if (!this.open && this.rel?.readyState === 'open' && this.fast?.readyState === 'open') { this.open = true; this.lastRecv = performance.now(); this.onOpen(); } };
     ch.onclose = () => { if (ch === this.rel) this.close('L’adversaire s’est déconnecté.'); };
   }
@@ -110,6 +119,11 @@ export class Peer {
   send(m: unknown, fast = false): void {
     const ch = fast ? this.fast : this.rel;
     if (ch && ch.readyState === 'open') { try { ch.send(JSON.stringify(m)); } catch { /* tampon plein : état suivant */ } }
+  }
+
+  sendBinary(b: ArrayBuffer, fast = true): void {
+    const ch = fast ? this.fast : this.rel;
+    if (ch && ch.readyState === 'open' && ch.bufferedAmount < 256_000) { try { ch.send(b); } catch { /* */ } }
   }
 
   close(why = 'Connexion fermée.'): void {

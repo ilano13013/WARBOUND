@@ -703,7 +703,7 @@ export class Enemy implements Damageable {
   }
 }
 
-function raySphere(o: THREE.Vector3, d: THREE.Vector3, cx: number, cy: number, cz: number, r: number): number | null {
+export function raySphere(o: THREE.Vector3, d: THREE.Vector3, cx: number, cy: number, cz: number, r: number): number | null {
   const ox = o.x - cx, oy = o.y - cy, oz = o.z - cz;
   const b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r;
   const disc = b * b - c;
@@ -712,7 +712,7 @@ function raySphere(o: THREE.Vector3, d: THREE.Vector3, cx: number, cy: number, c
   return t > 0 ? t : null;
 }
 
-function rayCylinder(o: THREE.Vector3, d: THREE.Vector3, cx: number, cz: number, r: number, y0: number, y1: number): number | null {
+export function rayCylinder(o: THREE.Vector3, d: THREE.Vector3, cx: number, cz: number, r: number, y0: number, y1: number): number | null {
   const ox = o.x - cx, oz = o.z - cz;
   const a = d.x * d.x + d.z * d.z;
   if (a < 1e-8) return null;

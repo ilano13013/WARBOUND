@@ -23,6 +23,11 @@ export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
   // opérateur adverse du Défi d'armes : tenue sable et pièces rouge sombre, visière rouge vive, lisible sur les fonds sombres
   rival: { model: 'chars/swat', height: 1.84, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
     Swat: { color: 0xb08a5a, rough: 0.8, emissive: 0x2a0a04, ei: 0.35 }, Swat_Black: { color: 0x5a1a14, metal: 0.3, rough: 0.5, emissive: 0x3a0804, ei: 0.5 }, Visor: { color: 0x200000, emissive: 0xff3a2a, ei: 3.2 }, Skin: {} } },
+  // 4v4 : la couleur d'équipe est imposée sur la tenue et la visière (indépendante de tout cosmétique)
+  rival_red: { model: 'chars/swat', height: 1.84, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    Swat: { color: 0x9a3a2e, rough: 0.8, emissive: 0x2a0604, ei: 0.4 }, Swat_Black: { color: 0x2a1614, metal: 0.3, rough: 0.5 }, Visor: { color: 0x200000, emissive: 0xff3a2a, ei: 3.2 }, Skin: {} } },
+  rival_blue: { model: 'chars/swat', height: 1.84, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    Swat: { color: 0x2e5a9a, rough: 0.8, emissive: 0x04102a, ei: 0.4 }, Swat_Black: { color: 0x141a2a, metal: 0.3, rough: 0.5 }, Visor: { color: 0x000820, emissive: 0x3a8aff, ei: 3.2 }, Skin: {} } },
   breaker: { model: 'chars/swat', height: 2.05, humanoid: true, gun: true, walkSpeed: 1.3, runSpeed: 3.2, mats: {
     Swat: { color: 0x3a3f48, metal: 0.65, rough: 0.4 }, Swat_Black: { color: 0x1a1b20, metal: 0.6, rough: 0.4 }, Visor: { color: 0x2a1000, emissive: 0xff7a2a, ei: 2.8 }, Skin: { color: 0x4a4a4a } } },
   caster: { model: 'chars/witch', height: 1.95, humanoid: true, walkSpeed: 1.4, runSpeed: 3.2, clips: { aim: 'Spell_Simple_Idle_Loop' }, mats: {

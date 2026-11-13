@@ -11,6 +11,9 @@ import { bindLabel } from '../core/Input';
 import { RARITY, formatStat, KIND_LABEL, LEGENDS, type Item } from '../rpg/items';
 import { buildWeaponModel } from '../player/WeaponModels';
 import { Panels } from './Panels';
+import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
+import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
+import { LOADOUTS } from '../net/Match';
 import { icon } from './Icons';
 
 export function esc(s: string): string { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); }
@@ -131,7 +134,7 @@ export class UI {
     if (g.state === 'play' || g.state === 'dead') {
       if (!this.hud.root.classList.contains('hidden')) this.hud.update(dt);
       if (g.state === 'play') {
-        if (g.input.rawPressed('inventory') && !g.duel.active) { if (this.current === 'character') this.resume(); else if (!this.blocking) this.panels.character(); }
+        if (g.input.rawPressed('inventory') && !g.duel.active && !g.match.active) { if (this.current === 'character') this.resume(); else if (!this.blocking) this.panels.character(); }
         if (g.input.rawPressed('map')) { if (this.current === 'map') this.resume(); else if (!this.blocking) this.showMap(); }
       }
       if (this.current === 'map') { this.mapT -= dt; if (this.mapT <= 0) { this.mapT = 0.25; this.drawMap(); } }
@@ -159,7 +162,8 @@ export class UI {
       <div class="menu-list">
         <button class="btn ${p ? '' : 'primary'}" data-a="new">Nouvelle partie</button>
         <button class="btn ${p ? 'primary' : ''}" data-a="continue" ${p ? '' : 'disabled'}>Continuer</button>
-        <button class="btn" data-a="duel" ${p ? '' : 'disabled'}>Défi d’armes (1 contre 1)</button>
+        <button class="btn" data-a="online" ${p ? '' : 'disabled'}>Multijoueur en ligne</button>
+        <button class="btn" data-a="duel" ${p ? '' : 'disabled'}>Défi d’armes par codes (sans serveur)</button>
         <button class="btn" data-a="classes">Sélection du personnage</button>
         <button class="btn" data-a="settings">Paramètres</button>
         <button class="btn" data-a="credits">Crédits</button>
@@ -170,6 +174,7 @@ export class UI {
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
       duel: () => { if (g.profile) this.showDuel(); },
+      online: () => { if (g.profile) this.showLobby(); },
       settings: () => this.showSettings(() => this.showMenu()),
       credits: () => this.showCredits(() => this.showMenu()),
       quit: () => { window.close(); this.show('quit', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>À bientôt, Warbound</h2></div><div class="panel-body col"><p class="brief">Votre progression est sauvegardée. Vous pouvez fermer cet onglet du navigateur.</p></div><div class="panel-foot"><button class="btn" data-a="back">Retour au menu</button></div></div>`, { back: () => this.showMenu() }); },
@@ -224,6 +229,100 @@ export class UI {
   }
 
   // ---------- pause / mort / résultats ----------
+
+  // ---------- multijoueur en ligne (salons) ----------
+
+  private matchBoard(m: NonNullable<ResultsData['match']>): string {
+    const row = (p: (typeof m.board)[number]) => `<tr class="${p.me ? 'me' : ''}${p.connected ? '' : ' off'}"><td>${p.team ? `<i class="dot ${p.team}"></i>` : ''}${esc(p.name)}</td><td>${p.k}</td><td>${p.d}</td><td>${p.a}</td><td>${p.connected ? p.ping + ' ms' : 'parti'}</td></tr>`;
+    return `${m.teams ? `<div class="results-grid" style="grid-template-columns:repeat(2,1fr)"><div class="stat-big"><b style="color:#ff6a5a">${m.red}</b><span class="label">Équipe rouge</span></div><div class="stat-big"><b style="color:#6aa8ff">${m.blue}</b><span class="label">Équipe bleue</span></div></div>` : ''}
+      <table class="board"><tr><th>Joueur</th><th>Élim.</th><th>Morts</th><th>Assist.</th><th>Ping</th></tr>${m.board.map(row).join('')}</table>`;
+  }
+
+  /** Salon en ligne : création, invitation par code ou lien, équipes, prêt, lancement par l'hôte. */
+  showLobby(joinCode = ''): void {
+    const g = this.g, mt = g.match;
+    if (!LobbyClient.available()) {
+      this.show('lobby', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>Multijoueur en ligne</h2></div>
+        <div class="panel-body col"><p class="brief">Le serveur de salons n’est pas configuré sur cette version du site. Le duel par échange de codes reste disponible, sans serveur.</p></div>
+        <div class="panel-foot"><button class="btn primary" data-a="duel">Défi d’armes par codes</button><button class="btn" data-a="back">Retour</button></div></div>`, { duel: () => this.showDuel(), back: () => this.showMenu() });
+      return;
+    }
+    let loadout = 0;
+    try { loadout = Math.max(0, Math.min(LOADOUTS.length - 1, Number(localStorage.getItem('wb-loadout')) || 0)); } catch { /* */ }
+    mt.loadout = loadout;
+    let status = mt.status && mt.phase === 'idle' ? mt.status : '';
+    const render = () => {
+      const lb = mt.lobby, room = lb?.room;
+      const body = room && lb ? this.roomHtml(room, lb, mt.loadout) : `
+        <div class="duel-cols">
+          <div class="col grow"><div class="label">Créer un salon</div>
+            ${(Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn ${id === 'tdm' ? 'primary' : ''}" data-a="create" data-v="${id}">${MODES[id].name}</button>`).join('')}
+          </div>
+          <div class="col grow"><div class="label">Rejoindre un salon</div>
+            <input id="lobby-code" class="code-input" maxlength="6" placeholder="CODE" value="${esc(joinCode)}" autocomplete="off" spellcheck="false">
+            <button class="btn primary" data-a="join">Rejoindre</button>
+            <p class="label" style="text-transform:none;letter-spacing:.03em">Un ami vous a envoyé un lien ? Ouvrez-le : le code est rempli automatiquement.</p>
+          </div>
+        </div>`;
+      this.show('lobby', 'overlay', `<div class="panel"><div class="panel-head"><h2>Multijoueur en ligne</h2><span class="sub">${room ? `Salon ${room.code}` : 'Salons privés : 1v1, 4v4, Domination'}</span><span class="spacer"></span><button class="btn small" data-a="back">${room ? 'Quitter le salon' : 'Retour'}</button></div>
+        <div class="panel-body col scroll">${body}</div>
+        <div class="panel-foot"><span class="label" id="lobby-status" style="text-transform:none;letter-spacing:.03em">${esc(mt.phase === 'connecting' ? mt.status : status)}</span></div></div>`, handlers);
+    };
+    const setStatus = (s: string) => { status = s; const el = document.getElementById('lobby-status'); if (el) el.textContent = s; };
+    const attach = (lb: LobbyClient) => {
+      lb.onRoom = (r) => { mt.onRoom(r); if (this.current === 'lobby') render(); };
+      lb.onStart = (host, r) => { mt.begin(lb, host, r); if (this.current === 'lobby') render(); };
+      lb.onEnd = () => { if (this.current === 'lobby') render(); };
+      lb.onError = (msg) => setStatus(msg);
+      lb.onClose = () => { setStatus('Déconnecté du salon.'); if (mt.lobby === lb) mt.lobby = null; if (this.current === 'lobby') render(); };
+    };
+    mt.onStatus = () => { if (this.current === 'lobby') setStatus(mt.status); };
+    const connect = async (code: string) => {
+      setStatus('Connexion au salon…');
+      const lb = new LobbyClient(code, g.profile!.name);
+      attach(lb);
+      try { await lb.connect(); mt.lobby = lb; status = ''; history.replaceState(null, '', location.pathname); render(); }
+      catch (e) { setStatus((e as Error).message); }
+    };
+    const handlers: Record<string, (v: string, el: HTMLElement) => void> = {
+      back: () => { if (mt.lobby) { mt.lobby.leave(); mt.lobby = null; } this.showMenu(); },
+      create: (v) => { setStatus('Création du salon…'); LobbyClient.create(v as ModeId).then((code) => connect(code), (e) => setStatus((e as Error).message)); },
+      join: () => { const code = ((document.getElementById('lobby-code') as HTMLInputElement | null)?.value || '').trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(code)) { setStatus('Le code fait 6 caractères.'); return; } void connect(code); },
+      copy: (v) => { const t = v === 'link' ? LobbyClient.link(mt.lobby!.code) : mt.lobby!.code; void navigator.clipboard?.writeText(t).catch(() => {}); this.hud.toast(v === 'link' ? 'LIEN COPIÉ' : 'CODE COPIÉ', '#3aff8a'); },
+      ready: () => { const me = mt.lobby?.room?.players.find((p) => p.id === mt.lobby!.you); mt.lobby?.send({ t: 'ready', v: !me?.ready }); },
+      balance: () => mt.lobby?.send({ t: 'balance' }),
+      swap: (v) => { const p = mt.lobby?.room?.players.find((x) => x.id === v); if (p && mt.lobby?.isHost) mt.lobby.send({ t: 'team', id: v, team: p.team === 'red' ? 'blue' : 'red' }); },
+      mode: (v) => { if (mt.lobby?.isHost) mt.lobby.send({ t: 'config', mode: v as ModeId, map: 'chantier' }); },
+      start: () => mt.lobby?.send({ t: 'start' }),
+      loadout: (v) => { mt.loadout = Number(v) || 0; try { localStorage.setItem('wb-loadout', String(mt.loadout)); } catch { /* */ } render(); },
+    };
+    if (mt.lobby) attach(mt.lobby);
+    render();
+    if (joinCode && !mt.lobby) void connect(joinCode);
+  }
+
+  private roomHtml(room: RoomView, lb: LobbyClient, loadout: number): string {
+    const me = room.players.find((p) => p.id === lb.you), host = lb.isHost, def = MODES[room.mode];
+    const pl = (p: RoomView['players'][number]) => `<div class="lobby-player ${p.connected ? '' : 'off'}" ${host && def.teams && room.phase === 'lobby' ? `data-a="swap" data-v="${p.id}" title="Changer d’équipe"` : ''}>
+      <span>${p.host ? '★ ' : ''}${esc(p.name)}${p.badge ? ` <em class="badge">${esc(p.badge)}</em>` : ''}${p.id === lb.you ? ' <span class="label">(vous)</span>' : ''}</span>
+      <span class="${p.ready || p.host ? 'good' : 'label'}">${!p.connected ? 'déconnecté' : p.host ? 'hôte' : p.ready ? 'prêt' : 'pas prêt'}</span></div>`;
+    const teams = def.teams
+      ? `<div class="duel-cols">${(['red', 'blue'] as const).map((t) => `<div class="col grow"><div class="label" style="color:${t === 'red' ? '#ff6a5a' : '#6aa8ff'}">Équipe ${t === 'red' ? 'rouge' : 'bleue'} (${room.players.filter((p) => p.team === t).length})</div>${room.players.filter((p) => p.team === t).map(pl).join('')}</div>`).join('')}</div>`
+      : `<div class="col">${room.players.map(pl).join('')}</div>`;
+    return `
+      <div class="kv"><span>Code du salon</span><span><b style="font-size:22px;letter-spacing:.2em">${room.code}</b> <button class="btn small" data-a="copy" data-v="code">Copier</button> <button class="btn small" data-a="copy" data-v="link">Copier le lien</button></span></div>
+      <div class="kv"><span>Mode</span><span>${host && room.phase === 'lobby' ? (Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn small ${id === room.mode ? 'primary' : ''}" data-a="mode" data-v="${id}">${MODES[id].name}</button>`).join(' ') : def.name}</span></div>
+      <div class="kv"><span>Carte</span><span>Chantier de Valmorre</span></div>
+      <div class="label">Joueurs (${room.players.length} / ${room.max})${host && def.teams ? ' — cliquez sur un joueur pour changer son équipe' : ''}</div>
+      ${teams}
+      ${room.mode !== 'duel' ? `<div class="label">Votre arme (identique pour tous les joueurs qui la choisissent, sans bonus)</div><div class="row" style="flex-wrap:wrap;gap:6px">${LOADOUTS.map((l, i) => `<button class="btn small ${i === loadout ? 'primary' : ''}" data-a="loadout" data-v="${i}">${l.label}</button>`).join('')}</div>` : '<p class="label" style="text-transform:none;letter-spacing:.03em">1v1 aux fusils de précision : 6 étapes, une élimination pour passer à la suivante.</p>'}
+      <div class="row" style="gap:8px;margin-top:8px">
+        ${room.phase === 'playing' ? '<span class="label">Partie en cours…</span>' : host
+          ? `<button class="btn primary" data-a="start">Lancer la partie</button>${def.teams ? '<button class="btn" data-a="balance">Équilibrer les équipes</button>' : ''}`
+          : `<button class="btn primary" data-a="ready">${me?.ready ? 'Annuler « prêt »' : 'Je suis prêt'}</button>`}
+      </div>
+      <p class="label" style="text-transform:none;letter-spacing:.03em">Connexion directe entre les joueurs, organisée par le serveur de salons (${esc(new URL(LOBBY_URL).host)}). L’hôte fait autorité sur les tirs, les dégâts et les scores. Les salons inactifs ferment automatiquement.</p>`;
+  }
 
   // ---------- défi d'armes ----------
 
@@ -281,13 +380,13 @@ export class UI {
         <button class="btn primary" data-a="resume">Reprendre</button>
         <button class="btn" data-a="char">Personnage</button>
         <button class="btn" data-a="settings">Paramètres</button>
-        ${hub ? '<button class="btn" data-a="menu">Menu principal</button>' : g.duel.active ? '<button class="btn danger" data-a="abandon">Abandonner le duel</button>' : '<button class="btn danger" data-a="abandon">Abandonner — retour au QG</button>'}
+        ${hub ? '<button class="btn" data-a="menu">Menu principal</button>' : g.match.active ? '<button class="btn danger" data-a="abandon">Quitter la partie</button>' : g.duel.active ? '<button class="btn danger" data-a="abandon">Abandonner le duel</button>' : '<button class="btn danger" data-a="abandon">Abandonner — retour au QG</button>'}
       </div><div class="col grow"><div class="label">Commandes</div>${keys}<div class="kv"><span>Tir / Visée</span><span>Clic gauche / droit</span></div></div></div></div>`, {
       resume: () => this.resume(),
       char: () => this.panels.character(),
       settings: () => this.showSettings(() => this.showPause()),
       menu: () => { g.save(); this.closeAll(); g.toMenu(); },
-      abandon: () => g.duel.active ? this.confirm('Abandonner le duel ?', 'Votre adversaire remporte la partie.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : this.confirm('Abandonner la mission ?', 'L’expérience gagnée est conservée, mais le butin de mission sera perdu.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()),
+      abandon: () => g.match.active ? this.confirm('Quitter la partie ?', g.match.isHost ? 'Vous êtes l’hôte : la partie s’arrêtera pour tous les joueurs.' : 'Votre équipe jouera en infériorité numérique.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : g.duel.active ? this.confirm('Abandonner le duel ?', 'Votre adversaire remporte la partie.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : this.confirm('Abandonner la mission ?', 'L’expérience gagnée est conservée, mais le butin de mission sera perdu.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()),
     });
   }
 
@@ -309,16 +408,19 @@ export class UI {
       <div class="panel-body col scroll">
         <div class="results-grid">${st(fmtTime(d.time), 'Temps')}${st(String(d.kills), 'Éliminations')}${st(Math.round(d.accuracy * 100) + ' %', 'Précision')}${st(String(d.headshots), 'Tirs à la tête')}${st(String(d.deaths), 'Morts')}</div>
         ${d.duel ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(`${d.duel.me} / ${d.duel.total}`, 'Votre arme atteinte')}${st(`${d.duel.opp} / ${d.duel.total}`, esc(d.duel.oppName))}${st(d.victory ? 'GAGNÉ' : 'PERDU', 'Défi d’armes')}</div>` : ''}
+        ${d.match ? this.matchBoard(d.match) : ''}
         ${d.mode === 'survival' ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(String(d.wave), 'Vague atteinte')}${st(String(d.score), 'Score')}${st(d.record ? 'NOUVEAU RECORD' : String(g.profile!.survival.bestScore), d.record ? 'Record personnel' : 'Meilleur score')}</div>` : ''}
         <div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st('+' + Math.round(d.xp) + ' XP', 'Expérience gagnée')}${st('Niveau ' + d.levelAfter, CLASSES[g.profile!.classId].name)}${st('+' + d.materials, 'Éclats de faille')}</div>
         ${lvl}
-        ${d.mode === 'duel' ? '' : `<div class="label">Objets obtenus (${d.items.length})</div>
+        ${d.mode === 'duel' || d.mode === 'match' ? '' : `<div class="label">Objets obtenus (${d.items.length})</div>
         <div class="loot-row">${d.items.length ? d.items.map(itemCard).join('') : '<span class="label">Aucun objet</span>'}</div>`}
       </div>
-      <div class="panel-foot">${d.final ? '<button class="btn primary" data-a="credits">Continuer</button>' : `<button class="btn primary" data-a="hub">Retour au QG</button>${d.mode === 'survival' ? '<button class="btn" data-a="again">Relancer le protocole</button>' : ''}${d.mode === 'duel' ? '<button class="btn" data-a="menu">Menu principal</button>' : ''}`}</div></div>`, {
+      <div class="panel-foot">${d.mode === 'match' ? `${g.match.lobby && !g.match.lobby.closed ? '<button class="btn primary" data-a="lobby">Retour au salon</button>' : ''}<button class="btn" data-a="leavemenu">Menu principal</button>` : d.final ? '<button class="btn primary" data-a="credits">Continuer</button>' : `<button class="btn primary" data-a="hub">Retour au QG</button>${d.mode === 'survival' ? '<button class="btn" data-a="again">Relancer le protocole</button>' : ''}${d.mode === 'duel' ? '<button class="btn" data-a="menu">Menu principal</button>' : ''}`}</div></div>`, {
       hub: () => { this.closeAll(); g.startHub(); },
       again: () => { this.closeAll(); g.startSurvival(); },
       menu: () => { this.closeAll(); g.toMenu(); },
+      lobby: () => { this.closeAll(); g.toMenu(); this.showLobby(); },
+      leavemenu: () => { g.match.lobby?.leave(); g.match.lobby = null; this.closeAll(); g.toMenu(); },
       credits: () => this.showCredits(() => { this.closeAll(); g.toMenu(); }, true),
     });
     for (const it of d.items) if (it.rarity === 'legendary') { g.audio.loot(3); break; }

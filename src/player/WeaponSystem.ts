@@ -94,6 +94,7 @@ export class WeaponSystem {
     if (!w || this.reloading > 0 || this.swapT > 0 || w.ammo >= w.st.mag || w.reserve <= 0 || p.has('colossus')) return;
     this.reloadDur = w.st.reload;
     this.reloading = this.reloadDur; this.reloadStage = 0; this.reloadEmpty = w.ammo === 0;
+    if (this.g.match.active) this.g.match.onReload();
   }
 
   private finishReload(): void {
@@ -214,6 +215,7 @@ export class WeaponSystem {
     else g.fx.tracer(_r.copy(_o).addScaledVector(_d, 2), end, tcol, 0.05, 0.16);
 
     if (g.duel.active) g.duel.onShot(end, st.def.id, st.silent);
+    if (g.match.active) g.match.onShot(_o, _d, st.def.id);
     if (hit) {
       if (hit.enemy) {
         const dist = hit.t;

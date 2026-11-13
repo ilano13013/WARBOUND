@@ -1,6 +1,6 @@
 // Archétypes ennemis : statistiques et comportements configurables.
 
-export type EnemyKind = 'grunt' | 'sniper' | 'marksman' | 'rival' | 'breaker' | 'devourer' | 'caster' | 'drone' | 'commander' | 'sentinel' | 'guardian' | 'archon' | 'sovereign';
+export type EnemyKind = 'grunt' | 'sniper' | 'marksman' | 'rival' | 'rival_red' | 'rival_blue' | 'breaker' | 'devourer' | 'caster' | 'drone' | 'commander' | 'sentinel' | 'guardian' | 'archon' | 'sovereign';
 
 export interface EnemyDef {
   id: EnemyKind;
@@ -42,6 +42,14 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   // adversaire humain du Défi d'armes : piloté par le réseau, sans IA
   rival: {
     id: 'rival', name: 'Adversaire', faction: 'Opérateur', hp: 100, speed: 0, radius: 0.4, height: 1.8, xp: 0, elite: false,
+    sight: 0, fov: 0, attack: 'rifle', damage: 0, burst: 0, burstGap: 0, cooldown: 99, range: 0, maxRange: 0, accuracy: 0, useCover: false,
+  },
+  rival_red: {
+    id: 'rival_red', name: 'Équipe rouge', faction: 'Opérateur', hp: 100, speed: 0, radius: 0.4, height: 1.8, xp: 0, elite: false,
+    sight: 0, fov: 0, attack: 'rifle', damage: 0, burst: 0, burstGap: 0, cooldown: 99, range: 0, maxRange: 0, accuracy: 0, useCover: false,
+  },
+  rival_blue: {
+    id: 'rival_blue', name: 'Équipe bleue', faction: 'Opérateur', hp: 100, speed: 0, radius: 0.4, height: 1.8, xp: 0, elite: false,
     sight: 0, fov: 0, attack: 'rifle', damage: 0, burst: 0, burstGap: 0, cooldown: 99, range: 0, maxRange: 0, accuracy: 0, useCover: false,
   },
   marksman: {

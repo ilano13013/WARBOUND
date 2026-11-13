@@ -49,7 +49,7 @@ export class Combat {
   rayEnemies(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { enemy: Enemy; t: number; head: boolean } | null {
     let best: { enemy: Enemy; t: number; head: boolean } | null = null;
     for (const e of this.g.enemies) {
-      if (!e.alive) continue;
+      if (!e.alive || (e as { friendly?: boolean }).friendly) continue;
       // rejet rapide par sphère englobante
       const cx = e.pos.x - o.x, cy = e.pos.y + e.height * 0.5 - o.y, cz = e.pos.z - o.z;
       const proj = cx * d.x + cy * d.y + cz * d.z;

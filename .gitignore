@@ -12,3 +12,4 @@ WARBOUND-dist-netlify.zip
 tools/assets/incoming/*
 !tools/assets/incoming/LISEZMOI.txt
 .wrangler
+dist-test
