@@ -102,6 +102,8 @@ export class Level {
   private lightCount = 0;
   private propList: { name: string; m: THREE.Matrix4 }[] = [];
   maxLights = 8;
+  /** Passages hors marche (ascenseur…) : le contrôle d'accessibilité les suit comme le joueur. */
+  links: { from: THREE.Vector3; to: THREE.Vector3 }[] = [];
   /** Plafond global de lumières réelles, fixé par la qualité graphique (Faible 2, Moyen 4, Élevé 8). */
   static lightCap = 4;
   /** Position de la caméra, fournie par le jeu : les lumières réelles sont attribuées aux lampes les plus proches. */

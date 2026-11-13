@@ -50,7 +50,7 @@ export class Mission {
   private lineT = 0;
   private doneDelay = 0;
 
-  constructor(public g: Game, public id: string, public name: string, public mode: 'campaign' | 'hub' | 'survival') {}
+  constructor(public g: Game, public id: string, public name: string, public mode: 'campaign' | 'hub' | 'survival' | 'duel') {}
 
   get current(): Objective | null { return this.objectives[this.index] || null; }
 

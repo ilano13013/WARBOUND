@@ -1,6 +1,6 @@
 // Parcours automatisé d'une ou plusieurs opérations avec le pilote de test (mode ?autotest uniquement).
 import { open, st, shot, sleep } from './lib.mjs';
-const ids = (process.argv[2] || 'op1,op2,op3,op4').split(',');
+const ids = (process.argv[2] || 'op1,op2,op3,op4,op5').split(',');
 const cls = process.argv[3] || 'vanguard';
 const god = process.argv[4] !== 'nogod';
 const { browser, page, errors } = await open({ w: 640, h: 360 });

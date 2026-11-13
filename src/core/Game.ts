@@ -25,17 +25,21 @@ import { buildOp1 } from '../levels/op1';
 import { buildOp2 } from '../levels/op2';
 import { buildOp3 } from '../levels/op3';
 import { buildOp4 } from '../levels/op4';
+import { buildOp5 } from '../levels/op5';
 import { buildSurvival } from '../levels/survival';
+import { buildDuel } from '../levels/duel';
+import { Duel } from '../net/Duel';
 import { Cinematics } from '../cinematic/Cinematics';
 import { Assets } from '../assets/Assets';
 
 export type GameState = 'boot' | 'menu' | 'cinematic' | 'play' | 'dead' | 'results';
 
 export interface ResultsData {
-  title: string; subtitle: string; victory: boolean; mode: 'campaign' | 'survival';
+  title: string; subtitle: string; victory: boolean; mode: 'campaign' | 'survival' | 'duel';
   time: number; kills: number; accuracy: number; deaths: number; headshots: number;
   xp: number; items: Item[]; materials: number; levelBefore: number; levelAfter: number;
   wave?: number; score?: number; record?: boolean; final?: boolean;
+  duel?: { me: number; opp: number; total: number; oppName: string };
 }
 
 export const INVENTORY_CAP = 48;
@@ -54,6 +58,7 @@ export class Game {
   weapons: WeaponSystem;
   abilities: Abilities;
   cine: Cinematics;
+  duel: Duel;
   level: Level | null = null;
   mission: Mission | null = null;
   enemies: Enemy[] = [];
@@ -89,6 +94,7 @@ export class Game {
     this.weapons = new WeaponSystem(this);
     this.abilities = new Abilities(this);
     this.cine = new Cinematics(this);
+    this.duel = new Duel(this);
     this.ui = new UI(this);
     this.input.onEscape = () => this.ui.onEscape();
     this.input.onLockChange = (locked) => { if (!locked && this.state === 'play' && !this.paused && !this.ui.blocking && !this.testMode) this.ui.showPause(); };
@@ -143,6 +149,8 @@ export class Game {
     if (this.level) { this.level.dispose(); this.level = null; }
     this.mission = null;
     this.cine.stop();
+    this.weapons.override = null;
+    this.ui.hud.root.classList.remove('duel-mode');
     this.ui.hud.reset();
   }
 
@@ -219,7 +227,7 @@ export class Game {
       const m = new Mission(this, id, def.name, 'campaign');
       m.rewardXp = def.xp; m.bossLootTable = def.bossLoot || '';
       m.lootTable = this.profile!.difficulty === 'veteran' ? 'missionHard' : 'mission';
-      const build = { op1: buildOp1, op2: buildOp2, op3: buildOp3, op4: buildOp4 }[id]!;
+      const build = { op1: buildOp1, op2: buildOp2, op3: buildOp3, op4: buildOp4, op5: buildOp5 }[id]!;
       const level = build(this, m);
       this.load(level, m);
       this.audio.setMusic('explore', def.theme);
@@ -239,6 +247,42 @@ export class Game {
       this.audio.setMusic('explore', 4);
       this.ui.hud.banner('PROTOCOLE INFINI', 'Simulation de survie — vagues illimitées');
     }));
+  }
+
+  /** Défi d'armes : lancé par le gestionnaire de duel une fois la liaison établie. */
+  startDuel(): void {
+    if (!this.profile) return;
+    this.ui.fade(() => this.safeBuild(() => {
+      this.unload();
+      this.runMods = {};
+      this.diff = DIFFICULTIES.soldat;
+      const m = new Mission(this, 'duel', 'DÉFI D’ARMES', 'duel');
+      this.duel.prepare(m);
+      const level = buildDuel(this, m);
+      this.load(level, m);
+      this.duel.begin();
+      this.ui.hud.root.classList.add('duel-mode');
+      this.audio.setMusic('combat');
+    }));
+  }
+
+  finishDuel(victory: boolean, reason: string): void {
+    const m = this.mission, p = this.profile!, d = this.duel;
+    if (!m || m.mode !== 'duel' || this.state === 'results') return;
+    this.state = 'results';
+    this.timeScale = 1;
+    this.input.unlock();
+    this.gainXp(victory ? 400 : 150, victory ? 'Défi d’armes remporté' : 'Défi d’armes');
+    p.stats.playtime += m.stats.time;
+    this.save();
+    this.audio.setMusic('menu');
+    this.ui.hud.setVisible(false);
+    this.ui.showResults({
+      title: victory ? 'VICTOIRE' : 'DÉFAITE', subtitle: reason, victory, mode: 'duel',
+      time: m.stats.time, kills: d.kills, accuracy: m.stats.shots ? m.stats.hits / m.stats.shots : 0, deaths: d.deaths, headshots: m.stats.headshots,
+      xp: m.stats.xp, items: [], materials: 0, levelBefore: this.levelStartLevel, levelAfter: p.level,
+      duel: { me: victory && reason.startsWith('Échelle') ? d.ladder.length : d.myRung + 1, opp: d.oppRung + 1, total: d.ladder.length, oppName: d.oppName },
+    });
   }
 
   spawnEnemy(kind: EnemyKind, x: number, z: number, o: SpawnOpts = {}): Enemy {
@@ -286,6 +330,8 @@ export class Game {
     p.stats.deaths++;
     if (this.mission) this.mission.stats.deaths++;
     this.state = 'dead';
+    // duel : le pointeur reste capturé, la réapparition est automatique
+    if (this.mission?.mode === 'duel') { this.duel.onLocalDeath(); return; }
     this.timeScale = 0.35;
     this.audio.tone(110, 1.2, { type: 'sawtooth', to: 40, vol: 0.3, filter: 500 });
     this.input.unlock();
@@ -323,7 +369,7 @@ export class Game {
     this.input.lock();
   }
 
-  abandon(): void { this.save(); this.startHub(); }
+  abandon(): void { if (this.duel.active) { this.duel.leave(); return; } this.save(); this.startHub(); }
 
   onMissionComplete(): void {
     const m = this.mission!, p = this.profile!;
@@ -417,8 +463,10 @@ export class Game {
   private step(realDt: number, render: boolean): void {
     const dt = realDt * this.timeScale;
     if ((this.state === 'play' || this.state === 'dead') && this.level) {
-      if (!this.paused && !this.ui.blocking) this.simulate(dt, realDt);
+      const sim = !this.paused && !this.ui.blocking;
+      if (sim) this.simulate(dt, realDt);
       else this.weaponsIdle();
+      if (this.duel.active && this.level) this.duel.tick(realDt, sim, dt);
     } else if (this.state === 'menu' || this.state === 'cinematic' || this.state === 'results') {
       this.cine.update(realDt);
       this.fx.update(realDt);

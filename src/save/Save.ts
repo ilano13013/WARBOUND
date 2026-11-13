@@ -139,7 +139,7 @@ export function validateProfile(raw: any): Profile | null {
       p.equipped.secondary = it.uid;
     }
     p.missions = {};
-    if (raw.missions && typeof raw.missions === 'object') for (const k of ['op1', 'op2', 'op3', 'op4']) {
+    if (raw.missions && typeof raw.missions === 'object') for (const k of ['op1', 'op2', 'op3', 'op4', 'op5']) {
       const m = raw.missions[k];
       if (m && m.done) p.missions[k] = { done: true, bestTime: num(m.bestTime, 0, 0), difficulty: ['recrue', 'soldat', 'veteran'].includes(m.difficulty) ? m.difficulty : 'soldat' };
     }

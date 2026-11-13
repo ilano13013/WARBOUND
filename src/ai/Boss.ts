@@ -272,7 +272,7 @@ export class Guardian extends Boss {
         _c.set(p.pos.x + p.vel.x * 0.35 - this.pos.x, 0, p.pos.z + p.vel.z * 0.35 - this.pos.z).normalize();
         const origin = new THREE.Vector3(this.pos.x, _b.y, this.pos.z);
         g.audio.charge(this.pos, 0.9);
-        g.combat.hazardLine(origin, _c.clone(), 46, 2.4, 1.0, 30 * g.diff.damage, 0xff5a1a, () => { g.audio.enemyShot('sniper', this.pos); this.rig?.fire(); });
+        g.combat.hazardLine(origin, _c.clone(), 46, 2.4, 1.0, 30 * g.diff.damage, 0xff5a1a, () => { this.firedT = 3; g.audio.enemyShot('sniper', this.pos); this.rig?.fire(); });
       });
     }
   }
@@ -381,7 +381,7 @@ export class Archon extends Boss {
         const spread = (this.volley % 5 - 2) * 0.09;
         _c.applyAxisAngle(_a.set(0, 1, 0), spread);
         g.combat.spawnProjectile({ pos: _b, vel: _c.multiplyScalar(fast ? 19 : 15), damage: this.def.damage * g.diff.damage, radius: 0.32, color: 0xb06aff, owner: 'enemy', life: 6, aoe: 1.8, homing: this.volley % 3 === 0 ? 0.5 : 0 });
-        g.audio.enemyShot('orb', this.pos); this.castAnim = 0.3;
+        this.firedT = 3; g.audio.enemyShot('orb', this.pos); this.castAnim = 0.3;
       }
     }
     if (this.busyT > 0) { this.busyT -= dt; return; }
@@ -580,7 +580,7 @@ export class Sovereign extends Boss {
         _c.set(p.pos.x + p.vel.x * 0.4, p.pos.y + 1, p.pos.z + p.vel.z * 0.4).sub(_b).normalize();
         _c.applyAxisAngle(_a.set(0, 1, 0), (this.volley % 5 - 2) * 0.11);
         g.combat.spawnProjectile({ pos: _b, vel: _c.multiplyScalar(17), damage: 24 * g.diff.damage, radius: 0.32, color: 0xff3a5a, owner: 'enemy', life: 6, aoe: 1.8, homing: this.volley % 2 === 0 ? 0.6 : 0 });
-        g.audio.enemyShot('orb', this.pos); this.castAnim = 0.3;
+        this.firedT = 3; g.audio.enemyShot('orb', this.pos); this.castAnim = 0.3;
       }
     }
     if (p3) {

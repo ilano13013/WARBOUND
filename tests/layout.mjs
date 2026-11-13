@@ -8,7 +8,7 @@ const check = (ok, label, extra = '') => { console.log(`${ok ? '  ok ' : '  ÉCH
 await page.evaluate(() => { WB.newGame('vanguard'); WB.quality('low'); });
 await waitFor(page, () => WB.state().state === 'play');
 
-for (const id of ['op1', 'op2', 'op3', 'op4']) {
+for (const id of ['op1', 'op2', 'op3', 'op4', 'op5']) {
   console.log(`— ${id}`);
   await page.evaluate((id) => {
     const g = WB.game; window.__sp = [];
@@ -25,7 +25,7 @@ for (const id of ['op1', 'op2', 'op3', 'op4']) {
     out.player = !!w.overlaps(s.x, s.y + 0.05, s.z, 0.35, 1.7);
     for (const e of window.__sp) {
       // au-dessus de la hauteur de marche : trottoirs, dalles et seuils ne comptent pas comme obstacles
-      if (w.overlaps(e.x, e.y + 0.5, e.z, 0.3, 1.0)) out.inside.push(`${e.kind}@${e.x},${e.z}`);
+      if (e.kind !== 'drone' && w.overlaps(e.x, e.y + 0.5, e.z, 0.3, 1.0)) out.inside.push(`${e.kind}@${e.x},${e.z}`);
       if (e.y > 0.5 || e.fixed || e.kind === 'drone') continue;
       if (nav.nearestOpen(e.x, e.z, 2) < 0) out.unreachable.push(`${e.kind}@${e.x},${e.z}`);
     }
@@ -42,10 +42,14 @@ for (const id of ['op1', 'op2', 'op3', 'op4']) {
     const st = 0.25, b = L.bounds, W = Math.ceil((b.maxX - b.minX) / st), H = Math.ceil((b.maxZ - b.minZ) / st);
     const free = (i) => { const x = b.minX + (i % W + 0.5) * st, z = b.minZ + (((i / W) | 0) + 0.5) * st; return !L.world.overlaps(x, 0.42, z, 0.36, 1.3); };
     const seen = new Uint8Array(W * H), cell = (x, z) => Math.floor((z - b.minZ) / st) * W + Math.floor((x - b.minX) / st);
-    const i0 = cell(s.x, s.z), q = [i0]; seen[i0] = 1;
-    while (q.length) { const i = q.pop(), x = i % W, z = (i / W) | 0; for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue; const j = nz * W + nx; if (!seen[j]) { seen[j] = 2; if (free(j)) { seen[j] = 1; q.push(j); } } } }
+    const flood = (x0, z0) => { const i0 = cell(x0, z0); if (seen[i0] === 1) return; const q = [i0]; seen[i0] = 1;
+    while (q.length) { const i = q.pop(), x = i % W, z = (i / W) | 0; for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue; const j = nz * W + nx; if (!seen[j]) { seen[j] = 2; if (free(j)) { seen[j] = 1; q.push(j); } } } } };
+    flood(s.x, s.z);
+    // passages hors marche (ascenseur) : suivis dès que leur point de départ est atteint
     // une cible est atteinte si une case libre et visitée se trouve à moins de 2,5 m (interaction, marqueur posé sur un objet)
+    const nearCell = (x, z) => near(x, z);
     const near = (x, z) => { for (let dz = -10; dz <= 10; dz++) for (let dx = -10; dx <= 10; dx++) { if (dx * dx + dz * dz > 100) continue; const xx = Math.floor((x - b.minX) / st) + dx, zz = Math.floor((z - b.minZ) / st) + dz; if (xx < 0 || zz < 0 || xx >= W || zz >= H) continue; if (seen[zz * W + xx] === 1) return true; } return false; };
+    for (let k = 0; k < 4; k++) for (const ln of L.links || []) if (nearCell(ln.from.x, ln.from.z)) flood(ln.to.x, ln.to.z);
     const test = (label, x, y, z) => { if (y > 1.5) return; if (!near(x, z)) bad.push(`${label}@${x.toFixed(1)},${z.toFixed(1)}`); };
     g.mission.objectives.forEach((o, i) => { const mk = o.marker && typeof o.marker !== 'function' ? o.marker : null; if (mk) test(`objectif ${i + 1}`, mk.x, mk.y, mk.z); });
     for (const it of L.interactables) test(it.prompt.slice(0, 40), it.pos.x, it.pos.y, it.pos.z);

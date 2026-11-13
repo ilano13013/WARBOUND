@@ -255,7 +255,7 @@ export class Panels {
     const unlocked = (id: string) => { const m = MISSIONS.find((x) => x.id === id)!; return !m.requires || !!p.missions[m.requires]?.done; };
     if (!unlocked(this.selMission)) this.selMission = g.nextMissionId() || 'op1';
     const sel = MISSIONS.find((m) => m.id === this.selMission)!;
-    const cards = MISSIONS.map((m) => { const ok = unlocked(m.id), done = p.missions[m.id]; return `<div class="mission-card ${m.id === sel.id ? 'on' : ''} ${ok ? '' : 'locked'}" data-a="pick" data-v="${m.id}"><div class="label">Opération ${m.num}${done ? ` · <span class="good">Accomplie (${fmtTime(done.bestTime)})</span>` : ok ? '' : ' · Verrouillée'}</div><h3>${m.name}</h3><div class="label" style="text-transform:none;letter-spacing:.03em">${m.location}</div></div>`; }).join('');
+    const cards = MISSIONS.map((m) => { const ok = unlocked(m.id), done = p.missions[m.id]; return `<div class="mission-card ${m.id === sel.id ? 'on' : ''} ${ok ? '' : 'locked'}" data-a="pick" data-v="${m.id}"><div class="label">Opération ${m.num}${done ? ` · <span class="good">Accomplie${done.bestTime ? ` (${fmtTime(done.bestTime)})` : ''}</span>` : ok ? '' : ' · Verrouillée'}</div><h3>${m.name}</h3><div class="label" style="text-transform:none;letter-spacing:.03em">${m.location}</div></div>`; }).join('');
     this.ui.show('missions', 'overlay', `<div class="panel"><div class="panel-head"><h2>Table tactique</h2><span class="sub">Sélection de l’opération</span><span class="spacer"></span><button class="btn small" data-a="close">Fermer</button></div>
       <div class="panel-body"><div class="col scroll" style="width:330px">${cards}</div>
       <div class="col grow scroll"><div class="label">Briefing — Commandante Reyes</div><h2 style="font-size:28px">Opération ${sel.num} — ${sel.name}</h2><div class="label">${sel.location} · Durée estimée ${sel.duration} · Niveau conseillé ${sel.level}</div>
@@ -270,6 +270,7 @@ export class Panels {
       diff: (v) => { p.difficulty = v as Difficulty; g.autosaveSoon(); this.missions(); },
       launch: () => { this.ui.closeAll(); g.startMission(sel.id); },
     });
+    document.querySelector('.mission-card.on')?.scrollIntoView({ block: 'nearest' });
   }
 
   survival(): void {

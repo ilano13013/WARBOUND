@@ -49,6 +49,8 @@ export class Enemy implements Damageable {
   protected walkPhase = Math.random() * 6; protected flinch = 0; protected deathT = 0; protected flashT = 0; private flashed: { m: THREE.Mesh; mat: THREE.Material | THREE.Material[] }[] = [];
   protected hover = 0; protected auraT = 0;
   eliteBarT = 0;
+  /** Temps restant d'affichage sur la mini-carte après un tir (s). */
+  firedT = 0;
   rig: CharacterRig | null = null;
 
   constructor(protected g: Game, public kind: EnemyKind, x: number, z: number, o: SpawnOpts = {}) {
@@ -325,6 +327,7 @@ export class Enemy implements Damageable {
   update(dt: number): void {
     const g = this.g;
     if (!this.alive) { this.updateDeath(dt); return; }
+    if (this.firedT > 0) this.firedT -= dt;
     // altérations
     if (this.burnT > 0) {
       this.burnT -= dt; this.burnTick -= dt;
@@ -526,6 +529,7 @@ export class Enemy implements Damageable {
       if (this.aimT <= 0) {
         this.aiming = false; this.cdT = d.cooldown * g.diff.cooldown;
         g.audio.enemyShot('sniper', this.pos);
+        this.firedT = 3;
         g.fx.flash(_a, 0xffc080, 20, 0.06);
         // le tir manque si la cible s'est suffisamment déplacée pendant la fin de la visée
         const moved = this.tgtAlly ? 0 : g.player.pos.distanceTo(this.aimStart);
@@ -556,6 +560,7 @@ export class Enemy implements Damageable {
     this.muzzlePos(_a);
     if (d.attack === 'orb') {
       g.audio.enemyShot('orb', this.pos);
+      this.firedT = 3;
       // légère anticipation du déplacement du joueur
       _b.copy(tp);
       if (!this.tgtAlly) _b.addScaledVector(p.vel, Math.min(0.6, dist / 16) * 0.6);
@@ -564,6 +569,7 @@ export class Enemy implements Damageable {
       return;
     }
     g.audio.enemyShot(d.attack === 'laser' ? 'laser' : d.attack, this.pos);
+    this.firedT = 3;
     g.fx.flash(_a, d.attack === 'laser' ? 0xff3030 : 0xffc080, 10, 0.05, 8);
     if (!see) { this.missTracer(_a, _b.copy(this.lastKnown).setY(this.lastKnown.y + 1.2)); return; }
     const pellets = d.attack === 'shotgun' ? 7 : 1;

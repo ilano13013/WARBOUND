@@ -443,7 +443,7 @@ function pylon(L: Level, x: number, z: number, h: number, m: THREE.Material, ry:
   for (const yy of [0.82, 0.96]) L.deco(m, new THREE.BoxGeometry(9, 0.25, 0.25), x, h * yy, z, 0, ry, 0);
 }
 
-export type BackdropKind = 'industrial' | 'city' | 'temple' | 'fracture' | 'fort';
+export type BackdropKind = 'industrial' | 'city' | 'temple' | 'fracture' | 'fort' | 'alpine';
 
 /** Décor lointain hors de la zone jouable : donne de la profondeur et une identité à l'horizon. */
 export function backdrop(L: Level, kind: BackdropKind): void {
@@ -470,6 +470,18 @@ export function backdrop(L: Level, kind: BackdropKind): void {
       else if (r < 0.85) pylon(L, x, z, 26 + rnd(i, 6) * 10, steel, a + Math.PI / 2);
       else { L.deco(steel, new THREE.CylinderGeometry(1.4, 2, 48, 8), x, 24, z); L.deco(sil('stackGlow', 0x200a04, 0xff5a1a, 2.4), new THREE.CylinderGeometry(1.5, 1.5, 0.6, 8), x, 48, z); }
     }
+  } else if (kind === 'alpine') {
+    // massif alpin de nuit : sommets enneigés, ligne à haute tension qui quitte le barrage
+    const rock = sil('aRock', 0x1a1e26), rock2 = sil('aRock2', 0x232833), snow = sil('aSnow', 0x8a96a8), steel = sil('aSteel', 0x14171c);
+    ridge(L, cx, cz, R + 170, 60, 150, rock, 11, 1);
+    ridge(L, cx, cz, R + 100, 20, 60, rock2, 3, 1);
+    for (let i = 0; i < 18; i++) {
+      const [x, z] = ring((i + 0.4 * rnd(i, 1)) / 18, 40 + rnd(i, 2) * 70);
+      const h = 50 + rnd(i, 3) * 70, r = 18 + rnd(i, 4) * 16;
+      L.deco(rock, new THREE.ConeGeometry(r, h, 6), x, h / 2 - 4, z, 0, i, 0);
+      L.deco(snow, new THREE.ConeGeometry(r * 0.32, h * 0.3, 6), x, h * 0.86 - 4, z, 0, i, 0);
+    }
+    for (let i = 0; i < 6; i++) { const [x, z, a] = ring(0.62 + i * 0.035, 30 + i * 26); pylon(L, x, z, 30, steel, a + Math.PI / 2); }
   } else if (kind === 'city') {
     const m1 = mat('facade'), dark = sil('cityDark', 0x1a1a22);
     for (let i = 0; i < 26; i++) {

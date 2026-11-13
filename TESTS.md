@@ -1,5 +1,29 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.5 (opération 5, tireur d'élite, Défi d'armes, mini-carte)
+
+Exécution complète `npm test` (machine non chargée) : gameplay 27/27, settings sans échec, boss, survie 6/6, niveaux cohérents (op1 à op5 et QG), campagne des cinq opérations jusqu'aux crédits sans erreur JavaScript. Le contrôle `systems` a échoué une fois sur « opération 2 verrouillée » parce qu'il attendait 3 opérations verrouillées au lieu de 4 ; il compte maintenant à partir du nombre d'opérations, puis 26/26. Nouveau test `duel` : 19/19.
+
+### Opération 5
+- `layout` : chaque objectif, interaction et ennemi au sol de LIGNE DE CRÊTE est atteignable à pied depuis le départ, y compris de l'autre côté du monte-charge.
+- `campaign` : les 9 objectifs enchaînés jusqu'à « MISSION ACCOMPLIE », sans mort, 35 éliminations.
+- Tireur d'élite HELIX : il repère le joueur, tire, change de poste (environ 5,5 s caché) et ne prend aucun dégât pendant son déplacement.
+- Table tactique (capture en 960×540) : la carte de l'opération 5 reste visible après sélection ; le temps record manquant n'affiche plus « NaN:NaN ».
+
+### Défi d'armes (`tests/duel.mjs`)
+Deux navigateurs (contextes séparés) sur la même machine, sans réseau extérieur : codes produits (environ 550 caractères chacun), code invalide refusé avec un message clair, invitation collée à la place de la réponse refusée, connexion établie, noms échangés, même première arme, position de l'adversaire synchronisée (écart inférieur à 0,6 m). Partie complète sur une échelle raccourcie à 3 armes : chaque élimination confirmée fait passer l'hôte à l'arme suivante, l'invité voit cette progression, réapparition après 3 s, victoire chez l'hôte et défaite chez l'invité, bilan 3 éliminations / 3 morts, retour au QG avec les armes du profil.
+
+**Non vérifié** : connexion entre deux machines réelles sur Internet (l'environnement de test n'a pas accès aux serveurs STUN). Elle repose sur le même mécanisme, mais les réseaux d'entreprise, les partages de connexion mobile et les pare-feu stricts peuvent la bloquer (pas de serveur relais).
+
+### Mini-carte
+Capture en 1280×720 sur VILLE MORTE avec des ennemis en alerte : obstacles, objectif (losange) et points rouges des ennemis qui viennent de tirer. Dans le duel, l'adversaire n'y apparaît que lorsqu'il tire, et la grande carte (M) ne révèle plus sa position.
+
+### Problèmes trouvés pendant ce travail
+- Le premier test du duel ne touchait jamais : la position de test de l'hôte était à l'intérieur du pilier central de l'arène. Les positions ont été déplacées dans l'allée dégagée.
+- L'objectif du duel était ajouté après le démarrage de la mission et ne s'affichait pas ; il est maintenant défini avant.
+- À la mort, le pointeur était libéré, ce qui obligeait à recliquer après chaque réapparition automatique ; il reste capturé en duel.
+- En duel, la carte tactique révélait l'adversaire, considéré comme « en combat » ; corrigé.
+
 ## Version 2.4 (équipement électrique, préparation AK et soldat)
 
 Exécution complète `npm test` sur une machine non chargée : 7 scénarios réussis (gameplay 27/27, systems 26/26, settings 10/10, boss 3/3, survival 6/6, layout cohérent, campagne jusqu'aux crédits sans erreur JavaScript).

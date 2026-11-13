@@ -57,6 +57,16 @@ export const MISSIONS: MissionDef[] = [
     objectives: ['Franchir les défenses HELIX', 'Désactiver trois stabilisateurs', 'Traverser la zone altérée', 'Survivre à la contre-attaque', 'Entrer dans le noyau', 'Vaincre le Souverain Fracturé', 'Stabiliser la Fracture'],
     xp: 4000, level: 12, requires: 'op3', boss: 'Le Souverain Fracturé', bossLoot: 'boss_sovereign', theme: 3, duration: '20–25 min',
   },
+  {
+    id: 'op5', num: 5, name: 'LIGNE DE CRÊTE', location: 'Barrage hydroélectrique de Valmorre — massif alpin',
+    briefing: [
+      'Point Zéro est scellée. Mais le colonel Halvard, dernier officier d’HELIX, a replié ses unités d’élite sur le barrage de Valmorre.',
+      'La centrale alimente un relais qui émet la signature de la Fracture : Halvard y a branché un fragment de la Clé pour rouvrir une brèche.',
+      'Remontez la vallée sous le feu de ses tireurs d’élite, fermez les vannes de la centrale, puis prenez la crête et coupez le relais.',
+    ],
+    objectives: ['Atteindre le poste de contrôle', 'Neutraliser les tireurs d’élite', 'Entrer dans la salle des turbines', 'Fermer les trois vannes', 'Tenir pendant la purge', 'Monter sur la crête', 'Prendre la crête', 'Couper le relais Souverain', 'Rejoindre l’extraction'],
+    xp: 4500, level: 14, requires: 'op4', theme: 4, duration: '15–20 min',
+  },
 ];
 
 export const MISSION_BY_ID: Record<string, MissionDef> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
@@ -64,6 +74,9 @@ export const MISSION_BY_ID: Record<string, MissionDef> = Object.fromEntries(MISS
 export interface LoreDef { id: string; title: string; kind: 'Journal audio' | 'Terminal' | 'Document'; text: string }
 
 export const LORE: Record<string, LoreDef> = {
+  op5_log1: { id: 'op5_log1', kind: 'Journal audio', title: 'Sergent-chef Varga — perchoir 3', text: '« Halvard veut qu’on tire et qu’on bouge. Un tir, deux au plus, puis on change de rocher. Le reflet de la lunette nous trahit, alors on ne reste jamais assez longtemps pour qu’ils le voient deux fois. Il pleut depuis six jours. Le barrage chante, la nuit. Je n’aime pas ce chant. »' },
+  op5_term1: { id: 'op5_term1', kind: 'Terminal', title: 'Centrale de Valmorre — consignes', text: 'PROTOCOLE DE PURGE\n1. Fermer les vannes des trois groupes.\n2. Attendre la vidange des conduites forcées (40 s).\n3. Ne pas rester sur les passerelles pendant la purge.\n\nNote manuscrite : « Le relais de la crête ne doit JAMAIS manquer de courant. Ordre du colonel. »' },
+  op5_doc1: { id: 'op5_doc1', kind: 'Document', title: 'Ordre du colonel Halvard', text: 'À toutes les unités,\n\nVoss a échoué parce qu’il voulait devenir la porte. Nous ne ferons pas cette erreur : nous ne la franchirons pas, nous la louerons. Dix-sept Fractures, dix-sept gouvernements prêts à payer pour qu’on les referme, ou qu’on les ouvre chez leurs voisins.\n\nTenez la crête.\n\n— Col. E. Halvard' },
   op1_log1: { id: 'op1_log1', kind: 'Journal audio', title: 'Sergent Kovac — dernier rapport', text: '« …ils ne dorment plus. Les gars de l’aile est restent debout dans le noir à fixer le mur du labo. Hier, Dietrich a arraché sa plaque d’identité en disant que ce nom n’était plus le sien. Le directeur Voss dit que c’est une “acclimatation”. Moi je dis qu’on devrait brûler cet endroit. »' },
   op1_term1: { id: 'op1_term1', kind: 'Terminal', title: 'Projet SOUVERAIN — note interne', text: 'DE : Dir. A. Voss\nÀ : Équipe Fusion\n\nLes sujets de la série 4 conservent leurs réflexes de combat après exposition. La cohésion mentale se dégrade, mais l’obéissance au signal du noyau est totale. C’est un progrès.\n\nNos partenaires du Voile ont raison : la Fracture ne détruit pas. Elle réécrit. Préparez le caisson Souverain pour un sujet volontaire. Ce sera moi.' },
   op1_doc1: { id: 'op1_doc1', kind: 'Document', title: 'Bon de transfert — Varsen', text: 'HELIX LOGISTIQUE\nDestination : Varsen, station de métro Kellner, niveau -4.\nContenu : 12 émetteurs de résonance, 1 ancre dimensionnelle.\nMention manuscrite : « La ville ne doit pas être prévenue. Ordre direct de V. »' },

@@ -1,8 +1,16 @@
 # WARBOUND — The Fracture Chronicles
 
-FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Campagne solo de quatre opérations, trois boss à phases, six classes, progression RPG, butin, QG interactif et mode survie.
+FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Campagne solo de cinq opérations (dont un épilogue), trois boss à phases, six classes, progression RPG, butin, QG interactif et mode survie.
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
+
+## Version 2.5 (opération 5 et tireurs d'élite)
+
+- **Opération 5 — LIGNE DE CRÊTE** : épilogue débloqué après POINT ZÉRO. Le colonel Halvard tient le barrage hydroélectrique de Valmorre, dans un massif alpin, de nuit sous la pluie. Vallée d'approche battue par des tireurs d'élite, centrale (trois turbines, passerelles, vannes à fermer, purge à défendre), monte-charge jusqu'à la crête, relais à couper sur la tour de contrôle, extraction par hélicoptère. Neuf objectifs, trois documents à découvrir, niveau conseillé 14.
+- **Nouvel ennemi : le tireur d'élite HELIX** : il tient un poste en hauteur, balaie la zone, trahit sa position par un reflet de lunette avant de tirer (46 dégâts, jusqu'à 140 m), puis **change de poste** après avoir tiré, si on l'approche à moins de 13 m ou s'il perd une partie de sa santé. Pendant le déplacement (2,5 à 7 s) il est hors d'atteinte.
+- **Défi d'armes (1 contre 1)**, depuis le menu principal : duel en ligne entre deux joueurs en « course aux armes ». Chaque élimination fait passer à l'arme suivante (AR-17, Vesper-9, Titan-46, Requiem DMR, Spectre-PDW, Aegis-762, Frostbite .50, Revolver Ash) ; le premier qui élimine son adversaire avec le revolver gagne. Conditions égales : 100 PV, aucun talent, équipement, compétence ni grenade. Arène dédiée et symétrique (dépôt du barrage de Valmorre), réapparition après 3 s au point le plus éloigné de l'adversaire, 1,5 s d'invulnérabilité. Voir « Défi d'armes : connexion » plus bas.
+- **Mini-carte** (radar en haut à droite, orientée selon le regard) : obstacles, objectif et, en rouge, les ennemis qui viennent de tirer (le point s'efface après 3 s). Les boss apparaissent en orange.
+- Table tactique : la liste défile jusqu'à l'opération choisie ; le temps record ne s'affiche plus en « NaN » quand il manque.
 
 ## Version 2.4 (équipement électrique, préparation des nouveaux assets)
 
@@ -140,6 +148,21 @@ Rien n'est installé ni modifié hors du dossier du jeu : pas de droits administ
 
 Une disposition QWERTY (WASD, compétence 1 sur Q) et la réassignation de chaque touche sont disponibles dans **Paramètres**. En QWERTY, évitez Ctrl+W dans un onglet non plein écran (raccourci de fermeture du navigateur) : passez en plein écran depuis les paramètres ou réassignez l'accroupissement.
 
+## Défi d'armes : connexion
+
+Le duel ne passe par aucun serveur de jeu : les deux navigateurs se connectent directement (WebRTC), ce qui permet de garder un site statique sur Netlify.
+
+1. **L'hôte** clique sur *Créer une invitation*, copie le code (`WB1.o.…`) et l'envoie à son adversaire (messagerie, e-mail…).
+2. **L'invité** colle ce code dans *Rejoindre une partie*, clique sur *Générer ma réponse* et renvoie le code obtenu (`WB1.a.…`).
+3. **L'hôte** colle la réponse et clique sur *Connecter*. La partie démarre chez les deux joueurs.
+
+Limites :
+- Un serveur STUN public (Google) sert seulement à découvrir l'adresse de chaque joueur ; aucune donnée de jeu n'y transite. Sans serveur relais (TURN), certains réseaux empêchent la connexion directe : réseaux d'entreprise ou d'école, partage de connexion mobile, pare-feu stricts. Sur la plupart des box domestiques, ça fonctionne.
+- Un code n'est valable que pour une tentative ; en cas d'échec, recommencez depuis *Créer une invitation*.
+- Les deux joueurs doivent avoir la même version du jeu (contrôlée à la connexion).
+- Chaque joueur détecte ses propres touches et la victime les applique : le jeu fait confiance aux deux navigateurs (pas d'anti-triche), ce qui convient à un duel entre amis.
+- La pause n'arrête pas le duel : l'adversaire continue de jouer.
+
 ## Contenu jouable
 
 ### Structure
@@ -150,6 +173,7 @@ Une disposition QWERTY (WASD, compétence 1 sur Q) et la réassignation de chaqu
   2. **VILLE MORTE** — rues de Varsen, défense de la station de métro, destruction du portail, extraction.
   3. **TEMPLE DU VOILE** — ruines, énigme des trois sceaux, gardiens, cristaux, boss *Archonte du Voile*.
   4. **POINT ZÉRO** — défenses HELIX, trois stabilisateurs, zone altérée, contre-attaque, boss final *Souverain Fracturé*, cinématique de fin et crédits.
+  5. **LIGNE DE CRÊTE** (épilogue) — barrage de Valmorre, tireurs d'élite mobiles, vannes de la centrale, purge, crête, relais de la Fracture, extraction.
 - **Protocole Infini** : mode survie par vagues, améliorations temporaires toutes les deux vagues, mini-boss toutes les cinq vagues, score et record.
 
 ### Combat
@@ -178,9 +202,10 @@ src/
   render/     Renderer, PostFX (ciel, atmosphère, étalonnage), Weather, Materials, FX
   world/      World (collisions, rayons, navigation A*), Level (kit modulaire), Detail (habillage automatique), SetPieces (éléments de décor)
   player/     Player, WeaponSystem, WeaponModels, Abilities
-  ai/         Enemy, EnemyModels, Boss, Ally
+  ai/         Enemy, EnemyModels, EnemyRigs, Boss, Ally, Marksman (tireur mobile), Rival (adversaire du duel)
   mission/    Mission (objectifs, points de contrôle, radio)
-  levels/     hub, op1..op4, survival, common, dress (décors glTF), art (passe level art)
+  levels/     hub, op1..op5, survival, duel (arène 1v1), common, dress (décors glTF), art (passe level art)
+  net/        Peer (liaison WebRTC par codes), Duel (règles du Défi d’armes)
   rpg/        items (butin), Stats (talents, armes, expérience)
   data/       weapons, classes, enemies, missions (données configurables)
   save/       Save (profil, paramètres, IndexedDB)
@@ -201,7 +226,8 @@ node tests/gameplay.mjs          # entrées clavier/souris réelles
 node tests/systems.mjs           # classes, talents, inventaire, sauvegarde, paramètres
 node tests/boss.mjs              # phases des trois boss
 node tests/survival.mjs          # mode survie
-node tests/campaign.mjs          # parcours des quatre opérations jusqu'aux crédits
+node tests/campaign.mjs          # parcours des cinq opérations (crédits après la 4)
+node tests/duel.mjs              # Défi d'armes : deux navigateurs, connexion par codes, partie complète
 node tests/layout.mjs            # points d'apparition et accessibilité après habillage
 ```
 

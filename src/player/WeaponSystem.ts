@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { weaponStats, equippedItem, type WStats } from '../rpg/Stats';
+import type { Item } from '../rpg/items';
 import { buildWeaponModel, type WeaponModel } from './WeaponModels';
 import { buildGunAsset, type GunAsset } from './GunAssets';
 import { Arms } from './Arms';
@@ -27,6 +28,8 @@ export class WeaponSystem {
   private pose = new THREE.Vector3(); private rot = new THREE.Vector3();
 
   arms: Arms | null = null;
+  /** Armes imposées (Défi d'armes) : statistiques de base, sans talent ni bonus de classe. */
+  override: Item[] | null = null;
   private casings: { m: THREE.Mesh; v: THREE.Vector3; t: number }[] = [];
   private cycleT = 0; private reloadEmpty = false;
 
@@ -52,10 +55,11 @@ export class WeaponSystem {
     const old = this.slots;
     for (const s of old) s.model.group.removeFromParent();
     this.slots = [];
+    const ov = this.override;
     (['primary', 'secondary'] as const).forEach((slot, i) => {
-      const item = equippedItem(p, slot);
+      const item = ov ? ov[i] : equippedItem(p, slot);
       if (!item) return;
-      const st = weaponStats(item, this.g.player.mods, p.classId);
+      const st = ov ? weaponStats(item, {}, 'arcanist') : weaponStats(item, this.g.player.mods, p.classId);
       const gun = buildGunAsset(st.def, item.attach || {});
       const model: WeaponModel = gun ? { group: gun.root, muzzle: gun.muzzle, mag: null, sightY: gun.sightY, scoped: gun.scoped } : buildWeaponModel(st.def, item.attach || {});
       model.group.visible = false;
@@ -209,6 +213,7 @@ export class WeaponSystem {
     if (this.adsK < 0.9 || !st.scoped) g.fx.tracer(_m, end, tcol, st.def.family === 'sniper' ? 0.05 : 0.022, st.def.family === 'sniper' ? 0.16 : 0.06);
     else g.fx.tracer(_r.copy(_o).addScaledVector(_d, 2), end, tcol, 0.05, 0.16);
 
+    if (g.duel.active) g.duel.onShot(end, st.def.id);
     if (hit) {
       if (hit.enemy) {
         const dist = hit.t;

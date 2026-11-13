@@ -1,6 +1,6 @@
 // Archétypes ennemis : statistiques et comportements configurables.
 
-export type EnemyKind = 'grunt' | 'sniper' | 'marksman' | 'breaker' | 'devourer' | 'caster' | 'drone' | 'commander' | 'sentinel' | 'guardian' | 'archon' | 'sovereign';
+export type EnemyKind = 'grunt' | 'sniper' | 'marksman' | 'rival' | 'breaker' | 'devourer' | 'caster' | 'drone' | 'commander' | 'sentinel' | 'guardian' | 'archon' | 'sovereign';
 
 export interface EnemyDef {
   id: EnemyKind;
@@ -38,6 +38,11 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   sniper: {
     id: 'sniper', name: 'Tireur d’élite corrompu', faction: 'Corrompus', hp: 80, speed: 2.8, radius: 0.4, height: 1.8, xp: 35, elite: false,
     sight: 90, fov: 50, attack: 'sniper', damage: 42, burst: 1, burstGap: 0, cooldown: 3.4, range: 45, maxRange: 110, accuracy: 0.9, useCover: false,
+  },
+  // adversaire humain du Défi d'armes : piloté par le réseau, sans IA
+  rival: {
+    id: 'rival', name: 'Adversaire', faction: 'Opérateur', hp: 100, speed: 0, radius: 0.4, height: 1.8, xp: 0, elite: false,
+    sight: 0, fov: 0, attack: 'rifle', damage: 0, burst: 0, burstGap: 0, cooldown: 99, range: 0, maxRange: 0, accuracy: 0, useCover: false,
   },
   marksman: {
     id: 'marksman', name: 'Tireur d’élite HELIX', faction: 'HELIX', hp: 110, speed: 3, radius: 0.4, height: 1.8, xp: 70, elite: true,

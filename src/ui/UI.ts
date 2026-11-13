@@ -131,7 +131,7 @@ export class UI {
     if (g.state === 'play' || g.state === 'dead') {
       if (!this.hud.root.classList.contains('hidden')) this.hud.update(dt);
       if (g.state === 'play') {
-        if (g.input.rawPressed('inventory')) { if (this.current === 'character') this.resume(); else if (!this.blocking) this.panels.character(); }
+        if (g.input.rawPressed('inventory') && !g.duel.active) { if (this.current === 'character') this.resume(); else if (!this.blocking) this.panels.character(); }
         if (g.input.rawPressed('map')) { if (this.current === 'map') this.resume(); else if (!this.blocking) this.showMap(); }
       }
       if (this.current === 'map') { this.mapT -= dt; if (this.mapT <= 0) { this.mapT = 0.25; this.drawMap(); } }
@@ -152,21 +152,24 @@ export class UI {
 
   showMenu(): void {
     const g = this.g, p = g.profile;
-    const info = p ? `<div class="save-info">Sauvegarde : <b>${esc(p.name)}</b> — ${CLASSES[p.classId].name} niveau ${p.level}<br>Opérations accomplies : <b>${Object.keys(p.missions).length} / 4</b>${p.campaignDone ? ' · Campagne terminée' : ''}</div>` : g.store.corrupted ? '<div class="save-info bad">La sauvegarde précédente était corrompue et n’a pas pu être récupérée.</div>' : '<div class="save-info">Aucune sauvegarde. Créez votre opérateur pour commencer.</div>';
+    if (g.duel.phase === 'connecting' || g.duel.phase === 'lobby') g.duel.cancel();
+    const info = p ? `<div class="save-info">Sauvegarde : <b>${esc(p.name)}</b> — ${CLASSES[p.classId].name} niveau ${p.level}<br>Opérations accomplies : <b>${Object.keys(p.missions).length} / 5</b>${p.campaignDone ? ' · Campagne terminée' : ''}</div>` : g.store.corrupted ? '<div class="save-info bad">La sauvegarde précédente était corrompue et n’a pas pu être récupérée.</div>' : '<div class="save-info">Aucune sauvegarde. Créez votre opérateur pour commencer.</div>';
     this.show('menu', '', `
       <div class="logo">WARBOUND</div><div class="logo-sub">The Fracture Chronicles</div>
       <div class="menu-list">
         <button class="btn ${p ? '' : 'primary'}" data-a="new">Nouvelle partie</button>
         <button class="btn ${p ? 'primary' : ''}" data-a="continue" ${p ? '' : 'disabled'}>Continuer</button>
+        <button class="btn" data-a="duel" ${p ? '' : 'disabled'}>Défi d’armes (1 contre 1)</button>
         <button class="btn" data-a="classes">Sélection du personnage</button>
         <button class="btn" data-a="settings">Paramètres</button>
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.4.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.5.0</span></div>`, {
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
+      duel: () => { if (g.profile) this.showDuel(); },
       settings: () => this.showSettings(() => this.showMenu()),
       credits: () => this.showCredits(() => this.showMenu()),
       quit: () => { window.close(); this.show('quit', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>À bientôt, Warbound</h2></div><div class="panel-body col"><p class="brief">Votre progression est sauvegardée. Vous pouvez fermer cet onglet du navigateur.</p></div><div class="panel-foot"><button class="btn" data-a="back">Retour au menu</button></div></div>`, { back: () => this.showMenu() }); },
@@ -222,6 +225,49 @@ export class UI {
 
   // ---------- pause / mort / résultats ----------
 
+  // ---------- défi d'armes ----------
+
+  showDuel(): void {
+    const g = this.g, d = g.duel;
+    d.cancel();
+    d.status = 'Choisissez : créer une partie (hôte) ou rejoindre celle d’un ami.';
+    const ladder = d.ladder.map((id, i) => `${i + 1}. ${WEAPONS[id].name}`).join(' · ');
+    this.show('duel', 'overlay', `<div class="panel"><div class="panel-head"><h2>Défi d’armes</h2><span class="sub">Duel 1 contre 1 — connexion directe entre vos deux navigateurs</span><span class="spacer"></span><button class="btn small" data-a="back">Retour</button></div>
+      <div class="panel-body col scroll">
+        <p class="brief">Chaque élimination vous fait passer à l’arme suivante. Le premier qui élimine son adversaire avec la dernière arme gagne. Santé de base pour les deux joueurs, sans talent, équipement, compétence ni grenade.</p>
+        <div class="label" style="text-transform:none;letter-spacing:.03em">${ladder}</div>
+        <div class="duel-cols">
+          <div class="col grow"><div class="label">Créer une partie</div>
+            <button class="btn primary" data-a="host">1. Créer une invitation</button>
+            <textarea id="duel-invite" class="code-box" readonly placeholder="Le code d’invitation apparaîtra ici"></textarea>
+            <button class="btn small" data-a="copy" data-v="duel-invite">Copier l’invitation</button>
+            <textarea id="duel-answer-in" class="code-box" placeholder="2. Collez ici le code de réponse de votre adversaire"></textarea>
+            <button class="btn" data-a="connect">3. Connecter</button>
+          </div>
+          <div class="col grow"><div class="label">Rejoindre une partie</div>
+            <textarea id="duel-invite-in" class="code-box" placeholder="1. Collez ici le code d’invitation reçu"></textarea>
+            <button class="btn primary" data-a="join">2. Générer ma réponse</button>
+            <textarea id="duel-answer" class="code-box" readonly placeholder="Le code de réponse apparaîtra ici"></textarea>
+            <button class="btn small" data-a="copy" data-v="duel-answer">Copier la réponse</button>
+          </div>
+        </div>
+        <p class="label" style="text-transform:none;letter-spacing:.03em">Envoyez les codes par la messagerie de votre choix. Aucun serveur de jeu : certains réseaux (entreprise, partage de connexion mobile, pare-feu strict) empêchent la connexion directe. Les deux joueurs doivent avoir la même version du jeu.</p>
+      </div>
+      <div class="panel-foot"><span class="label" id="duel-status" style="text-transform:none;letter-spacing:.03em"></span></div></div>`, {
+      back: () => { d.cancel(); d.onStatus = () => {}; this.showMenu(); },
+      host: () => { void run(async () => { setVal('duel-invite', await d.host()); }); },
+      join: () => { const code = getVal('duel-invite-in'); if (!code) { d.status = 'Collez d’abord le code d’invitation.'; paint(); return; } void run(async () => { setVal('duel-answer', await d.join(code)); }); },
+      connect: () => { const code = getVal('duel-answer-in'); if (!code) { d.status = 'Collez d’abord le code de réponse.'; paint(); return; } void run(() => d.accept(code)); },
+      copy: (v) => { const el = document.getElementById(v) as HTMLTextAreaElement | null; if (!el || !el.value) return; el.select(); void navigator.clipboard?.writeText(el.value).catch(() => document.execCommand('copy')); this.hud.toast('CODE COPIÉ', '#3aff8a'); },
+    });
+    const getVal = (id: string) => ((document.getElementById(id) as HTMLTextAreaElement | null)?.value || '').trim();
+    const setVal = (id: string, v: string) => { const el = document.getElementById(id) as HTMLTextAreaElement | null; if (el) el.value = v; };
+    const paint = () => { const el = document.getElementById('duel-status'); if (el) el.textContent = d.status; };
+    const run = async (fn: () => Promise<void>) => { try { await fn(); } catch (e) { d.status = (e as Error)?.message || 'Erreur de connexion.'; } paint(); };
+    d.onStatus = paint;
+    paint();
+  }
+
   showPause(): void {
     const g = this.g;
     if (g.state !== 'play') return;
@@ -235,13 +281,13 @@ export class UI {
         <button class="btn primary" data-a="resume">Reprendre</button>
         <button class="btn" data-a="char">Personnage</button>
         <button class="btn" data-a="settings">Paramètres</button>
-        ${hub ? '<button class="btn" data-a="menu">Menu principal</button>' : '<button class="btn danger" data-a="abandon">Abandonner — retour au QG</button>'}
+        ${hub ? '<button class="btn" data-a="menu">Menu principal</button>' : g.duel.active ? '<button class="btn danger" data-a="abandon">Abandonner le duel</button>' : '<button class="btn danger" data-a="abandon">Abandonner — retour au QG</button>'}
       </div><div class="col grow"><div class="label">Commandes</div>${keys}<div class="kv"><span>Tir / Visée</span><span>Clic gauche / droit</span></div></div></div></div>`, {
       resume: () => this.resume(),
       char: () => this.panels.character(),
       settings: () => this.showSettings(() => this.showPause()),
       menu: () => { g.save(); this.closeAll(); g.toMenu(); },
-      abandon: () => this.confirm('Abandonner la mission ?', 'L’expérience gagnée est conservée, mais le butin de mission sera perdu.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()),
+      abandon: () => g.duel.active ? this.confirm('Abandonner le duel ?', 'Votre adversaire remporte la partie.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : this.confirm('Abandonner la mission ?', 'L’expérience gagnée est conservée, mais le butin de mission sera perdu.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()),
     });
   }
 
@@ -262,15 +308,17 @@ export class UI {
     this.show('results', 'overlay', `<div class="panel"><div class="panel-head"><div><div class="label">${esc(d.subtitle)}</div><h1 class="title-xl" style="color:${d.victory ? '#fff' : '#ff6a5a'}">${d.title}</h1></div></div>
       <div class="panel-body col scroll">
         <div class="results-grid">${st(fmtTime(d.time), 'Temps')}${st(String(d.kills), 'Éliminations')}${st(Math.round(d.accuracy * 100) + ' %', 'Précision')}${st(String(d.headshots), 'Tirs à la tête')}${st(String(d.deaths), 'Morts')}</div>
+        ${d.duel ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(`${d.duel.me} / ${d.duel.total}`, 'Votre arme atteinte')}${st(`${d.duel.opp} / ${d.duel.total}`, esc(d.duel.oppName))}${st(d.victory ? 'GAGNÉ' : 'PERDU', 'Défi d’armes')}</div>` : ''}
         ${d.mode === 'survival' ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(String(d.wave), 'Vague atteinte')}${st(String(d.score), 'Score')}${st(d.record ? 'NOUVEAU RECORD' : String(g.profile!.survival.bestScore), d.record ? 'Record personnel' : 'Meilleur score')}</div>` : ''}
         <div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st('+' + Math.round(d.xp) + ' XP', 'Expérience gagnée')}${st('Niveau ' + d.levelAfter, CLASSES[g.profile!.classId].name)}${st('+' + d.materials, 'Éclats de faille')}</div>
         ${lvl}
-        <div class="label">Objets obtenus (${d.items.length})</div>
-        <div class="loot-row">${d.items.length ? d.items.map(itemCard).join('') : '<span class="label">Aucun objet</span>'}</div>
+        ${d.mode === 'duel' ? '' : `<div class="label">Objets obtenus (${d.items.length})</div>
+        <div class="loot-row">${d.items.length ? d.items.map(itemCard).join('') : '<span class="label">Aucun objet</span>'}</div>`}
       </div>
-      <div class="panel-foot">${d.final ? '<button class="btn primary" data-a="credits">Continuer</button>' : `<button class="btn primary" data-a="hub">Retour au QG</button>${d.mode === 'survival' ? '<button class="btn" data-a="again">Relancer le protocole</button>' : ''}`}</div></div>`, {
+      <div class="panel-foot">${d.final ? '<button class="btn primary" data-a="credits">Continuer</button>' : `<button class="btn primary" data-a="hub">Retour au QG</button>${d.mode === 'survival' ? '<button class="btn" data-a="again">Relancer le protocole</button>' : ''}${d.mode === 'duel' ? '<button class="btn" data-a="menu">Menu principal</button>' : ''}`}</div></div>`, {
       hub: () => { this.closeAll(); g.startHub(); },
       again: () => { this.closeAll(); g.startSurvival(); },
+      menu: () => { this.closeAll(); g.toMenu(); },
       credits: () => this.showCredits(() => { this.closeAll(); g.toMenu(); }, true),
     });
     for (const it of d.items) if (it.rarity === 'legendary') { g.audio.loot(3); break; }

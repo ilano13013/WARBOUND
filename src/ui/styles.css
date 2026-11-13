@@ -108,7 +108,7 @@ input[type=text] { background: #12161e; color: var(--text); border: 1px solid va
 .tree-link { width: 2px; height: 8px; background: var(--line); margin: -8px 0 0 32px; }
 
 /* ---------- missions ---------- */
-.mission-card { padding: 12px 14px; background: var(--panel2); border: 1px solid var(--line); cursor: pointer; border-left: 3px solid transparent; }
+.mission-card { padding: 9px 14px; background: var(--panel2); border: 1px solid var(--line); cursor: pointer; border-left: 3px solid transparent; }
 .mission-card.on { border-left-color: var(--accent); background: rgba(40, 34, 70, 0.6); }
 .mission-card.locked { opacity: 0.4; cursor: default; }
 .mission-card h3 { font-size: 17px; }
@@ -342,3 +342,16 @@ h1, h2, h3, .logo, .title-xl, #banner b, #levelup b, #bossbar .bn, .item-name, .
 .dnum { font-family: var(--font); font-weight: 700; text-shadow: 0 0 4px #000, 0 2px 0 #000; }
 #bossbar { top: 92px; width: min(620px, 46vw); }
 #timer { top: 150px; }
+
+/* Défi d'armes : échange de codes */
+.duel-cols { display: flex; gap: 18px; flex-wrap: wrap; }
+.duel-cols > .col { min-width: 260px; gap: 8px; }
+.code-box { width: 100%; height: 74px; resize: vertical; background: rgba(8, 10, 14, 0.9); color: #d8dce4; border: 1px solid rgba(201, 169, 106, 0.25); font: 11px/1.35 ui-monospace, Consolas, monospace; padding: 6px 8px; word-break: break-all; }
+.code-box:focus { outline: none; border-color: var(--gold); }
+
+/* mini-carte (radar) en haut à droite ; le fil d'expérience passe dessous */
+#minimap { position: absolute; right: 24px; top: 18px; width: 168px; height: 168px; border-radius: 50%; box-shadow: 0 0 18px rgba(0, 0, 0, 0.6); }
+.hud-tr { top: 196px; }
+@media (max-width: 900px) { #minimap { width: 118px; height: 118px; right: 14px; top: 12px; } .hud-tr { top: 140px; } }
+/* Défi d'armes : compétences et grenades désactivées, leur barre est masquée */
+#hud.duel-mode .hud-bc { display: none; }

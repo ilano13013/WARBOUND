@@ -20,6 +20,9 @@ export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
   // tireur d'élite HELIX : même silhouette, tenue anthracite et visière rouge
   marksman: { model: 'chars/soldier', height: 1.78, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
     Swat: { color: 0x26292e, rough: 0.8 }, Black: { color: 0x141416 }, Grey: { color: 0x3a3f46 }, Brown: { color: 0x2a2018 }, Skin: { color: 0x6a6a72 }, Visor: { color: 0x200404, emissive: 0xff2a1a, ei: 1.6 }, Hair_Brown: { color: 0x1a1410 } } },
+  // opérateur adverse du Défi d'armes : tenue de la Coalition, visière rouge pour le distinguer
+  rival: { model: 'chars/swat', height: 1.84, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4, mats: {
+    Swat: { color: 0x3c4432, rough: 0.85 }, Swat_Black: { color: 0x15171a, metal: 0.4, rough: 0.5 }, Visor: { color: 0x050505, emissive: 0xff3a2a, ei: 2.4 }, Skin: {} } },
   breaker: { model: 'chars/swat', height: 2.05, humanoid: true, gun: true, walkSpeed: 1.3, runSpeed: 3.2, mats: {
     Swat: { color: 0x3a3f48, metal: 0.65, rough: 0.4 }, Swat_Black: { color: 0x1a1b20, metal: 0.6, rough: 0.4 }, Visor: { color: 0x2a1000, emissive: 0xff7a2a, ei: 2.8 }, Skin: { color: 0x4a4a4a } } },
   caster: { model: 'chars/witch', height: 1.95, humanoid: true, walkSpeed: 1.4, runSpeed: 3.2, clips: { aim: 'Spell_Simple_Idle_Loop' }, mats: {

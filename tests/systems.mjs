@@ -95,7 +95,7 @@ ok('atelier : amélioration +1 (coût et dégâts)', up.up === 1 && up.mats < 50
 await page.keyboard.press('Escape'); await sleep(300);
 // ---------- table tactique ----------
 await page.evaluate(() => window.WB.game.ui.panels.missions()); await sleep(400); await shot(page, '23-missions');
-ok('opération 2 verrouillée avant la 1', await page.evaluate(() => document.querySelectorAll('.mission-card.locked').length === 3));
+ok('opération 2 verrouillée avant la 1', await page.evaluate(() => document.querySelectorAll('.mission-card.locked').length === document.querySelectorAll('.mission-card').length - 1));
 await page.click('[data-a="diff"][data-v="veteran"]'); await sleep(200);
 ok('choix de difficulté', await page.evaluate(() => window.WB.game.profile.difficulty === 'veteran'));
 await page.click('[data-a="diff"][data-v="soldat"]'); await sleep(200);
