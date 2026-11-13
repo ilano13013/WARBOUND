@@ -1,5 +1,31 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.6 (multijoueur en ligne, boutique, serveur)
+
+### Suite `npm test` (machine non chargée)
+gameplay 27/27, systems 29/29, settings sans échec, boss, survie 6/6, niveaux cohérents, duel 20/20, campagne des 5 opérations sans erreur JavaScript. Un premier passage a signalé « pause (Échap) » en échec : il tournait pendant une capture d'écran lancée en parallèle qui saturait la machine ; relancé seul, gameplay 27/27.
+
+### Serveur (`npm run test:server`, contre `wrangler dev` en local)
+- `server/test/lobby.test.mjs` : 17/17 — création refusée depuis une origine inconnue, code à 6 caractères, salon inconnu (404), 4 joueurs et équipes 2 contre 2, lancement refusé tant que tous ne sont pas prêts, équipes modifiables seulement par l'hôte, signalisation WebRTC relayée, place conservée à la déconnexion, reconnexion par jeton, lancement reçu par les 4, nouveau venu refusé pendant la partie, retour au salon, changement d'hôte, salon 1v1 complet, compteurs du garde-fou.
+- `server/test/accounts.test.mjs` : 26/26 — catalogue et prix serveur, compte anonyme, jeton inconnu refusé, équipement d'un objet non possédé refusé, webhooks à signature invalide, trop ancien ou signé avec un autre secret refusés, montant différent du catalogue ignoré, Pack Fondateur attribué, même événement ou même session : aucune double attribution, inventaire, badge, historique, équipement, cosmétiques vérifiés dans le salon, remboursement et contestation : objets retirés, code de récupération, ancien jeton invalidé, clé Stripe invalide : erreur propre.
+- Le garde-fou de création de salons (10 par heure et par adresse) s'est déclenché pendant la série de tests, toutes lancées depuis la même adresse : comportement voulu. La limite est relevée à 1 000 uniquement en local (`server/.dev.vars`, hors dépôt).
+
+### Jeu en ligne (`npm run test:online`, serveur local et version construite pour lui)
+- `tests/online.mjs` : 23/23 avec 4 navigateurs — salon 4v4, équipes, lancement, connexions en étoile, allié et ennemi identifiés, tir allié sans dégâts, élimination comptée chez les 4, fil des éliminations, mort et réapparition de la victime, 40 tirs envoyés d'un coup limités par la cadence de l'arme, téléportation refusée, fin à 3 éliminations, victoire et défaite correctes, tableau des scores, retour au salon, Domination : capture accélérée à deux, zone capturée, propriétaire synchronisé, victoire aux points, résultats cohérents.
+- `tests/shop.mjs` : 15/15 — compte créé automatiquement, 4 produits, prix TTC, aperçu 3D, confirmation avec âge et renonciation au droit de rétractation, paiement bloqué tant que les cases ne sont pas cochées, achat confirmé par un webhook signé avec le secret de test, inventaire et badge, camouflage équipé et visible sur l'arme, **statistiques de l'arme identiques avant et après** (dégâts 27, cadence 720, dispersion 2,4, chargeur 30), historique, badge sur le profil.
+- Version publique (sans serveur) : « Multijoueur en ligne » annonce l'absence de serveur et propose le duel par codes ; la boutique est en démonstration, bouton d'achat désactivé, essai local possible.
+
+### Non testé (à faire avec vous)
+- Parties entre appareils et réseaux réels (dont 4G), latence et pertes de paquets réelles. Le ping affiché dans les tests (≈ 1,8 s) reflète la machine de test surchargée (rendu logiciel de 3 à 4 navigateurs), pas un réseau.
+- Déploiement Cloudflare réel, quotas réels, retour arrière.
+- Stripe réel en mode test (l'environnement de construction ne peut pas joindre l'API Stripe et aucune clé n'a été fournie).
+- Connexion Google ou Discord (non développée).
+
+### Problèmes trouvés pendant ce travail
+- Chez l'hôte, l'affichage de ses propres instantanés réécrivait la protection d'apparition des autres joueurs : ils étaient invulnérables en permanence. Corrigé avant la première validation.
+- Le premier rendu des camouflages sur les armes donnait un aplat de couleur (coordonnées de texture des modèles inadaptées) : le motif est maintenant projeté d'après la géométrie.
+- Le test de la boutique cliquait parfois sur « Équiper » avant l'affichage de l'inventaire : il attend désormais le bouton.
+
 ## Version 2.5 (opération 5, tireur d'élite, Défi d'armes, mini-carte)
 
 Exécution complète `npm test` (machine non chargée) : gameplay 27/27, settings sans échec, boss, survie 6/6, niveaux cohérents (op1 à op5 et QG), campagne des cinq opérations jusqu'aux crédits sans erreur JavaScript. Le contrôle `systems` a échoué une fois sur « opération 2 verrouillée » parce qu'il attendait 3 opérations verrouillées au lieu de 4 ; il compte maintenant à partir du nombre d'opérations, puis 26/26. Nouveau test `duel` : 19/19.
