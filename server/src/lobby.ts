@@ -4,9 +4,10 @@
 // Les WebSockets utilisent l'API d'hibernation : l'objet est évincé de la mémoire entre deux messages,
 // la durée facturable reste donc quasi nulle (offre gratuite : 13 000 Go·s par jour).
 import { DurableObject } from 'cloudflare:workers';
+import { playerFromToken, verifiedCosmetics, type AccountEnv } from './accounts';
 import { MODES, PROTOCOL_VERSION, type ClientMsg, type ModeId, type PlayerView, type RoomView, type ServerMsg, type Team } from './protocol';
 
-interface PlayerRec { id: string; name: string; team: Team; ready: boolean; tokenHash: string; joinedAt: number; leftAt: number | null; badge: string | null }
+interface PlayerRec { id: string; name: string; team: Team; ready: boolean; tokenHash: string; joinedAt: number; leftAt: number | null; badge: string | null; cos?: Record<string, string> }
 interface RoomRec { code: string; mode: ModeId; map: string; phase: 'lobby' | 'playing'; hostId: string | null; createdAt: number; lastActive: number; players: PlayerRec[] }
 interface Attach { id: string | null }
 
@@ -26,10 +27,10 @@ function randomId(bytes: number): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-export class Lobby extends DurableObject {
+export class Lobby extends DurableObject<AccountEnv> {
   private room: RoomRec | null = null;
 
-  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+  constructor(ctx: DurableObjectState, env: AccountEnv) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => { this.room = (await ctx.storage.get<RoomRec>('room')) || null; });
   }
@@ -167,6 +168,13 @@ export class Lobby extends DurableObject {
       r.players.push(p);
       if (MODES[r.mode].teams) p.team = this.smallerTeam();
     } else token = String(m.token);
+    // compte joueur facultatif : badge et cosmétiques lus dans la base des achats
+    if (m.acct && this.env.DB) {
+      try {
+        const acc = await playerFromToken(this.env, String(m.acct));
+        if (acc) { const c = await verifiedCosmetics(this.env, acc.id); p.badge = c.badge; p.cos = c.equipped; }
+      } catch { /* base indisponible : on joue sans cosmétiques */ }
+    }
     if (!r.hostId) r.hostId = p.id;
     ws.serializeAttachment({ id: p.id } satisfies Attach);
     await this.save();
@@ -244,7 +252,7 @@ export class Lobby extends DurableObject {
 
   private view(): RoomView {
     const r = this.room!, conn = this.connectedIds();
-    const players: PlayerView[] = r.players.map((p) => ({ id: p.id, name: p.name, team: p.team, ready: p.ready, connected: conn.has(p.id), host: p.id === r.hostId, badge: p.badge }));
+    const players: PlayerView[] = r.players.map((p) => ({ id: p.id, name: p.name, team: p.team, ready: p.ready, connected: conn.has(p.id), host: p.id === r.hostId, badge: p.badge, cos: p.cos || {} }));
     return { code: r.code, mode: r.mode, map: r.map, max: MODES[r.mode].max, phase: r.phase, players, version: PROTOCOL_VERSION };
   }
 

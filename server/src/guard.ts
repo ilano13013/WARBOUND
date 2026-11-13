@@ -36,6 +36,15 @@ export class Guard extends DurableObject {
     return { ok: true };
   }
 
+  async allowAccount(ip: string, maxPerIpHour: number): Promise<Verdict> {
+    await this.purge();
+    const hour = new Date().toISOString().slice(0, 13);
+    const n = (await this.ctx.storage.get<number>(`acct:${ip}:${hour}`)) || 0;
+    if (n >= maxPerIpHour) return { ok: false, reason: 'Trop de comptes créés depuis votre connexion. Patientez une heure.' };
+    await this.bump(`acct:${ip}:${hour}`);
+    return { ok: true };
+  }
+
   async allowJoin(maxPerDay: number): Promise<Verdict> {
     await this.purge();
     const n = (await this.ctx.storage.get<number>(`joins:${this.day()}`)) || 0;

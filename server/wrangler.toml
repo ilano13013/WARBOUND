@@ -17,6 +17,14 @@ class_name = "Guard"
 tag = "v1"
 new_sqlite_classes = ["Lobby", "Guard"]
 
+# Base D1 (comptes, objets possédés, achats). Créer la base avec `npx wrangler d1 create warbound`,
+# puis remplacer database_id ci-dessous. En local (`npm run dev`), une base locale est utilisée.
+[[d1_databases]]
+binding = "DB"
+database_name = "warbound"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
 [vars]
 # origines autorisées à ouvrir un salon (séparées par des virgules)
 ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http://localhost:4173,http://localhost:4174,http://localhost:5173"
@@ -24,3 +32,7 @@ ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http:
 MAX_ROOMS_PER_DAY = "1500"
 MAX_JOINS_PER_DAY = "12000"
 MAX_ROOMS_PER_IP_PER_HOUR = "10"
+# Paiements : désactivés tant que les secrets STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET ne sont pas définis
+# (`npx wrangler secret put STRIPE_SECRET_KEY`). Utiliser d'abord les clés de MODE TEST (sk_test_...).
+# Adresse du jeu, pour les retours après paiement :
+GAME_URL = "https://warbound.netlify.app/"

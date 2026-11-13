@@ -8,6 +8,7 @@
 import { Lobby } from './lobby';
 import { Guard } from './guard';
 import { MODES, ROOM_CODE_RE, newRoomCode, type ModeId } from './protocol';
+import { handleAccounts } from './accounts';
 
 export { Lobby, Guard };
 
@@ -18,11 +19,15 @@ export interface Env {
   MAX_ROOMS_PER_DAY: string;
   MAX_JOINS_PER_DAY: string;
   MAX_ROOMS_PER_IP_PER_HOUR: string;
+  DB: D1Database;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  GAME_URL: string;
 }
 
 function cors(origin: string | null, env: Env): Record<string, string> {
   const ok = !!origin && env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).includes(origin);
-  return ok ? { 'Access-Control-Allow-Origin': origin!, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' } : {};
+  return ok ? { 'Access-Control-Allow-Origin': origin!, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', Vary: 'Origin' } : {};
 }
 
 function json(data: unknown, status: number, headers: Record<string, string>): Response {
@@ -43,6 +48,18 @@ export default {
     if (url.pathname === '/api/health') {
       const s = await guard(env).status();
       return json({ ok: true, ...s }, 200, h);
+    }
+
+    // comptes, inventaire, boutique, webhook Stripe
+    if (url.pathname === '/api/catalog' || url.pathname.startsWith('/api/account') || url.pathname.startsWith('/api/me') || url.pathname === '/api/stripe/webhook') {
+      const isWebhook = url.pathname === '/api/stripe/webhook';
+      if (!isWebhook && req.method !== 'GET' && !allowed) return json({ error: 'Origine non autorisée.' }, 403, h);
+      if (url.pathname === '/api/account' && req.method === 'POST') {
+        const v = await guard(env).allowAccount(ip, 5);
+        if (!v.ok) return json({ error: v.reason }, 429, h);
+      }
+      const r = await handleAccounts(req, env, url, (d, s = 200) => json(d, s, isWebhook ? {} : h));
+      if (r) return r;
     }
 
     if (url.pathname === '/api/rooms' && req.method === 'POST') {

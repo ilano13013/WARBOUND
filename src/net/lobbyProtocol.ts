@@ -19,12 +19,13 @@ export function newRoomCode(): string {
   return Array.from(b, (x) => ROOM_ALPHABET[x % ROOM_ALPHABET.length]).join('');
 }
 
-export interface PlayerView { id: string; name: string; team: Team; ready: boolean; connected: boolean; host: boolean; badge: string | null }
+/** cos : cosmétiques équipés, VÉRIFIÉS par le serveur dans la base des achats (jamais déclarés par le client). */
+export interface PlayerView { id: string; name: string; team: Team; ready: boolean; connected: boolean; host: boolean; badge: string | null; cos: Record<string, string> }
 export interface RoomView { code: string; mode: ModeId; map: string; max: number; phase: 'lobby' | 'playing'; players: PlayerView[]; version: number }
 
 /** Messages du client vers le salon. */
 export type ClientMsg =
-  | { t: 'join'; name: string; token?: string; version: number; build: string }
+  | { t: 'join'; name: string; token?: string; acct?: string; version: number; build: string }
   | { t: 'ready'; v: boolean }
   | { t: 'team'; id: string; team: 'red' | 'blue' }
   | { t: 'balance' }

@@ -101,7 +101,7 @@ export class MatchHUD {
       const col = z.contested ? 0xffd24a : z.owner === 'red' ? 0xff4a3a : z.owner === 'blue' ? 0x3a7aff : 0xd8d8d8;
       (m.ring.material as THREE.MeshBasicMaterial).color.setHex(col);
       (m.fill.material as THREE.MeshBasicMaterial).color.setHex(z.cap === 'red' ? 0xff4a3a : z.cap === 'blue' ? 0x3a7aff : col);
-      (m.fill.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.18 * (z.cap ? z.prog : z.owner ? 1 : 0);
+      (m.fill.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.1 * (z.cap ? z.prog : z.owner ? 1 : 0);
     }
   }
 

@@ -13,3 +13,5 @@ tools/assets/incoming/*
 !tools/assets/incoming/LISEZMOI.txt
 .wrangler
 dist-test
+.dev.vars
+server/.dev.vars
