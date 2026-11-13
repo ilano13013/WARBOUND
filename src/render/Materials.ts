@@ -284,11 +284,11 @@ float wbPuddle=0.0; float wbDamp=0.0;`)
   float macro=wbF(hp*0.11+3.1);
   float fine=wbN(hp*1.7);
   diffuseColor.rgb*=0.74+0.42*macro+0.1*(fine-0.5);
-  // salissures : pied de mur encrassé et coulures verticales
+
   float foot=(1.0-smoothstep(0.0,1.1,vWP.y))*(0.35+0.65*wbN(vec2(hp.x*0.9,1.3)));
   float streak=smoothstep(0.52,0.85,wbN(vec2(hp.x*2.6,vWP.y*0.16+macro)))*smoothstep(0.35,0.75,wbN(hp*0.23+11.0));
   diffuseColor.rgb*=1.0-side*(foot*0.42+streak*0.3);
-  // humidité : flaques dans les creux, sol assombri
+
   float pm=wbF(vWP.xz*0.16+vec2(5.2,1.3));
   wbPuddle=up*uWet*smoothstep(0.6-uWet*0.2,0.68-uWet*0.16,pm);
   wbDamp=uWet*(up*(0.45+0.4*smoothstep(0.3,0.7,pm))+side*streak*0.6);

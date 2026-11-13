@@ -63,7 +63,7 @@ await page.keyboard.press('a'); await sleep(400); b = await st(page);
 ok('compétence 1 : buff + coût + cooldown', b.buffs.includes('ember') && b.energy < a.energy && b.cds[0] > 0, `energy ${a.energy.toFixed(0)}->${b.energy.toFixed(0)} cd=${b.cds[0].toFixed(1)}`);
 await page.keyboard.down('z'); await page.keyboard.down('e'); await sleep(150); await page.keyboard.up('e'); await sleep(900); await page.keyboard.up('z'); c = await st(page);
 ok('compétence 2 : ruée', c.pos[2] < b.pos[2] - 4, `dz=${(c.pos[2] - b.pos[2]).toFixed(1)}`);
-await page.keyboard.press('c'); await sleep(400); ok('compétence 3 : égide', (await st(page)).buffs.includes('aegis'));
+await page.keyboard.down('c'); await sleep(300); await page.keyboard.up('c'); await sleep(900); ok('compétence 3 : égide', (await st(page)).buffs.includes('aegis'));
 await page.evaluate(() => window.WB.setUlt(100)); await page.keyboard.press('x'); await sleep(400);
 c = await st(page); ok('ultime', c.buffs.includes('inferno') && c.ult === 0);
 await sleep(1500); ok('régénération énergie', (await st(page)).energy > c.energy);

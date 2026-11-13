@@ -15,6 +15,8 @@ import { Weather } from './Weather';
  * Interrupteurs de diagnostic graphique, par l'adresse : ?fx=off (aucun post-traitement) ou une liste parmi
  * noatmo, nobloom, nograde, nomsaa, noenv, nosurf, noweather (ex. ?fx=nobloom,noatmo). Sans effet en usage normal.
  */
+/** Numero de build, affiche avec le verdict de l'autodiagnostic. */
+export const BUILD = '2.2.3';
 export const DIAG: Set<string> = new Set((typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fx') || '' : '').split(',').filter(Boolean));
 
 export class Renderer {
@@ -42,6 +44,7 @@ export class Renderer {
   private atmo: ShaderPass | null = null;
   private grade: ShaderPass | null = null;
   private amb: Ambience | null = null;
+  private simNaN: THREE.Mesh | null = null;
   private indoorSky = new THREE.Color(0xc4d0dc); private indoorGround = new THREE.Color(0x77736c);
   private weather = new Weather(this.scene);
   private envBase = 0.5;
@@ -113,6 +116,8 @@ export class Renderer {
     const depth = new THREE.DepthTexture(size.x, size.y);
     const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: D.has('nomsaa') ? 0 : this.quality === 'high' ? 4 : 2, depthTexture: depth });
     const comp = new EffectComposer(this.renderer, rt);
+    // le clonage interne partagerait une seule texture de profondeur entre les deux tampons : on en donne une a chacun
+    comp.renderTarget2.depthTexture?.dispose(); comp.renderTarget2.depthTexture = new THREE.DepthTexture(size.x, size.y);
     comp.addPass(new RenderPass(this.scene, this.camera));
     if (!D.has('noatmo')) {
       // atmosphère : occlusion ambiante, rayons du soleil et brume au sol, calculés depuis la profondeur de la scène
@@ -132,7 +137,7 @@ export class Renderer {
     comp.addPass(vm);
     this.vmPass = vm;
     // aucune valeur invalide ou infinie ne doit atteindre le bloom (voir SANITIZE_SHADER)
-    comp.addPass(new ShaderPass(SANITIZE_SHADER));
+    if (!D.has('nosan')) comp.addPass(new ShaderPass(SANITIZE_SHADER));
     if (!D.has('nobloom')) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), this.quality === 'high' ? 0.34 : 0.3, 0.55, 1.0);
       comp.addPass(this.bloom);
@@ -141,6 +146,68 @@ export class Renderer {
     if (!D.has('nograde')) { this.grade = new ShaderPass(GRADE_SHADER); comp.addPass(this.grade); }
     this.composer = comp;
     if (this.amb) this.applyGrade(this.amb);
+  }
+
+  // ---------------------------------------------------------------- autodiagnostic graphique
+  /** Verdict affiche dans le coin de l'ecran ; `cut` = elements coupes automatiquement. */
+  gfx = { checks: 0, bad: 0, cut: [] as string[], note: '' };
+  private gfxEl: HTMLElement | null = null;
+  private gfxNext = 0;
+  private gfxRT: THREE.WebGLRenderTarget | null = null;
+  private gfxBuf = new Float32Array(256 * 144 * 4);
+
+  /** Nombre de pixels non finis dans le rendu brut de la scene (tampon flottant avec anticrenelage, comme le rendu reel). */
+  private gfxScan(): number {
+    if (!this.gfxRT) this.gfxRT = new THREE.WebGLRenderTarget(256, 144, { type: THREE.FloatType, samples: 4 });
+    const r = this.renderer, prev = r.getRenderTarget(), tm = r.toneMapping;
+    r.toneMapping = THREE.NoToneMapping;
+    r.setRenderTarget(this.gfxRT); r.clear(); r.render(this.scene, this.camera);
+    r.readRenderTargetPixels(this.gfxRT, 0, 0, 256, 144, this.gfxBuf);
+    r.toneMapping = tm; r.setRenderTarget(prev);
+    let n = 0; const b = this.gfxBuf;
+    for (let i = 0; i < b.length; i += 4) if (!Number.isFinite(b[i]) || !Number.isFinite(b[i + 1]) || !Number.isFinite(b[i + 2])) n++;
+    return n;
+  }
+
+  /**
+   * Sonde la scene sur la carte graphique du joueur. Si des valeurs invalides apparaissent (cause des aplats noirs une fois
+   * etalees par le bloom), coupe les categories d'objets une a une jusqu'a retrouver une image saine, et le signale.
+   */
+  private gfxCheck(): void {
+    let bad = 0;
+    try { bad = this.gfxScan(); } catch { this.gfx.note = 'sonde indisponible'; this.gfxShow(); return; }
+    this.gfx.checks++;
+    if (bad > 0) {
+      this.gfx.bad += bad;
+      const groups: [string, (o: THREE.Object3D) => boolean][] = [
+        ['halos', (o) => !!o.userData.wbFx],
+        ['effets', (o) => (o as THREE.Mesh).isMesh && !!((o as THREE.Mesh).material as THREE.ShaderMaterial)?.isShaderMaterial && o !== this.sky],
+        ['particules', (o) => !!(o as THREE.Points).isPoints || !!(o as THREE.LineSegments).isLineSegments || !!(o as THREE.Sprite).isSprite],
+      ];
+      for (const [name, test] of groups) {
+        const hidden: THREE.Object3D[] = [];
+        this.scene.traverse((o) => { if (o.visible && test(o)) { o.visible = false; hidden.push(o); } });
+        if (!hidden.length) continue;
+        const now = this.gfxScan();
+        if (now < bad) { if (!this.gfx.cut.includes(name)) this.gfx.cut.push(name); if (name === 'halos') DIAG.add('nofx'); bad = now; if (bad === 0) break; }
+        else for (const o of hidden) o.visible = true;
+      }
+      if (bad > 0 && this.scene.environment) { const env = this.scene.environment; this.scene.environment = null; const now = this.gfxScan(); if (now < bad) { this.gfx.cut.push('reflets'); DIAG.add('noenv'); this.vmScene.environment = null; bad = now; } else this.scene.environment = env; }
+      if (bad > 0 && !this.gfx.cut.includes('?')) this.gfx.cut.push('?');
+    }
+    this.gfxShow();
+  }
+
+  private gfxShow(): void {
+    if (typeof document === 'undefined') return;
+    if (!this.gfxEl) {
+      this.gfxEl = document.createElement('div');
+      this.gfxEl.style.cssText = 'position:fixed;left:6px;bottom:4px;z-index:50;font:10px/1.2 monospace;color:#9aa;opacity:.55;pointer-events:none;letter-spacing:.04em';
+      document.body.appendChild(this.gfxEl);
+    }
+    const g = this.gfx;
+    this.gfxEl.textContent = `GFX ${BUILD} · ${g.note || (g.bad ? `invalides ${g.bad} · coupe : ${g.cut.join(', ') || 'rien'}` : 'OK')} · ${g.checks}`;
+    if (g.bad) { this.gfxEl.style.color = '#ffb04a'; this.gfxEl.style.opacity = '0.9'; }
   }
 
   private updateAtmosphere(u: Record<string, THREE.IUniform>): void {
@@ -226,6 +293,16 @@ export class Renderer {
     this.renderer.toneMappingExposure = a.exposure ?? 1.0;
     this.applyGrade(a);
     this.bakeEnvironment();
+    this.gfxNext = performance.now() + 1200;
+    // diagnostic ?fx=simnan : objet de test qui écrit volontairement une valeur invalide (reproduit le défaut des rectangles noirs)
+    if (DIAG.has('simnan') && !this.simNaN) {
+      this.simNaN = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.ShaderMaterial({
+        uniforms: { z: { value: 0 } }, vertexShader: 'void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+        fragmentShader: 'uniform float z; void main(){ float v=pow(z-1.0,1.6)+z/z; gl_FragColor=vec4(vec3(v),v); }',
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+      this.simNaN.position.set(0, 0, -6); this.simNaN.frustumCulled = false; this.simNaN.renderOrder = 50;
+      this.camera.add(this.simNaN);
+    }
     this.weather.set(DIAG.has('noweather') ? undefined : a.weather, this.quality === 'low' ? 0.4 : this.quality === 'high' ? 1 : 0.7);
   }
 
@@ -270,6 +347,9 @@ export class Renderer {
       this.renderer.render(this.scene, this.camera);
       if (this.drawVm) { this.renderer.clearDepth(); this.renderer.render(this.vmScene, this.vmCamera); }
     }
+    // cadence sur l'horloge reelle : le temps de jeu est fige dans les menus
+    // seulement quand le bloom est actif : sans lui, une valeur invalide reste un point isole et la sonde serait une depense inutile
+    if (this.composer && performance.now() >= this.gfxNext && !DIAG.has('nocheck')) { this.gfxNext = performance.now() + 12000; this.gfxCheck(); }
     this.info.calls = this.renderer.info.render.calls;
     this.info.tris = this.renderer.info.render.triangles;
   }

@@ -92,7 +92,7 @@ export function coneMat(color: number): THREE.ShaderMaterial {
   m = new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) } },
     vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv=uv; vec4 mv=modelViewMatrix*vec4(position,1.0); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
-    fragmentShader: 'uniform vec3 color; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float f=abs(dot(normalize(vN),normalize(vV))); float a=pow(f,2.2)*pow(vUv.y,1.6)*0.11; gl_FragColor=vec4(color*a,a); }',
+    fragmentShader: 'uniform vec3 color; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float f=clamp(abs(dot(normalize(vN),normalize(vV))),0.0,1.0); float v=clamp(vUv.y,0.0,1.0); float a=f*f*v*sqrt(v)*0.11; gl_FragColor=vec4(color*a,a); }',
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   });
   coneMats2.set(color, m);

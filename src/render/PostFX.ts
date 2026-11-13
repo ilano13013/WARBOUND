@@ -11,12 +11,12 @@ float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<5;i++){ v+=n(p)*a; p=p*2.03
 void main(){
   vec3 d=normalize(vDir); float y=clamp(d.y,0.0,1.0);
   vec3 sd=normalize(sunDir); float s=max(dot(d,sd),0.0);
-  // dégradé : zénith sombre, horizon lumineux, réchauffé côté soleil
+
   vec3 col=mix(hor,top,pow(y,0.42));
   col+=sunCol*hor*pow(s,3.0)*0.9*(1.0-y*0.7);
   col+=sunCol*(pow(s,24.0)*0.35+pow(s,6.0)*0.12);
-  // nuages en deux couches, dessous sombre et bords argentés face au soleil
-  // dénominateur borné : sous l'horizon (d.y = -0,18) la division par zéro produisait des valeurs invalides que le bloom étalait en rectangles noirs
+
+
   vec2 cp=d.xz/max(d.y+0.18,0.06);
   float c1=fbm(cp*0.9+vec2(t*0.006,0.0)), c2=fbm(cp*2.3-vec2(0.0,t*0.01)+c1);
   float cov=smoothstep(0.62-storm*0.34,0.9-storm*0.2,c1*0.65+c2*0.45);
@@ -26,7 +26,7 @@ void main(){
   vec3 cloud=mix(cloudLit,cloudDark,thick*(0.55+0.45*(1.0-s)));
   col=mix(col,cloud,cov*smoothstep(0.0,0.22,d.y)*0.92);
   if(envMode<0.5) col+=sunCol*pow(s,900.0)*6.0*(1.0-cov*0.85);
-  // atan(0,0) est indéfini : garde au zénith
+
   if(rift>0.0){ float a=(abs(d.x)+abs(d.z))<1e-5?0.0:atan(d.z,d.x); float w=sin(d.y*11.0+t*0.4)*0.05+sin(d.y*23.0-t*0.7)*0.02;
     float c=abs(a+1.42+w); float core=(1.0-smoothstep(0.0,0.05,c))*smoothstep(0.02,0.25,d.y);
     float halo=(1.0-smoothstep(0.0,0.5,c))*smoothstep(0.0,0.3,d.y)*0.35;
@@ -58,9 +58,14 @@ uniform float mist; uniform float aoStr; uniform float zone; uniform float time;
 varying vec2 vUv;
 vec3 viewPos(vec2 uv){ float d=texture2D(tDepth,uv).x; vec4 v=projInv*vec4(uv*2.0-1.0,d*2.0-1.0,1.0); return v.xyz/v.w; }
 float ign(vec2 p){ return fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715)))); }
+
+
+bool wbFinite(float v){ return (floatBitsToInt(v) & 0x7F800000) != 0x7F800000; }
+vec3 wbClean(vec3 c, float hi){ if(!(wbFinite(c.r)&&wbFinite(c.g)&&wbFinite(c.b))) return vec3(0.0); if(any(isnan(c))||any(isinf(c))) return vec3(0.0); return min(max(c,vec3(0.0)),vec3(hi)); }
+
 void main(){
   vec4 src=texture2D(tDiffuse,vUv);
-  vec3 col=src.rgb;
+  vec3 col=wbClean(src.rgb,60.0);
   float depth=texture2D(tDepth,vUv).x;
   bool sky=depth>=0.99999;
   vec3 p=viewPos(vUv);
@@ -69,7 +74,7 @@ void main(){
   float sunward=max(dot(vd,sunView),0.0);
   float noise=ign(gl_FragCoord.xy);
   if(!sky){
-    // --- occlusion ambiante (hémisphère orienté par la normale reconstruite)
+
     vec3 nc=cross(dFdx(p),dFdy(p)); vec3 nrm=nc/max(length(nc),1e-9);
     float rad=0.75;
     float pr=min(rad*projScale/max(-p.z,0.3),0.09);
@@ -84,10 +89,10 @@ void main(){
     }
     float ao=clamp(1.0-occ*(1.15*aoStr/float(AO_TAPS)),0.0,1.0);
     ao=mix(1.0,ao,exp(-dist*0.025));
-    // la lumière directe forte perce l'occlusion
+
     float lum=dot(col,vec3(0.3,0.6,0.1));
     col*=mix(ao,1.0,clamp(lum*0.55,0.0,0.7));
-    // --- brume au sol : dense près du sol, colorée par le soleil
+
     float wy=(camWorld*vec4(p,1.0)).y;
     float m=mist*zone*zone*(1.0-exp(-dist*0.03))*exp(-max(wy,0.0)*0.38);
     vec3 mistCol=fogCol+sunCol*(0.06+0.45*pow(sunward,4.0));
@@ -95,7 +100,7 @@ void main(){
     // --- halo de diffusion vers le soleil sur les lointains
     col+=sunCol*pow(sunward,10.0)*(1.0-exp(-dist*0.012))*0.14*zone;
   }
-  // --- rayons du soleil : le ciel proche du soleil diffuse le long de la direction écran → soleil
+
   if(sunVis>0.001){
     vec2 dl=sunUV-vUv;
     vec2 st=dl/float(RAY_TAPS)*0.92;
@@ -111,9 +116,8 @@ void main(){
     vec2 q0=dl*vec2(aspect,1.0);
     col+=sunCol*acc*sunVis*(0.5+0.5*exp(-dot(q0,q0)*1.5))*1.05;
   }
-  // garde-fou : aucune valeur invalide ou démesurée ne doit atteindre le bloom
-  if(any(isnan(col))||any(isinf(col))) col=vec3(0.0);
-  col=min(max(col,vec3(0.0)),vec3(60.0));
+
+  col=wbClean(col,60.0);
   gl_FragColor=vec4(col,src.a);
 }`,
 };
@@ -134,20 +138,20 @@ float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
 void main(){
   vec2 px=1.0/vec2(textureSize(tDiffuse,0));
   vec2 c=vUv-0.5; float r2=dot(c,c);
-  // légère aberration chromatique sur les bords
+
   vec2 ca=c*r2*0.004;
   vec3 col=vec3(texture2D(tDiffuse,vUv+ca).r,texture2D(tDiffuse,vUv).g,texture2D(tDiffuse,vUv-ca).b);
   vec3 blur=(texture2D(tDiffuse,vUv+vec2(px.x,0.0)).rgb+texture2D(tDiffuse,vUv-vec2(px.x,0.0)).rgb+texture2D(tDiffuse,vUv+vec2(0.0,px.y)).rgb+texture2D(tDiffuse,vUv-vec2(0.0,px.y)).rgb)*0.25;
   col=max(col+(col-blur)*sharpen,0.0);
   float l=dot(col,vec3(0.2126,0.7152,0.0722));
-  // teinte séparée, discrète : ombres froides, hautes lumières chaudes
+
   vec3 st=mix(vec3(1.0),shadowTint/max(max(shadowTint.r,shadowTint.g),shadowTint.b),0.55);
   vec3 lt=mix(vec3(1.0),lightTint/max(max(lightTint.r,lightTint.g),lightTint.b),0.6);
   col*=mix(st,lt,smoothstep(0.05,0.6,l));
   col=mix(vec3(l),col,saturation);
   col=(col-0.36)*contrast+0.36;
   col=max(col,0.0);
-  // pied de courbe adouci : noirs denses sans écrasement total
+
   col=mix(col,col*col*(3.0-2.0*clamp(col,0.0,1.0)),0.18);
   col*=1.0-vignette*smoothstep(0.12,0.62,r2);
   col+=(h(gl_FragCoord.xy+fract(time)*91.7)-0.5)*grain*(1.0-l*0.6);
@@ -165,8 +169,9 @@ export const SANITIZE_SHADER = {
   uniforms: { tDiffuse: { value: null } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: /* glsl */ `uniform sampler2D tDiffuse; varying vec2 vUv;
-void main(){ vec4 c=texture2D(tDiffuse,vUv); vec3 col=c.rgb;
-  if(any(isnan(col))||any(isinf(col))) col=vec3(0.0);
-  col=min(max(col,vec3(0.0)),vec3(48.0));
-  gl_FragColor=vec4(col,1.0); }`,
+
+
+bool wbFinite(float v){ return (floatBitsToInt(v) & 0x7F800000) != 0x7F800000; }
+vec3 wbClean(vec3 c, float hi){ if(!(wbFinite(c.r)&&wbFinite(c.g)&&wbFinite(c.b))) return vec3(0.0); if(any(isnan(c))||any(isinf(c))) return vec3(0.0); return min(max(c,vec3(0.0)),vec3(hi)); }
+void main(){ gl_FragColor=vec4(wbClean(texture2D(tDiffuse,vUv).rgb,48.0),1.0); }`,
 };

@@ -1,5 +1,6 @@
 // Chef d'orchestre : boucle de jeu, états, chargement des niveaux, transitions et progression.
 import * as THREE from 'three';
+import { DIAG } from '../render/Renderer';
 import { Renderer } from '../render/Renderer';
 import { FX } from '../render/FX';
 import { AudioSys } from '../audio/Audio';
@@ -108,7 +109,7 @@ export class Game {
 
   applySettings(): void {
     this.r.applySettings(this.settings);
-    this.level?.setFx(this.settings.quality !== 'low');
+    this.level?.setFx(this.settings.quality !== 'low' && !DIAG.has('nofx'));
     this.fx.setQuality(this.settings.quality);
     this.audio.applyVolumes();
     this.ui.settingsChanged();
@@ -153,7 +154,7 @@ export class Game {
   private load(level: Level, mission: Mission): void {
     this.level = level; this.mission = mission; mission.level = level;
     this.r.scene.add(level.root);
-    level.setFx(this.settings.quality !== 'low');
+    level.setFx(this.settings.quality !== 'low' && !DIAG.has('nofx'));
     this.r.setAmbience(level.ambience);
     this.player.refreshStats(true);
     this.applyRunMods();

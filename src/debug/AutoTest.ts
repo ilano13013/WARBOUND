@@ -57,9 +57,9 @@ export function installAutoTest(g: Game): void {
      * Sonde HDR : rend la scène (et l'arme) dans un tampon flottant 32 bits et compte les pixels invalides (NaN), infinis,
      * ou supérieurs à 65 504, limite du tampon demi-flottant du post-traitement, au-delà de laquelle une carte graphique écrit l'infini.
      */
-    hdrScan: () => {
-      const r = g.r, w = 480, h = 270;
-      const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.FloatType });
+    hdrScan: (samples = 0, w = 480, h = 270) => {
+      const r = g.r;
+      const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.FloatType, samples });
       const buf = new Float32Array(w * h * 4);
       const out: Record<string, unknown> = {};
       const scan = (label: string, scene: THREE.Scene, cam: THREE.Camera) => {

@@ -188,7 +188,7 @@ export class FX {
           float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){ v+=a*n(p); p*=2.1; a*=0.5; } return v; }
           void main(){ vec2 p=vUv*2.0-1.0; float r=length(p); float a=r<1e-4?0.0:atan(p.y,p.x);
             float nz=fbm(vec2(a*1.6+seed, r*3.0-t*4.0)+seed);
-            float edge=0.62+0.38*nz; float d=smoothstep(edge,edge*0.35,r);
+            float edge=0.62+0.38*nz; float d=1.0-smoothstep(edge*0.35,edge,r);
             float heat=clamp((1.0-t*1.5)*(1.15-r)+nz*0.25,0.0,1.0);
             vec3 c=mix(vec3(0.12,0.09,0.08), tint, smoothstep(0.05,0.45,heat));
             c=mix(c, vec3(1.0,0.92,0.7), smoothstep(0.55,0.95,heat));

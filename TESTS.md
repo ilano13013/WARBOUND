@@ -24,17 +24,20 @@ Groupe électrogène près du terminal de CENDRES, tuyaux et bouches d'aération
 ### Mesures indicatives (rendu logiciel, qualité Bas)
 CENDRES : 459 appels de rendu, 598 000 triangles (302 000 en 2.1). QG : 209 appels, 132 000 triangles (89 000 en 2.1). Poids du build : 37 Mo (23 Mo en 2.1), surtout les textures 2K.
 
-### Défaut signalé sur une vraie carte graphique (2.2.2 : corrigé à la source, non revérifié sur cette machine)
-Sur le PC de test (Edge, Windows), de grands rectangles noirs emboîtés couvraient le menu, la création de personnage, la cinématique et les cartes. C'est la signature d'une valeur invalide (NaN) dans l'image, étalée par le bloom. Le rendu logiciel des tests ne la produit pas : une sonde ajoutée au mode test (`WB.hdrScan()`) ne trouve ni valeur invalide ni dépassement ici.
+### Défaut signalé sur une vraie carte graphique : aplats noirs (2.2.3, non revérifié sur la machine concernée)
+Sur le PC de test (Edge, Windows), de grands rectangles noirs couvraient le menu, la création de personnage, la cinématique et les cartes. Deux correctifs successifs (2.2.1, 2.2.2) n'ont pas suffi.
 
-Un premier correctif (division par zéro du ciel sous l'horizon) n'a pas suffi. Causes corrigées en 2.2.2, toutes des opérations au résultat indéfini selon la norme GLSL :
-- `atan(0, 0)` au centre exact du disque des portails (présent depuis la 1.0, et les zones noires des photos sont centrées sur le portail), au zénith du ciel, et dans deux shaders d'effets ;
-- `smoothstep` à bornes inversées dans sept shaders ;
-- puissance d'une base pouvant devenir négative dans deux shaders.
+**Mécanisme, reproduit ici par injection** (`?fx=simnan`) : une seule valeur invalide (NaN) écrite dans l'image est étalée par le bloom ; sans garde-fou, l'écran entier devient noir. Le rendu logiciel des tests ne produit pas spontanément ces valeurs : la sonde `WB.hdrScan()`, y compris avec anticrénelage, n'en trouve aucune sur le menu ni sur les vues testées.
 
-Garde-fou ajouté : une passe d'assainissement élimine toute valeur invalide, infinie ou démesurée avant le bloom, quelle qu'en soit la source.
+**Source la plus probable, corrigée en 2.2.3** : le shader des cônes de lumière sous les lampes (ajouté en 2.1) calculait une puissance d'une coordonnée interpolée. Avec l'anticrénelage, cette coordonnée peut devenir négative au bord du cône ; la puissance d'un nombre négatif est invalide sur une vraie carte graphique. Une lampe et son cône se trouvent devant le portail du menu, là où les zones noires des photos sont centrées, et sous chaque lampe de chaque carte. Ce n'est pas prouvé sur la machine concernée.
 
-Diagnostic par l'adresse si le défaut persistait : `?fx=off` (aucun post-traitement), ou une liste parmi `noatmo`, `nobloom`, `nograde`, `nomsaa`, `noenv`, `nosurf`, `noweather` (exemple : `?fx=nobloom`). Le numéro de version est affiché en bas à droite du menu.
+**Autres corrections du même type** : `atan(0, 0)` (portails, ciel, effets), `smoothstep` à bornes inversées (huit shaders), puissances à base possiblement négative (trois shaders), division par zéro du ciel, texture de profondeur partagée par erreur entre les deux tampons du post-traitement, commentaires non ASCII retirés des shaders.
+
+**Défenses ajoutées** :
+- garde-fou avant le bloom et dans la passe d'atmosphère, fondé sur un test binaire que les compilateurs de shaders ne peuvent pas supprimer (contrairement à `isnan`) ;
+- **autodiagnostic embarqué** : 1,2 s après chaque changement de scène puis toutes les 12 s, le jeu sonde l'image brute sur la carte graphique du joueur. S'il trouve des valeurs invalides, il coupe une à une les catégories d'objets (halos et cônes, effets à shader, particules, reflets) jusqu'à retrouver une image saine. Le verdict est affiché en bas à gauche : `GFX 2.2.3 · OK · n` ou `GFX 2.2.3 · invalides N · coupe : …`. Vérifié ici par injection : la valeur injectée est détectée et sa catégorie coupée.
+
+Diagnostic manuel par l'adresse : `?fx=off` (aucun post-traitement) ou une liste parmi `noatmo`, `nobloom`, `nograde`, `nomsaa`, `noenv`, `nosurf`, `noweather`, `nofx`, `nocheck`.
 
 ### Non vérifié en 2.2
 - Fréquence d'images et mémoire vidéo sur une vraie carte graphique : les textures 2K ajoutent environ 20 textures de 2048 px.
