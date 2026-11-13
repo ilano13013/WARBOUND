@@ -21,7 +21,8 @@ export function buildOp1(g: Game, m: Mission): Level {
   // ================= EXTÉRIEUR =================
   L.floor('dirt', 0, 2, 88, 88);
   L.box('asphalt', 0, -0.98, 12, 8, 1, 68, { nav: false });
-  L.enclosure('concrete_damaged', -43, -41, 43, 45, 7, [], 1);
+  // ouverture face à la porte du laboratoire (z −40) : l'enceinte était pleine et murait l'entrée depuis la 1.0
+  L.enclosure('concrete_damaged', -43, -41, 43, 45, 7, [{ side: 'n', at: 0, gap: 4, h: 3.4 }], 1);
   // zone d'insertion
   L.vehicle(-9, 30, false, 'truck', 0x3a3f36); L.vehicle(8, 22, true, 'apc', 0x2e3428);
   L.deadTree(-18, 34, 6); L.deadTree(20, 30, 5); L.deadTree(-26, 20, 7); L.deadTree(28, 16, 6); L.deadTree(14, 38, 5);
@@ -68,7 +69,7 @@ export function buildOp1(g: Game, m: Mission): Level {
 
   // ================= LABORATOIRE =================
   L.floor('tiles', 0, -107.5, 88, 133);
-  L.enclosure('concrete', -43, -173, 43, -41, 6, [], 1);
+  L.enclosure('concrete', -43, -173, 43, -41, 6, [{ side: 's', at: 0, gap: 4, h: 3.4 }], 1);
   L.wallDoor('concrete', -43, -40, 43, -40, 6.5, 0, 4, 3.4, 1);
   const labDoor = L.door(0, -40, true, 4, 3.4);
   const labTerm = L.terminal(4.2, -38.6, 'z+');
@@ -127,7 +128,8 @@ export function buildOp1(g: Game, m: Mission): Level {
   L.barrier(-20, -116, true, 3); L.barrier(20, -116, true, 3); L.barrier(-20, -158, true, 3); L.barrier(20, -158, true, 3);
   const bossConduits = [L.conduit(-22, -136, 260, 'glow_blue'), L.conduit(22, -136, 260, 'glow_blue')];
   for (const c of bossConduits) c.invulnerable = true;
-  ammo(g, L, -24, -110); ammo(g, L, 24, -162);
+  // caisses au pied des socles du réacteur (elles étaient enfoncées dans les socles posés en 2.0)
+  ammo(g, L, -19.4, -110); ammo(g, L, 19.4, -158);
   L.box('hazard', 0, 0, -163.5, 6, 0.15, 4, { nav: false });
   backdrop(L, 'industrial');
   dressOp1(L);

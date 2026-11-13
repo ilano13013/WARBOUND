@@ -1,5 +1,21 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.3.1 (accès bloqués et objets en lévitation)
+
+### Défauts signalés et confirmés
+- **CENDRES, entrée du laboratoire murée** (présent depuis la 1.0) : derrière la porte (z −40), les enceintes de la cour et du laboratoire avaient chacune un côté plein à z −41. Tout le laboratoire, le réacteur et le boss étaient inaccessibles à pied. Confirmé en marchant : le joueur butait à z −40,1 ; corrigé, il entre dans le hall.
+- **POINT ZÉRO, complexe des stabilisateurs muré** (présent depuis la 1.0) : même défaut, côté sud de l'enceinte du complexe plein derrière la grande porte. Stabilisateurs, zone altérée, parvis et noyau étaient inaccessibles à pied.
+- **Barrières en béton à 44 cm du sol** (79 barrières, 5 cartes, introduit en 2.2) : l'origine du modèle, à sa base, était prise pour son centre.
+- **Deux caisses de munitions du réacteur de CENDRES enfoncées dans un socle de décor** (introduit en 2.0).
+
+### Pourquoi les tests ne les voyaient pas
+Le pilote de la campagne se téléporte d'objectif en objectif, et l'ancien contrôle `layout` vérifiait seulement que chaque point était sur la grille de navigation, sans exiger un chemin. Le contrôle vérifie maintenant un **cheminement à pied** : un remplissage au gabarit du joueur (rayon 0,36 m, grille de 25 cm, marches de moins de 0,42 m franchies), toutes portes ouvertes, du départ jusqu'à chaque marqueur d'objectif, chaque interaction et chaque ennemi au sol, sur les quatre opérations et le QG. Un contrôle ponctuel mesure l'écart entre la base de chaque objet posé et ce qui le porte : plus aucun objet ne flotte sur les six cartes.
+
+### Limite de navigation des ennemis (constat, non modifié)
+La grille de navigation des ennemis (cases de 1 m, marge de 0,32 m) ferme les portes de 3 m. Les ennemis ne savent donc pas poursuivre le joueur à travers ces portes. Le joueur, lui, passe. À traiter séparément : changer la grille modifie le comportement de tous les ennemis.
+
+---
+
 ## Version 2.3 (performances et sensibilité)
 
 | Scénario | Résultat |

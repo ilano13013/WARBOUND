@@ -53,7 +53,8 @@ export function buildOp4(g: Game, m: Mission): Level {
   L.sign('HELIX PRIME — POINT ZÉRO', 0, 6.4, -39.2, 'z+', '#ff5a6a', 8);
 
   // ================= B. COMPLEXE DES STABILISATEURS (z -40..-112) =================
-  L.enclosure('darkmetal', -51, -112, 51, -40.6, 9, [{ side: 'n', at: 0, gap: 8, h: 6 }], 1.2);
+  // ouverture sud alignée sur la porte de l'installation (z −40) : le côté sud était plein et murait le complexe depuis la 1.0
+  L.enclosure('darkmetal', -51, -112, 51, -40.6, 9, [{ side: 'n', at: 0, gap: 8, h: 6 }, { side: 's', at: 0, gap: 6, h: 5 }], 1.2);
   for (const z of [-50, -64, -78, -92, -104]) { L.box('glow_red', -50.2, 4, z, 0.1, 0.15, 8, { collide: false }); L.box('glow_red', 50.2, 4, z, 0.1, 0.15, 8, { collide: false }); }
   // ailes séparées par des murs
   L.wall('darkconcrete', -18, -56, -18, -84, 6, 0.8); L.wall('darkconcrete', 18, -56, 18, -84, 6, 0.8);

@@ -4,6 +4,14 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.3.1 (correctifs)
+
+- CENDRES : l'entrée du laboratoire était murée derrière la porte. Le laboratoire, le réacteur et le boss sont de nouveau accessibles à pied.
+- POINT ZÉRO : même défaut derrière la grande porte de l'installation. Corrigé.
+- Les barrières en béton ne flottent plus (elles étaient à 44 cm du sol depuis la 2.2).
+- Deux caisses de munitions enfoncées dans un socle de la salle du réacteur sont replacées.
+- Le contrôle automatique des niveaux vérifie désormais qu'on peut tout atteindre à pied.
+
 ## Nouveautés de la version 2.3 (performances et sensibilité)
 
 **Moins de ralentissements**

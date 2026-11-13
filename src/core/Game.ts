@@ -77,6 +77,8 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.testMode = new URLSearchParams(location.search).has('autotest');
     this.r = new Renderer(canvas);
+    // en mode test, l'autodiagnostic ne tourne que si un test le demande (injection de défaut)
+    this.r.selfCheck = !this.testMode || DIAG.has('simnan') || DIAG.has('check');
     this.r.scene.add(this.fx.group);
     this.fx.camera = this.r.camera;
     this.audio = new AudioSys(this.settings);

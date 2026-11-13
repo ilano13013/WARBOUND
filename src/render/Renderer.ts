@@ -17,7 +17,7 @@ import { Weather } from './Weather';
  * noatmo, nobloom, nograde, nomsaa, noenv, nosurf, noweather (ex. ?fx=nobloom,noatmo). Sans effet en usage normal.
  */
 /** Numero de build, affiche avec le verdict de l'autodiagnostic. */
-export const BUILD = '2.3.0';
+export const BUILD = '2.3.1';
 export const DIAG: Set<string> = new Set((typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fx') || '' : '').split(',').filter(Boolean));
 
 export class Renderer {
@@ -53,6 +53,8 @@ export class Renderer {
   private frameN = 0;
   private fxaa: ShaderPass | null = null;
   private gfxLeft = 0;
+  /** Autodiagnostic actif (coupé en mode test, où la relecture d'image fige le rendu logiciel plusieurs secondes). */
+  selfCheck = true;
   private indoorSky = new THREE.Color(0xc4d0dc); private indoorGround = new THREE.Color(0x77736c);
   private weather = new Weather(this.scene);
   private envBase = 0.5;
@@ -412,7 +414,7 @@ export class Renderer {
     // seulement quand le bloom est actif : sans lui, une valeur invalide reste un point isole et la sonde serait une depense inutile
     // une sonde par scène (1,5 s après son chargement), répétée seulement si elle trouve un défaut : la relecture de l'image
     // bloque la carte graphique un instant ; la sonde périodique de la 2.2.3 provoquait une saccade toutes les 12 s
-    if (this.composer && this.gfxLeft > 0 && performance.now() >= this.gfxNext && !DIAG.has('nocheck')) {
+    if (this.selfCheck && this.composer && this.gfxLeft > 0 && performance.now() >= this.gfxNext && !DIAG.has('nocheck')) {
       this.gfxLeft--; this.gfxNext = performance.now() + 6000;
       const before = this.gfx.bad; this.gfxCheck(); if (this.gfx.bad > before) this.gfxLeft = Math.max(this.gfxLeft, 1);
     }

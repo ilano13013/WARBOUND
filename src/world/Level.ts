@@ -288,7 +288,7 @@ export class Level {
       const info = propInfo(name)!;
       if (info.skinned) {
         // modèles animés (chars) : copies complètes, le squelette est nécessaire au rendu
-        for (const m of list) { const o = Assets.clone('props/' + name); if (!o) continue; m.decompose(o.position, o.quaternion, o.scale); o.traverse((n) => { n.castShadow = true; n.receiveShadow = true; }); this.root.add(o); }
+        for (const m of list) { const o = Assets.clone('props/' + name); if (!o) continue; o.name = name; m.decompose(o.position, o.quaternion, o.scale); o.traverse((n) => { n.castShadow = true; n.receiveShadow = true; }); this.root.add(o); }
         continue;
       }
       // petits décors (moins de 0,9 m) : pas d'ombre portée, ils doublaient le coût de la passe d'ombre pour un effet invisible
@@ -297,7 +297,7 @@ export class Level {
       for (const part of info.parts) {
         const im = new THREE.InstancedMesh(part.geometry, part.material, list.length);
         list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, part.local)));
-        im.castShadow = cast; im.receiveShadow = true;
+        im.castShadow = cast; im.receiveShadow = true; im.name = name;
         im.computeBoundingSphere();
         this.root.add(im);
       }
@@ -412,13 +412,15 @@ export class Level {
   barrier(x: number, z: number, alongX: boolean, len = 2.4): void {
     const w = alongX ? len : 0.5, d = alongX ? 0.5 : len;
     // modèle Concrete Road Barrier (Poly Haven, CC0) : la collision garde les dimensions de couverture d'origine
-    const sz = this.propSize('ph_barrier');
+    // pièce recentrée (« fichier#nœud ») : le centre est connu, la base est donc posée exactement au sol
+    // (en 2.2, l'origine du modèle, à sa base, était prise pour son centre : les barrières flottaient de 44 cm)
+    const sz = this.propSize('ph_barrier#concrete_road_barrier');
     if (sz) {
       this.collider(x, 0, z, w, 0.9, d, 'concrete');
       const n = Math.max(1, Math.round(len / sz.x)), seg = len / n;
       for (let i = 0; i < n; i++) {
         const o = (i - (n - 1) / 2) * seg, flip = (Math.round(x * 3 + z * 5) + i) % 2 ? Math.PI : 0;
-        this.propM('ph_barrier', new THREE.Matrix4().compose(new THREE.Vector3(alongX ? x + o : x, 0.45, alongX ? z : z + o),
+        this.propM('ph_barrier#concrete_road_barrier', new THREE.Matrix4().compose(new THREE.Vector3(alongX ? x + o : x, 0.45, alongX ? z : z + o),
           new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (alongX ? 0 : Math.PI / 2) + flip), new THREE.Vector3((seg / sz.x) * 0.995, 0.9 / sz.y, 1)));
       }
       return;
