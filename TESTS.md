@@ -1,5 +1,25 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.4 (équipement électrique, préparation AK et soldat)
+
+Exécution complète `npm test` sur une machine non chargée : 7 scénarios réussis (gameplay 27/27, systems 26/26, settings 10/10, boss 3/3, survival 6/6, layout cohérent, campagne jusqu'aux crédits sans erreur JavaScript).
+
+### Vérifications visuelles réellement faites (captures)
+- Coffret électrique de près (CENDRES) : porte fermée, pictogramme, usure ; coffrets sur les machines du générateur et de l'atrium.
+- **Profil de squelette Unreal** sur le personnage Quantum fourni (copie de test allégée à 32 700 triangles, **sans textures**), de face, à côté du soldat actuel : repos, visée (arme levée à la même hauteur), marche. Pas de déformation visible. Mort, rechargement, coups et course non regardés.
+
+### Problèmes trouvés pendant ce travail
+- **Coût du câblage** : la première version posait 2 400 pièces de câble détaillées sur CENDRES (+1,8 million de triangles). Les longues descentes sont devenues des tubes simples, le coffret a été allégé et posé sur une armoire sur deux : surcoût ramené à environ 290 000 triangles instanciés (objets muraux, sans ombre).
+- **Saccade à la première apparition des nouveaux objets** : leurs textures 2K étaient envoyées à la carte graphique au premier affichage. Elles le sont désormais au chargement, comme les shaders.
+- **Tests** : la référence du test des talents était relevée avant l'application des PV de classe (corrigé) ; le test du saut attend que le personnage soit au sol. Une exécution lancée en même temps qu'une autre suite a échoué par surcharge de la machine : non retenue.
+
+### Non vérifié
+- AK-47, soldat tactique, modules de laboratoire : non fournis.
+- Quantum en jeu : non intégré faute de textures ; aucune mesure de performance à 163 000 triangles par personnage.
+- Rendu des matériaux PBR conservés pour une arme texturée : aucune arme texturée disponible pour l'essayer.
+
+---
+
 ## Version 2.3.1 (accès bloqués et objets en lévitation)
 
 ### Défauts signalés et confirmés

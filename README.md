@@ -4,6 +4,13 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.4 (équipement électrique, préparation des nouveaux assets)
+
+- **Coffrets électriques** (*Power Box 01*, Poly Haven, CC0) sur les machines du QG, de CENDRES et de POINT ZÉRO et sur une partie des armoires murales, avec leur câble d'alimentation.
+- **Câblage** (*Modular Electric Cables*, Poly Haven, CC0) : boîtiers de raccordement aux chemins de câbles, interrupteurs de service.
+- **Préparation** : les armes importées avec des matériaux PBR texturés les conservent (pour l'AK-47 de Nneako) ; les animations se transfèrent aussi sur les squelettes Unreal 5 (personnage Quantum, exports AccuRig pour Unreal), avec correction de la pose de repos.
+- **Non intégrés** (voir `ASSETS.md`) : AK-47, soldat tactique et modules de laboratoire (non fournis, téléchargement soumis à un compte) ; personnage Quantum (fourni sans ses textures).
+
 ## Version 2.3.1 (correctifs)
 
 - CENDRES : l'entrée du laboratoire était murée derrière la porte. Le laboratoire, le réacteur et le boss sont de nouveau accessibles à pied.

@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Collider, World, type Damageable, type DamageInfo, type Surface } from './World';
 import { mat, cmat, TILE, softTexture, type MatName } from '../render/Materials';
 import { Assets } from '../assets/Assets';
-import { detailBuilding, detailWall, detailRoof, detailGround, glowPatch, lightCone, type Theme } from './Detail';
+import { detailBuilding, detailWall, detailRoof, powerBox, detailGround, glowPatch, lightCone, type Theme } from './Detail';
 
 export interface Ambience {
   skyTop: number; skyHorizon: number; fog: number; fogDensity: number;
@@ -599,6 +599,15 @@ export class Level {
     this.box('darkmetal', x, 0, z, w, h, d);
     this.box(glow, x, h * 0.55, z, w + 0.04, 0.12, d + 0.04, { collide: false });
     this.box('metal', x, h, z, w * 0.7, 0.25, d * 0.7, { collide: false });
+    // coffret électrique (Power Box 01) sur la première face dégagée, câble montant jusqu'au sommet de la machine
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const fx = x + nx * (w / 2), fz = z + nz * (d / 2), half = nx ? d / 2 : w / 2;
+      if (half < 0.4) continue;
+      if (this.world.overlaps(fx + nx * 0.7, 0.6, fz + nz * 0.7, 0.3, 1.2)) continue;
+      const off = Math.min(half - 0.35, 0.45); // décalé du centre, à côté de la bande lumineuse
+      powerBox(this, fx + nz * off, 1.25, fz - nx * off, nx, nz, 1, h - 0.05);
+      break;
+    }
   }
 
   locker(x: number, z: number, alongX: boolean, n = 3): void {

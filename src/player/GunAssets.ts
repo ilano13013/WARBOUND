@@ -82,6 +82,16 @@ function remapMaterials(o: THREE.Object3D, def: WeaponDef): void {
       const k = src.name;
       let r = cache.get(k);
       if (r) return r;
+      // matériau PBR texturé importé (ex. AK-47 de Nneako) : conservé tel quel, cartes comprises ; seul l'aplat de couleur
+      // des modèles stylisés est remplacé par les matériaux « premium » ci-dessous
+      const sm = src as THREE.MeshStandardMaterial;
+      if (sm.isMeshStandardMaterial && (sm.map || sm.normalMap || sm.roughnessMap || sm.metalnessMap)) {
+        const keep = sm.clone();
+        // la carte ORM ne sert de carte de métal que si son canal bleu est renseigné (métal non nul déclaré par le matériau)
+        if (keep.metalnessMap && keep.metalness === 0) keep.metalnessMap = null;
+        if (keep.map) keep.map.colorSpace = THREE.SRGBColorSpace;
+        keep.name = k; cache.set(k, keep); return keep;
+      }
       const base = (src as THREE.MeshStandardMaterial).color?.clone() || new THREE.Color(0x222222);
       const p: THREE.MeshPhysicalMaterialParameters = { color: base, roughness: 0.5, metalness: 0.4, clearcoat: 0, clearcoatRoughness: 0.4 };
       if (/Black$/.test(k)) Object.assign(p, { color: new THREE.Color(0x1b1d21), metalness: 0.9, roughness: 0.4, clearcoat: 0.3 }); // acier bronzé

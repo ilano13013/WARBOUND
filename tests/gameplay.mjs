@@ -29,9 +29,15 @@ await page.keyboard.up('Control'); await page.keyboard.up('z'); await page.keybo
 // saut
 const y0 = (await st(page)).pos[1];
 // en rendu logiciel une image peut dépasser 0,3 s : on suit la hauteur atteinte pendant le saut plutôt qu'un instant fixe
-await page.evaluate(() => { window.__yMax = -1e9; const t0 = performance.now(); const f = () => { window.__yMax = Math.max(window.__yMax, window.WB.game.player.pos.y); if (performance.now() - t0 < 3000) requestAnimationFrame(f); }; f(); });
-await page.keyboard.down('Space'); await sleep(900); await page.keyboard.up('Space'); await sleep(1200);
-const yMax = await page.evaluate(() => window.__yMax);
+// au sol d'abord (la glissade précédente peut encore être en cours), puis saut ; une seconde tentative si l'appui est tombé
+// pendant une image figée du rendu logiciel
+let yMax = y0;
+for (let k = 0; k < 2 && yMax < y0 + 0.4; k++) {
+  await waitFor(page, () => window.WB.state().grounded && !window.WB.state().sliding, 10000);
+  await page.evaluate(() => { window.__yMax = -1e9; const t0 = performance.now(); const f = () => { window.__yMax = Math.max(window.__yMax, window.WB.game.player.pos.y); if (performance.now() - t0 < 3000) requestAnimationFrame(f); }; f(); });
+  await page.keyboard.down('Space'); await sleep(900); await page.keyboard.up('Space'); await sleep(1200);
+  yMax = await page.evaluate(() => window.__yMax);
+}
 ok('saut', yMax > y0 + 0.4, `h=${(yMax - y0).toFixed(2)}`); await sleep(900);
 // accroupi
 await page.keyboard.down('Control'); await sleep(900); ok('accroupissement', (await st(page)).crouching); await page.keyboard.up('Control'); await sleep(300);

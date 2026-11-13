@@ -14,11 +14,29 @@ for (const s of ['L', 'R']) CORE.push(
   [`DEF-thigh.${s}`, `UpperLeg.${s}`], [`DEF-shin.${s}`, `LowerLeg.${s}`], [`DEF-foot.${s}`, `Foot.${s}`],
 );
 
+/**
+ * Profil Unreal Engine 5 (squelette « Manny » : pelvis, spine_01…05, clavicle_l…) : personnages Quantum, exports AccuRig/UE.
+ * Ces squelettes sont en pose « A » (bras à 45°) ; la bibliothèque UAL est en pose « T » : voir restFix.
+ */
+const CORE_UE5: [string, string][] = [
+  ['DEF-hips', 'pelvis'], ['DEF-spine.001', 'spine_01'], ['DEF-spine.002', 'spine_03'], ['DEF-spine.003', 'spine_05'], ['DEF-neck', 'neck_01'], ['DEF-head', 'head'],
+];
+for (const [s, t] of [['L', 'l'], ['R', 'r']]) CORE_UE5.push(
+  [`DEF-shoulder.${s}`, `clavicle_${t}`], [`DEF-upper_arm.${s}`, `upperarm_${t}`], [`DEF-forearm.${s}`, `lowerarm_${t}`], [`DEF-hand.${s}`, `hand_${t}`],
+  [`DEF-thigh.${s}`, `thigh_${t}`], [`DEF-shin.${s}`, `calf_${t}`], [`DEF-foot.${s}`, `foot_${t}`],
+  ...['index', 'middle', 'ring', 'pinky'].flatMap((f) => [1, 2, 3].map((n) => [`DEF-f_${f}.0${n}.${s}`, `${f}_0${n}_${t}`] as [string, string])),
+  ...[1, 2, 3].map((n) => [`DEF-thumb.0${n}.${s}`, `thumb_0${n}_${t}`] as [string, string]),
+);
+
+/** Squelette de type Unreal (UE4/UE5, AccuRig exporté pour Unreal) ? */
+export function isUESkeleton(target: THREE.Object3D): boolean { return !!target.getObjectByName('pelvis') && !!target.getObjectByName('upperarm_l'); }
+
 /** Correspondance os source -> os cible (noms assainis), doigts compris. */
 function boneMap(target: THREE.Object3D): Map<string, THREE.Object3D> {
   const byName = new Map<string, THREE.Object3D>();
   target.traverse((o) => { if ((o as THREE.Bone).isBone || o.name) byName.set(o.name, o); });
   const map = new Map<string, THREE.Object3D>();
+  if (isUESkeleton(target)) { for (const [s, t] of CORE_UE5) { const b = byName.get(t); if (b) map.set(san(s), b); } return map; }
   for (const [s, t] of CORE) { const b = byName.get(san(t)); if (b) map.set(san(s), b); }
   for (const side of ['L', 'R']) {
     for (const f of ['index', 'middle', 'ring', 'pinky', 'thumb']) {
@@ -73,6 +91,29 @@ export function retargetClips(modelKey: string, target: THREE.Object3D, names: s
   target.traverse((o) => { order.push(o); tRestWorld.set(o, o.getWorldQuaternion(new THREE.Quaternion())); });
   const mapped = new Map<THREE.Object3D, string>();
   for (const [s, t] of map) mapped.set(t, s);
+  // correction de pose de repos (squelettes en pose « A ») : chaque segment de membre de la cible est d'abord aligné sur la
+  // direction du segment source au repos (bras horizontaux de la pose « T »), puis reçoit la rotation de l'animation
+  if (isUESkeleton(target)) {
+    const srcPos = new Map<string, THREE.Vector3>();
+    srcScene!.traverse((o) => srcPos.set(o.name, o.getWorldPosition(new THREE.Vector3())));
+    const chain: [string, string][] = [];
+    for (const s of ['L', 'R']) chain.push([`DEF-shoulder.${s}`, `DEF-upper_arm.${s}`], [`DEF-upper_arm.${s}`, `DEF-forearm.${s}`], [`DEF-forearm.${s}`, `DEF-hand.${s}`], [`DEF-thigh.${s}`, `DEF-shin.${s}`], [`DEF-shin.${s}`, `DEF-foot.${s}`]);
+    // de la racine vers les extrémités : la correction d'un parent est appliquée avant de mesurer l'enfant
+    const fixW = new Map<THREE.Object3D, THREE.Quaternion>();
+    for (const [a, b] of chain) {
+      const ta = map.get(san(a)), tb = map.get(san(b)), sa = srcPos.get(san(a)), sb = srcPos.get(san(b));
+      if (!ta || !tb || !sa || !sb) continue;
+      const pa = ta.getWorldPosition(new THREE.Vector3()), pb = tb.getWorldPosition(new THREE.Vector3());
+      const parentFix = ta.parent && fixW.get(ta.parent);
+      const dt = pb.sub(pa); if (parentFix) dt.applyQuaternion(parentFix);
+      const ds = sb.clone().sub(sa);
+      if (dt.lengthSq() < 1e-8 || ds.lengthSq() < 1e-8) continue;
+      const corr = new THREE.Quaternion().setFromUnitVectors(dt.normalize(), ds.normalize());
+      const total = parentFix ? corr.clone().multiply(parentFix) : corr;
+      fixW.set(ta, total);
+      tRestWorld.set(ta, total.clone().multiply(tRestWorld.get(ta)!));
+    }
+  }
   const hips = map.get(san('DEF-hips'));
   const hipsRestW = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
   const hipsParentInv = hips && hips.parent ? hips.parent.matrixWorld.clone().invert() : new THREE.Matrix4();
@@ -124,7 +165,8 @@ export function retargetClips(modelKey: string, target: THREE.Object3D, names: s
 
 /** Noms des os du haut du corps (pour superposer visée et tir sur la locomotion). */
 export function isUpperBone(name: string): boolean {
-  return /Abdomen|Torso|Chest|Neck|Head|Shoulder|Arm|Hand|Index|Middle|Ring|Pinky|Thumb/.test(name);
+  return /Abdomen|Torso|Chest|Neck|Head|Shoulder|Arm|Hand|Index|Middle|Ring|Pinky|Thumb/.test(name)
+    || /^spine_0[2-5]|^neck_|^head|^clavicle_|^upperarm_|^lowerarm_|^hand_|^(index|middle|ring|pinky|thumb)_/.test(name);
 }
 
 /** Copie d'un clip restreinte au haut ou au bas du corps. */

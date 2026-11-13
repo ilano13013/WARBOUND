@@ -17,7 +17,7 @@ import { Weather } from './Weather';
  * noatmo, nobloom, nograde, nomsaa, noenv, nosurf, noweather (ex. ?fx=nobloom,noatmo). Sans effet en usage normal.
  */
 /** Numero de build, affiche avec le verdict de l'autodiagnostic. */
-export const BUILD = '2.3.1';
+export const BUILD = '2.4.0';
 export const DIAG: Set<string> = new Set((typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fx') || '' : '').split(',').filter(Boolean));
 
 export class Renderer {
@@ -285,6 +285,10 @@ export class Renderer {
    */
   precompile(): void {
     try { this.renderer.compile(this.scene, this.camera); this.renderer.compile(this.vmScene, this.vmCamera); } catch { /* sans effet sur le jeu */ }
+    // envoi des textures à la carte graphique pendant le chargement (sinon à leur première apparition : saccade)
+    const seen = new Set<THREE.Texture>();
+    const up = (m: THREE.Material) => { for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture && !seen.has(v as THREE.Texture)) { seen.add(v as THREE.Texture); try { this.renderer.initTexture(v as THREE.Texture); } catch { /* ignoré */ } } };
+    for (const sc of [this.scene, this.vmScene]) sc.traverse((o) => { const m = (o as THREE.Mesh).material; if (m) for (const x of Array.isArray(m) ? m : [m]) up(x); });
   }
 
   pixelRatio(): number {

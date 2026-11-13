@@ -81,9 +81,10 @@ export class CharacterRig {
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(conv) : conv(mesh.material);
     });
     m.traverse((o) => {
-      if (/^HandR$|^LowerArmR$/.test(o.name) && (!this.hand || o.name === 'HandR')) this.hand = o;
-      if (/^HandL$/.test(o.name) && !this.handL) this.handL = o;
-      if (/^Head$/.test(o.name) && !this.head) this.head = o;
+      // conventions Quaternius (HandR, Head) et Unreal (hand_r, head)
+      if (/^HandR$|^LowerArmR$|^hand_r$/.test(o.name) && (!this.hand || o.name === 'HandR' || o.name === 'hand_r')) this.hand = o;
+      if (/^HandL$|^hand_l$/.test(o.name) && !this.handL) this.handL = o;
+      if (/^Head$|^head$/.test(o.name) && !this.head) this.head = o;
     });
     this.mergeParts(m);
     // élimination hors champ : chaque pièce reçoit la sphère du personnage entier, élargie pour couvrir les animations.
@@ -124,7 +125,7 @@ export class CharacterRig {
       const gun = buildEnemyGun();
       if (gun) {
         const hand = this.hand;
-        const mid = hand.children.find((c) => /Middle/.test(c.name));
+        const mid = hand.children.find((c) => /Middle|^middle_(metacarpal|01)/.test(c.name));
         const palm = hand.getWorldPosition(new THREE.Vector3());
         if (mid) palm.lerp(mid.getWorldPosition(_v), 0.45);
         const desired = new THREE.Matrix4().compose(palm, this.root.getWorldQuaternion(_q), new THREE.Vector3(1, 1, 1));

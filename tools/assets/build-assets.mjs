@@ -112,6 +112,10 @@ const PH_MODELS = [
   ['props/ph_generator', 'portable_generator', { ratio: 0.45 }],
   ['props/ph_barrier', 'concrete_road_barrier', { ratio: 0.02, error: 0.02 }],
   ['props/ph_rockface', 'rock_face_01', { ratio: 0.22 }],
+  // coffret électrique : la porte, ouverte dans le modèle, est refermée (rotation de sa charnière annulée)
+  ['props/ph_powerbox', 'power_box_01', { ratio: 0.1, error: 0.02, reset: /door/ }],
+  // kit de câbles muraux : pièces séparées, instanciées par pièce (« ph_cables#cable_straight_long »…)
+  ['props/ph_cables', 'modular_electric_cables', { ratio: 0.3, error: 0.02 }],
 ];
 async function buildPolyhaven() {
   await MeshoptEncoder.ready; await MeshoptDecoder.ready; await MeshoptSimplifier.ready;
@@ -123,6 +127,7 @@ async function buildPolyhaven() {
     if (!fs.existsSync(src)) { console.warn('MANQUANT', src); continue; }
     const doc = await io.read(src); const root = doc.getRoot();
     if (opt.drop) for (const n of root.listNodes()) if (opt.drop.test(n.getName())) n.dispose();
+    if (opt.reset) for (const n of root.listNodes()) if (opt.reset.test(n.getName())) n.setRotation([0, 0, 0, 1]);
     for (const t of root.listTextures()) {
       const uri = t.getURI() || t.getName();
       if (/_spec_/.test(uri)) { t.dispose(); continue; }

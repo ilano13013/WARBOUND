@@ -44,8 +44,10 @@ await page.evaluate(() => window.WB.giveLevel(1)); await sleep(300);
 let b = await st(page); ok('montée de niveau', b.level_ > a.level_, `${a.level_} -> ${b.level_}`);
 await page.keyboard.press('Tab'); await sleep(400);
 await page.click('[data-a="tab"][data-v="talents"]'); await sleep(200);
+// référence prise juste avant l'apprentissage (au tout début de partie, les PV de classe ne sont pas encore appliqués)
+const pre = await st(page);
 await page.click('[data-a="learn"][data-v="b_a1"]'); await sleep(300);
-let c = await st(page); ok('talent appris : +15 PV max (Blindage composite)', c.maxHp === a.maxHp + 15, `${a.maxHp} -> ${c.maxHp}`);
+let c = await st(page); ok('talent appris : +15 PV max (Blindage composite)', c.maxHp === pre.maxHp + 15, `${pre.maxHp} -> ${c.maxHp}`);
 const locked = await page.evaluate(() => { document.querySelector('[data-a="learn"][data-v="b_a3"]').click(); return window.WB.game.profile.talents.b_a3 || 0; });
 ok('prérequis de talent respecté', locked === 0);
 await page.keyboard.press('Escape'); await sleep(300);

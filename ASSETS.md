@@ -1,6 +1,6 @@
 # WARBOUND — Assets externes et licences
 
-Tous les assets externes de WARBOUND 2.0 sont sous licence **CC0 1.0** (domaine public : usage commercial, modification et redistribution libres, sans attribution obligatoire). Les crédits ci-dessous sont donnés par courtoisie.
+Les assets **actuellement intégrés au jeu** sont tous sous licence **CC0 1.0** (domaine public : usage commercial, modification et redistribution libres, attribution non obligatoire mais donnée ci-dessous). D'autres licences sont prévues pour des assets en attente (CC BY 4.0, Fab Standard) : elles imposent des obligations différentes, détaillées dans la section « Assets en attente ». Un fichier sous l'une de ces licences n'est **pas** intégré tant que la ligne correspondante n'est pas passée dans un tableau « intégré ».
 
 Les fichiers optimisés sont dans `public/assets/` et copiés tels quels dans `dist/`. Ils sont régénérés par :
 
@@ -36,14 +36,27 @@ Récupérés par `node tools/assets/fetch-polyhaven.mjs` (API `api.polyhaven.com
 
 Les noms d'auteurs viennent de l'API Poly Haven. La page de licence du site (`polyhaven.com/license`) n'a pas pu être ouverte depuis l'environnement de construction (hôte non autorisé) : la licence CC0 est celle annoncée par Poly Haven et ambientCG pour l'ensemble de leurs catalogues.
 
-### Assets demandés mais non intégrés (téléchargement soumis à un compte)
+### Version 2.4 — équipement électrique (Poly Haven, CC0)
 
-| Asset | Blocage | À fournir |
+| Fichier | Asset | Auteur | Licence | Traitement |
+| --- | --- | --- | --- | --- |
+| `models/props/ph_powerbox.glb` | *Power Box 01* | Rico Cilliers et Yann Kervran, Poly Haven | CC0 1.0 | porte refermée (rotation de charnière annulée), 21 300 → 3 900 triangles, textures 2K (ARM 1K) |
+| `models/props/ph_cables.glb` | *Modular Electric Cables* | Kuutti Siitonen, Poly Haven | CC0 1.0 | 49 pièces, 42 000 → 13 700 triangles ; seuls boîtiers, interrupteurs et attaches sont posés (les longues descentes sont des tubes simples) |
+
+Placement : coffret sur une face dégagée de chaque machine (QG, CENDRES, POINT ZÉRO), sur une armoire murale sur deux des habillages techniques, boîtiers de raccordement aux chemins de câbles.
+
+## Assets en attente (non intégrés)
+
+Aucun fichier de cette section n'est dans `public/assets/` ni dans le jeu. Les sources fournies à la main sont rangées dans `tools/assets/incoming/`, **exclu de Git** : les licences Fab et Sketchfab n'autorisent pas la redistribution des fichiers sources.
+
+| Asset | Licence et obligations | État |
 | --- | --- | --- |
-| *AK-47 Assault rifle*, Nneako (Sketchfab, CC BY 4.0) | Le téléchargement Sketchfab exige une connexion | L'archive téléchargée (glTF de préférence, ou FBX + textures) déposée dans `tools/assets/incoming/ak47/` |
-| *Quantum Modular Character Free Sample* (Fab, licence Fab Standard) | Acquisition et téléchargement via un compte Epic | Le FBX et ses textures dans `tools/assets/incoming/quantum/` |
+| *AK-47 Assault rifle*, Nneako ([fiche](https://sketchfab.com/3d-models/ak-47-assault-rifle-948f6b1beeb749759b91bf1d5a6db481)) | CC BY 4.0 ([texte](https://creativecommons.org/licenses/by/4.0/)) : créditer Nneako, lier la licence, indiquer les modifications | **Bloqué** : téléchargement Sketchfab soumis à connexion ; archive à déposer dans `tools/assets/incoming/ak47/`. Le code est prêt à conserver ses matériaux PBR texturés (`GunAssets.remapMaterials`). |
+| *Soldier Full Tactical Gear (LowPolyGameReady)*, DanlyVostok ([fiche](https://sketchfab.com/3d-models/soldier-full-tactical-gear-lowpolygameready-850593a8c7114c188395ba1849a66eb9)) | CC BY 4.0 : créditer DanlyVostok (maillage et textures), rig AccuRig (Reallusion) | **Bloqué** : non fourni ; à déposer dans `tools/assets/incoming/tactical_soldier/` |
+| *Wall Ceiling Floor Module*, Naked Singularity Studio ([fiche](https://www.fab.com/listings/0e12b2ce-1c5b-40fa-99eb-29ac928b723b)) | Fab Standard ([CLUF](https://www.fab.com/eula)) : usage dans un projet, pas de redistribution des sources, « usage avec l'IA : non » | **Bloqué** : téléchargement Fab soumis à un compte Epic ; à déposer dans `tools/assets/incoming/lab_modules/` |
+| *Quantum Modular Character Free Sample* (Fab) | Fab Standard : mêmes conditions | **Fourni sans textures** : 12 FBX reçus (personnage complet 163 000 triangles, squelette Unreal 5). Profil de squelette Unreal ajouté et validé en animation sur une copie de test allégée (repos, visée, marche). Non intégré : les 12 images de texture référencées manquent (`T_Body_BaseColor.png`, `T_Head_BaseColor.png`, `T_Bulletproof_Light_BaseColor.png`, `T_Jeans_Blue_BaseColor.png`, `T_Shirt_RolledUp_Blue_BaseColor.png`, `T_Drops_Tactical_Green_BaseColor.png`, `T_Holster_Hard_BaseColor.png`, `T_Cap_BaseColor.png`, `Rifle_BaseColor.png`, `Eye_BaseColor.png`, `Teeth_Color.tiff`, `Teeth_Roughness.tiff`). |
 
-Ces deux modèles ne sont pas dans le jeu : l'Aegis-762 et les PNJ de Fort Aegis utilisent toujours les modèles de la 2.0.
+Note sur la licence Fab : l'asset optimisé et intégré au jeu fait partie du projet distribué ; les fichiers sources du pack ne doivent pas être publiés à part. Si le dépôt GitHub est public, un modèle Fab converti qu'on y committe reste extractible : à confirmer avant de pousser un tel fichier.
 
 ## Limite de vérification
 

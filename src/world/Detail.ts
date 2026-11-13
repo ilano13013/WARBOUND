@@ -206,8 +206,19 @@ function techBay(L: Level, f: Frame, u: number, span: number, side: number, k: n
     // chemin de câbles et boîtier de dérivation
     const [ax0, az0] = at(f, u - span / 2, f.th / 2 + 0.1, side), [ax1, az1] = at(f, u + span / 2, f.th / 2 + 0.1, side);
     for (let c = 0; c < 3; c++) cable(L, new THREE.Vector3(ax0, hi - c * 0.07, az0), new THREE.Vector3(ax1, hi - c * 0.05, az1), 0.18 + c * 0.14 + k2 * 0.2, 0.022);
-    wbox(L, f, 'trim', u - span / 2 + 0.1, hi - 0.25, 0.34, 0.44, 0.16, side);
-    wbox(L, f, 'trim', u + span / 2 - 0.1, hi - 0.25, 0.34, 0.44, 0.16, side);
+    // boîtiers de raccordement aux extrémités (kit Modular Electric Cables) ; repli : boîtes procédurales
+    const [cx0, cz0] = at(f, u - span / 2 + 0.1, f.th / 2, side), [cx1, cz1] = at(f, u + span / 2 - 0.1, f.th / 2, side);
+    const nx = f.ax ? 0 : side, nz = f.ax ? side : 0, jb = L.propSize('ph_cables#cable_box_4way');
+    if (jb) {
+      mountOn(L, 'ph_cables#cable_box_4way', cx0, hi - 0.1, cz0, nx, nz, jb.z / 2, 1.6);
+      wbox(L, f, 'trim', u + span / 2 - 0.1, hi - 0.25, 0.34, 0.44, 0.16, side);
+      // interrupteur de service relié au chemin de câbles, sur une baie sur trois
+      if (k2 > 0.66) { cableRun(L, cx0, cz0, nx, nz, 1.25, hi - 0.25); mountOn(L, 'ph_cables#cable_switch', cx0, 1.1, cz0, nx, nz, (L.propSize('ph_cables#cable_switch')?.z ?? 0.05) / 2, 1.3); }
+    }
+    else {
+      wbox(L, f, 'trim', u - span / 2 + 0.1, hi - 0.25, 0.34, 0.44, 0.16, side);
+      wbox(L, f, 'trim', u + span / 2 - 0.1, hi - 0.25, 0.34, 0.44, 0.16, side);
+    }
   } else if (k < 0.5) {
     // grille de ventilation
     const w = Math.min(1.5, span * 0.6), y = Math.min(h - 1.5, 2.5);
@@ -222,11 +233,17 @@ function techBay(L: Level, f: Frame, u: number, span: number, side: number, k: n
     }
     wdecal(L, f, stainAtlas(), quad(w * 0.9, Math.min(2.2, y), 3, 2), u, y - Math.min(2.2, y) / 2, side, 0.02);
   } else if (k < 0.64) {
-    // armoire électrique, gaine et voyant
-    wbox(L, f, city ? 'darkmetal' : 'trim', u, 0.95, 0.75, 1.15, 0.2, side);
-    wbox(L, f, 'metal', u, 2.1, 0.07, Math.max(0.2, h - 2.3), 0.07, side);
-    wbox(L, f, k2 > 0.5 ? 'glow_green' : 'glow_orange', u + 0.22, 1.82, 0.06, 0.06, 0.03, side, 0.2);
-    wdecal(L, f, sm, quad(0.34, 0.34, k2 > 0.4 ? 1 : 14, SIGN_CELLS), u - 0.1, 1.5, side, 0.215);
+    // coffret électrique (Power Box 01, Poly Haven) et son câble montant ; repli : armoire procédurale
+    const [bx, bz] = at(f, u, f.th / 2, side), nx = f.ax ? 0 : side, nz = f.ax ? side : 0;
+    // une armoire sur deux reçoit le coffret détaillé ; les autres gardent la version procédurale, plus légère
+    if (k2 < 0.5 && powerBox(L, bx, 1.45, bz, nx, nz, 1.25, h - 0.3)) {
+      wdecal(L, f, sm, quad(0.3, 0.3, k2 > 0.4 ? 1 : 14, SIGN_CELLS), u - 0.42, 1.45, side, 0.02);
+    } else {
+      wbox(L, f, city ? 'darkmetal' : 'trim', u, 0.95, 0.75, 1.15, 0.2, side);
+      wbox(L, f, 'metal', u, 2.1, 0.07, Math.max(0.2, h - 2.3), 0.07, side);
+      wbox(L, f, k2 > 0.5 ? 'glow_green' : 'glow_orange', u + 0.22, 1.82, 0.06, 0.06, 0.03, side, 0.2);
+      wdecal(L, f, sm, quad(0.34, 0.34, k2 > 0.4 ? 1 : 14, SIGN_CELLS), u - 0.1, 1.5, side, 0.215);
+    }
   } else if (k < 0.8) {
     // applique murale : source visible, halo sur le mur et flaque de lumière au sol
     const col = th === 'fracture' ? 0x8a5aff : k2 > 0.72 ? 0xff5a2a : th === 'city' ? 0xffc890 : 0xffe2b0;
@@ -545,4 +562,41 @@ export function detailBuilding(L: Level, x: number, z: number, w: number, d: num
     // descentes d'eau
     for (const t of [0.24, 0.76]) wpipe(L, f, -len / 2 + len * t, 0.2, -len / 2 + len * t, h, 0.1, side, 0.07, 'metal');
   }
+}
+
+// ---------------------------------------------------------------- équipement électrique (Poly Haven, CC0)
+
+/**
+ * Pose une pièce face à l'extérieur d'une surface verticale. (x, z) = point de la surface, (nx, nz) = normale sortante.
+ * `back` = profondeur entre l'origine de la pièce et son dos (pièce recentrée : demi-épaisseur). Rotation `rz` dans le plan du mur.
+ */
+export function mountOn(L: Level, name: string, x: number, y: number, z: number, nx: number, nz: number, back: number, sx = 1, sy = sx, sz = sx, rz = 0): boolean {
+  if (!L.propSize(name)) return false;
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.atan2(nx, nz), rz, 'YXZ'));
+  L.propM(name, new THREE.Matrix4().compose(new THREE.Vector3(x + nx * back * sz, y, z + nz * back * sz), q, new THREE.Vector3(sx, sy, sz)));
+  return true;
+}
+
+/**
+ * Câble électrique vertical : gaine en tube simple (6 faces, fusionné au décor) et attaches du kit Modular Electric Cables
+ * tous les 1,2 m. Les pièces droites du kit (600 triangles chacune) coûtaient trop cher répétées sur chaque mur.
+ */
+export function cableRun(L: Level, x: number, z: number, nx: number, nz: number, y0: number, y1: number, dx = 0): boolean {
+  if (y1 - y0 < 0.15) return false;
+  const tx = nz, tz = -nx; // tangente horizontale du mur, pour décaler le câble latéralement
+  const px = x + tx * dx + nx * 0.018, pz = z + tz * dx + nz * 0.018;
+  L.deco(mat('cable'), new THREE.CylinderGeometry(0.011, 0.011, y1 - y0, 6, 1, true), px, (y0 + y1) / 2, pz);
+  const m = L.propSize('ph_cables#cable_mount');
+  if (m) for (let y = y0 + 0.6; y < y1 - 0.2; y += 1.2) mountOn(L, 'ph_cables#cable_mount', x + tx * dx, y, z + tz * dx, nx, nz, m.z / 2);
+  return true;
+}
+
+/**
+ * Coffret électrique Power Box 01 (0,5 m réels, porte fermée) sur une surface, avec son câble d'alimentation montant
+ * jusqu'à `cableTop`. Le modèle a son origine au centre du caisson, dos à 4,7 cm.
+ */
+export function powerBox(L: Level, x: number, y: number, z: number, nx: number, nz: number, scale = 1, cableTop = 0): boolean {
+  if (!mountOn(L, 'ph_powerbox', x, y, z, nx, nz, 0.048, scale)) return false;
+  if (cableTop > y) cableRun(L, x, z, nx, nz, y + 0.25 * scale, cableTop, 0.1 * scale);
+  return true;
 }

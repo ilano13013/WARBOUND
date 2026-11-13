@@ -78,6 +78,18 @@ export function installAutoTest(g: Game): void {
       r.renderer.toneMapping = tm; r.renderer.setRenderTarget(null); rt.dispose();
       return out;
     },
+    /** Personnage de test retargeté, posé devant la caméra (validation d'un profil de squelette). */
+    rigTest: async (model: string, clip: 'idle' | 'walk' | 'run' | 'aim' | 'death' = 'idle', dist = 3, side = 0, face = false) => {
+      const { CharacterRig } = await import('../render/CharacterRig');
+      const rig = new CharacterRig({ model, height: 1.82, humanoid: true, gun: true, walkSpeed: 1.4, runSpeed: 3.4 });
+      const p = g.player.pos, yaw = g.player.yaw;
+      rig.root.position.set(p.x - Math.sin(yaw) * dist + Math.cos(yaw) * side, p.y, p.z - Math.cos(yaw) * dist - Math.sin(yaw) * side); rig.root.rotation.y = yaw + (face ? Math.PI : 0);
+      g.r.scene.add(rig.root);
+      if (clip === 'death') (rig as any).play('death', 0); else rig.setMotion(clip === 'walk' ? 1.4 : clip === 'run' ? 3.4 : 0, clip === 'aim', 0);
+      const tick = () => { if (clip !== 'death') rig.setMotion(clip === 'walk' ? 1.4 : clip === 'run' ? 3.4 : 0, clip === 'aim', 0.016); rig.update(0.016); requestAnimationFrame(tick); };
+      tick();
+      return { clips: [...(rig as any).acts.keys()], hand: !!(rig as any).hand, head: !!(rig as any).head, scale: rig.scale };
+    },
     newGame: (cls: ClassId, name = 'Testeur') => { g.profile = newProfile(cls, name); g.profile.introSeen = true; g.startHub(); },
     hub: () => g.startHub(),
     mission: (id: string) => g.startMission(id),
