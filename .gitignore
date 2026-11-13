@@ -11,3 +11,4 @@ WARBOUND-dist-netlify.zip
 # sources d’assets fournis à la main (licences Fab / Sketchfab : pas de redistribution des fichiers sources)
 tools/assets/incoming/*
 !tools/assets/incoming/LISEZMOI.txt
+.wrangler
