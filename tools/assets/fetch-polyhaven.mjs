@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 const SRC = process.env.ASSET_SRC || '/tmp/claude-0/assets-dl';
 const UA = 'asset-fetch/1.0';
 const get = (url, out) => { fs.mkdirSync(path.dirname(out), { recursive: true }); if (fs.existsSync(out) && fs.statSync(out).size > 0) return; execFileSync('curl', ['-sS', '-L', '--fail', '--retry', '3', '-m', '300', '-H', `User-Agent: ${UA}`, '-o', out, url]); };
-const MODELS = ['modular_industrial_pipes_01', 'modular_airduct_rectangular_01', 'portable_generator', 'concrete_road_barrier', 'rock_face_01'];
+const MODELS = ['modular_industrial_pipes_01', 'modular_airduct_rectangular_01', 'portable_generator', 'concrete_road_barrier', 'rock_face_01', 'power_box_01', 'modular_electric_cables'];
 const TEXTURES = ['rabdentse_ruins_wall'];
 for (const id of MODELS) {
   const dir = `${SRC}/polyhaven/${id}`;
