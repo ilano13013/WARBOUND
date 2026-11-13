@@ -6,6 +6,7 @@ import type { Item } from '../rpg/items';
 import { buildWeaponModel, type WeaponModel } from './WeaponModels';
 import { buildGunAsset, type GunAsset } from './GunAssets';
 import { Arms } from './Arms';
+import { applyCamo } from '../render/Cosmetics';
 import { softTexture } from '../render/Materials';
 import { flareTexture } from '../render/FX';
 
@@ -63,6 +64,7 @@ export class WeaponSystem {
       const gun = buildGunAsset(st.def, item.attach || {});
       const model: WeaponModel = gun ? { group: gun.root, muzzle: gun.muzzle, mag: null, sightY: gun.sightY, scoped: gun.scoped } : buildWeaponModel(st.def, item.attach || {});
       model.group.visible = false;
+      applyCamo(model.group, this.g.account.equipped('camo'));
       model.group.scale.setScalar(gun ? 1 : VM_SCALE);
       this.root.add(model.group);
       const prev = keepAmmo ? old.find((o) => o.st.item.uid === item.uid) : null;

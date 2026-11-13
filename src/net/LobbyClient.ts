@@ -21,7 +21,7 @@ export class LobbyClient {
   private retries = 0;
   private pingT: number | null = null;
 
-  constructor(public code: string, private name: string) {}
+  constructor(public code: string, private name: string, private acct: string | null = null) {}
 
   static available(): boolean { return !!LOBBY_URL; }
 
@@ -46,7 +46,7 @@ export class LobbyClient {
       ws.onopen = () => {
         let token: string | undefined;
         try { token = sessionStorage.getItem(TOKEN_KEY + this.code) || undefined; } catch { /* stockage indisponible */ }
-        this.send({ t: 'join', name: this.name, token, version: PROTOCOL_VERSION, build: BUILD });
+        this.send({ t: 'join', name: this.name, token, acct: this.acct || undefined, version: PROTOCOL_VERSION, build: BUILD });
       };
       ws.onmessage = (e) => {
         let m: ServerMsg;

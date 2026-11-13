@@ -1,4 +1,5 @@
 // IA ennemie : perception (vue/ouïe), machine à états, navigation, couverture, attaques par archétype et altérations d'état.
+import type { MatTweak } from '../render/CharacterRig';
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { ENEMIES, type EnemyDef, type EnemyKind } from '../data/enemies';
@@ -13,7 +14,7 @@ export type AIState = 'idle' | 'patrol' | 'alert' | 'combat' | 'search';
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3();
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-export interface SpawnOpts { perches?: THREE.Vector3[]; patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number; siege?: THREE.Vector3 }
+export interface SpawnOpts { /** Teintes supplémentaires du personnage (cosmétiques vérifiés). */ rigMats?: Record<string, MatTweak>; perches?: THREE.Vector3[]; patrol?: THREE.Vector3[]; static?: boolean; alert?: boolean; hpMult?: number; noLoot?: boolean; group?: string; y?: number; siege?: THREE.Vector3 }
 
 export class Enemy implements Damageable {
   def: EnemyDef;
@@ -58,7 +59,7 @@ export class Enemy implements Damageable {
     this.name = this.def.name;
     this.maxHp = this.hp = Math.round(this.def.hp * (o.hpMult ?? 1) * g.diff.hp);
     this.radius = this.def.radius; this.height = this.def.height * (this.def.scale ?? 1);
-    const rigged = buildRiggedEnemy(kind);
+    const rigged = buildRiggedEnemy(kind, o.rigMats);
     if (rigged) { this.model = rigged.model; this.rig = rigged.rig; }
     else { this.model = buildEnemyModel(kind); if (this.def.scale) this.model.root.scale.setScalar(this.def.scale); }
     this.pos.set(x, o.y ?? (this.def.flying ? 3 : 0.05), z);

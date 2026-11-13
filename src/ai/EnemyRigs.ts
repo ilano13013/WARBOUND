@@ -48,10 +48,10 @@ export const RIGS: Partial<Record<EnemyKind | 'wolf', RigDef>> = {
 export function rigAvailable(kind: EnemyKind | 'wolf'): boolean { const d = RIGS[kind]; return !!d && Assets.has(d.model) && (!d.humanoid || Assets.has('anims/ual')); }
 
 /** Modèle d'ennemi compatible avec l'interface de la 1.0, animé par un CharacterRig. */
-export function buildRiggedEnemy(kind: EnemyKind | 'wolf'): { model: EnemyModel; rig: CharacterRig } | null {
+export function buildRiggedEnemy(kind: EnemyKind | 'wolf', extraMats?: Record<string, import('../render/CharacterRig').MatTweak>): { model: EnemyModel; rig: CharacterRig } | null {
   if (!rigAvailable(kind)) return null;
   let rig: CharacterRig;
-  try { rig = new CharacterRig(RIGS[kind]!); } catch (e) { console.warn('rig', kind, e); return null; }
+  try { const d = RIGS[kind]!; rig = new CharacterRig(extraMats && Object.keys(extraMats).length ? { ...d, mats: { ...(d.mats || {}), ...extraMats } } : d); } catch (e) { console.warn('rig', kind, e); return null; }
   const root = rig.root;
   const marker = markerSprite(); marker.position.y = rig.def.height + 0.45; root.add(marker);
   let shield: THREE.Object3D | null = null;

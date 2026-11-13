@@ -19,6 +19,7 @@ import { WEAPONS } from '../data/weapons';
 import { makeWeaponItem } from '../rpg/items';
 import { weaponStats, type WStats } from '../rpg/Stats';
 import { DUEL_SPAWNS, TEAM_SPAWNS, DOM_ZONES } from '../levels/duel';
+import { outfitMats } from '../render/Cosmetics';
 
 export type TeamId = 'red' | 'blue';
 export interface Rules { score: number; time: number; respawn: number }
@@ -52,6 +53,8 @@ export interface MP {
   step: LadderStep; st: WStats | null; ammo: number; reserve: number; reloadT: number; lastFire: number; firingT: number;
   k: number; d: number; a: number; rung: number; ping: number; dmgBy: Map<number, { dmg: number; t: number }>;
   peer: Peer | null; hello: boolean; connected: boolean; rival: Rival | null; corrT: number;
+  /** Cosmétiques équipés, vérifiés par le serveur de salons (lus dans la vue du salon, jamais dans un message de joueur). */
+  cos: Record<string, string>;
 }
 export interface Zone { id: 'A' | 'B' | 'C'; pos: THREE.Vector3; r: number; owner: TeamId | null; prog: number; cap: TeamId | null; contested: boolean; pointT: number }
 export interface FeedLine { text: string; t: number; mine: boolean }
@@ -119,7 +122,7 @@ export class Match {
   private newPlayer(idx: number, id: string, name: string, team: TeamId | null): MP {
     return { idx, id, name, team, loadout: 0, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, speed: 0, height: 1.8, ads: false, crouch: false,
       hp: 100, alive: false, invT: 0, respawnT: 0, lastIn: 0, hist: [], step: LOADOUTS[0], st: null, ammo: 0, reserve: 0, reloadT: 0, lastFire: 0, firingT: 0,
-      k: 0, d: 0, a: 0, rung: 0, ping: 0, dmgBy: new Map(), peer: null, hello: false, connected: false, rival: null, corrT: 0 };
+      k: 0, d: 0, a: 0, rung: 0, ping: 0, dmgBy: new Map(), peer: null, hello: false, connected: false, rival: null, corrT: 0, cos: this.cosOf(id) };
   }
 
   /** Hôte : crée l'invitation WebRTC d'un joueur et l'envoie par le salon. */
@@ -166,7 +169,7 @@ export class Match {
   }
 
   private initMsg(you: number): unknown {
-    return { t: 'init', you, mode: this.mode, rules: this.rules, players: this.players.map((p) => ({ idx: p.idx, name: p.name, team: p.team, connected: p.connected, x: p.x, y: p.y, z: p.z, yaw: p.yaw, alive: p.alive, step: p.step, k: p.k, d: p.d, a: p.a, rung: p.rung })), zones: this.zones.map((z) => ({ id: z.id, owner: z.owner })), timeLeft: this.endsAt ? (this.endsAt - this.now()) / 1000 : 0, score: this.teamScore };
+    return { t: 'init', you, mode: this.mode, rules: this.rules, players: this.players.map((p) => ({ idx: p.idx, id: p.id, name: p.name, team: p.team, connected: p.connected, x: p.x, y: p.y, z: p.z, yaw: p.yaw, alive: p.alive, step: p.step, k: p.k, d: p.d, a: p.a, rung: p.rung })), zones: this.zones.map((z) => ({ id: z.id, owner: z.owner })), timeLeft: this.endsAt ? (this.endsAt - this.now()) / 1000 : 0, score: this.teamScore };
   }
 
   /** Appelé par Game.startMatch une fois l'arène chargée. */
@@ -516,7 +519,7 @@ export class Match {
       case 'init': {
         if (local) return;
         this.me = m.you; this.mode = m.mode; this.rules = m.rules;
-        this.players = m.players.map((q: any) => { const p = this.newPlayer(q.idx, '', q.name, q.team); Object.assign(p, { x: q.x, y: q.y, z: q.z, yaw: q.yaw, alive: q.alive, step: q.step, k: q.k, d: q.d, a: q.a, rung: q.rung, connected: q.connected }); return p; });
+        this.players = m.players.map((q: any) => { const p = this.newPlayer(q.idx, String(q.id || ''), q.name, q.team); Object.assign(p, { x: q.x, y: q.y, z: q.z, yaw: q.yaw, alive: q.alive, step: q.step, k: q.k, d: q.d, a: q.a, rung: q.rung, connected: q.connected }); return p; });
         this.zones = (m.zones || []).map((z: any) => { const d = DOM_ZONES.find((x) => x.id === z.id)!; return { id: z.id, pos: d.pos.clone(), r: d.r, owner: z.owner, prog: z.owner ? 1 : 0, cap: null, contested: false, pointT: 0 }; });
         this.timeLeft = m.timeLeft; this.teamScore = m.score;
         this.phase = 'playing';
@@ -657,7 +660,7 @@ export class Match {
     if (!mp.alive || !g.level) return;
     const myTeam = this.mine?.team ?? null;
     const friendly = !!myTeam && mp.team === myTeam;
-    const r = new Rival(g, mp.x, mp.y, mp.z, mp.name, mp.team, friendly);
+    const r = new Rival(g, mp.x, mp.y, mp.z, mp.name, mp.team, friendly, outfitMats(mp.cos.outfit, !!mp.team));
     r.onHit = () => { this.predictedHit = 0.3; };
     g.enemies.push(r);
     mp.rival = r;
@@ -710,6 +713,8 @@ export class Match {
     if (idx === this.me) { this.g.player.pos.set(x, y, z); this.g.player.vel.set(0, 0, 0); }
     else this.toPlayer(p, { t: 'pos', x, y, z });
   }
+
+  private cosOf(id: string): Record<string, string> { return this.lobby?.room?.players.find((p) => p.id === id)?.cos || {}; }
 
   /** Données du tableau des scores. */
   scoreboard(): { name: string; team: TeamId | null; k: number; d: number; a: number; ping: number; me: boolean; connected: boolean; rung: number }[] {

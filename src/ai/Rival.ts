@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { Enemy } from './Enemy';
 import type { DamageInfo } from '../world/World';
+import type { MatTweak } from '../render/CharacterRig';
 
 export interface RivalState { x: number; y: number; z: number; yaw: number; pitch: number; sp: number; h: number; ads: boolean; hp: number; inv: boolean }
 
@@ -26,8 +27,8 @@ export class Rival extends Enemy {
   friendly = false;
   team: 'red' | 'blue' | null = null;
 
-  constructor(g: Game, x: number, y: number, z: number, public displayName: string, team: 'red' | 'blue' | null = null, friendly = false) {
-    super(g, team === 'red' ? 'rival_red' : team === 'blue' ? 'rival_blue' : 'rival', x, z, { y, noLoot: true });
+  constructor(g: Game, x: number, y: number, z: number, public displayName: string, team: 'red' | 'blue' | null = null, friendly = false, rigMats?: Record<string, MatTweak>) {
+    super(g, team === 'red' ? 'rival_red' : team === 'blue' ? 'rival_blue' : 'rival', x, z, { y, noLoot: true, rigMats });
     this.team = team; this.friendly = friendly;
     this.name = displayName;
     this.maxHp = this.hp = 100;

@@ -4,6 +4,16 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.6 (multijoueur en ligne, boutique cosmétique)
+
+- **Multijoueur en ligne** (menu principal → *Multijoueur en ligne*) : salons privés créés par un serveur (code de 6 caractères ou lien d'invitation `?salon=CODE`), liste des joueurs, équipes Rouge et Bleu équilibrées automatiquement ou à la main par l'hôte, statut prêt, lancement par l'hôte, retour au salon et « rejouer », reconnexion après coupure, salons inactifs fermés automatiquement.
+- **Trois modes** : *Défi d'armes 1v1* (fusils de précision), *Match à mort par équipe 4v4* (75 éliminations ou 10 minutes, réapparition en 3 s, tir allié désactivé) et *Domination 4v4* (zones A, B, C ; capture par présence, accélérée jusqu'à ×2 à trois coéquipiers, bloquée si les deux équipes sont présentes ; 1 point toutes les 5 s par zone ; 200 points ou 12 minutes ; réapparition en 5 s).
+- **Autorité de l'hôte** : les joueurs se connectent directement à l'hôte (WebRTC en étoile). L'hôte valide déplacements, cadence de tir, munitions et rechargements, recalcule chaque tir sur les positions passées (compensation de latence bornée à 250 ms) et les dégâts à partir de l'arme, décide des éliminations, des scores, des captures et du chronomètre. Limite : un hôte modifié peut tricher (salons privés entre amis). Détails dans `docs/AUDIT-MULTIJOUEUR-F2P.md`.
+- **HUD de partie** : scores des équipes, chronomètre, zones, fil des éliminations, tableau des scores (touche Personnage maintenue : éliminations, morts, assistances, ping), noms des alliés, alliés et zones sur la mini-carte, écrans de victoire, défaite et égalité. Armes au choix identiques pour tous (statistiques de base, sans talent ni bonus) ; compétences et grenades désactivées.
+- **Boutique 100 % cosmétique** (menu principal → *Boutique*) : 3 camouflages d'armes (Cendre et Glacier à 1,99 €, Fracture à 4,99 €) et le Pack Fondateur (9,99 € : tenue, camouflage, emblème, badge permanent, carte de visite). Aperçu 3D, inventaire, équipement, historique des achats, compte sans mot de passe avec code de récupération. Prix et possession décidés par le serveur ; paiement Stripe Checkout, attribution par webhook signé, retrait en cas de remboursement ou de contestation. **Les paiements ne sont pas activés** : sans serveur configuré, la boutique fonctionne en démonstration (aperçu et essai local).
+- **Serveur** (`server/`) : Cloudflare Worker + Durable Objects + D1, prévu pour l'offre gratuite, avec garde-fou de quotas. **Non déployé** : voir `docs/DEPLOIEMENT.md`. Documents légaux en brouillon dans `docs/legal/` (à faire valider).
+- Le duel par échange de codes (sans serveur) reste disponible.
+
 ## Version 2.5 (opération 5 et tireurs d'élite)
 
 - **Opération 5 — LIGNE DE CRÊTE** : épilogue débloqué après POINT ZÉRO. Le colonel Halvard tient le barrage hydroélectrique de Valmorre, dans un massif alpin, de nuit sous la pluie. Vallée d'approche battue par des tireurs d'élite, centrale (trois turbines, passerelles, vannes à fermer, purge à défendre), monte-charge jusqu'à la crête, relais à couper sur la tour de contrôle, extraction par hélicoptère. Neuf objectifs, trois documents à découvrir, niveau conseillé 14.
@@ -205,7 +215,8 @@ src/
   ai/         Enemy, EnemyModels, EnemyRigs, Boss, Ally, Marksman (tireur mobile), Rival (adversaire du duel)
   mission/    Mission (objectifs, points de contrôle, radio)
   levels/     hub, op1..op5, survival, duel (arène 1v1), common, dress (décors glTF), art (passe level art)
-  net/        Peer (liaison WebRTC par codes), Duel (règles du Défi d’armes)
+  net/        Peer (WebRTC), Duel (duel par codes), LobbyClient (salons), Match (parties en ligne, autorité de l'hôte), wire (format binaire), Ticker (boucle réseau en arrière-plan), Account (compte, boutique)
+server/       Cloudflare Worker : salons (Durable Objects), garde-fou de quotas, comptes et achats (D1), Stripe
   rpg/        items (butin), Stats (talents, armes, expérience)
   data/       weapons, classes, enemies, missions (données configurables)
   save/       Save (profil, paramètres, IndexedDB)

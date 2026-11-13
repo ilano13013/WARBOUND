@@ -31,6 +31,7 @@ import { buildDuel } from '../levels/duel';
 import { Duel } from '../net/Duel';
 import { Match, LOADOUTS } from '../net/Match';
 import { MODES } from '../net/lobbyProtocol';
+import { Account } from '../net/Account';
 import { Cinematics } from '../cinematic/Cinematics';
 import { Assets } from '../assets/Assets';
 
@@ -63,6 +64,7 @@ export class Game {
   cine: Cinematics;
   duel: Duel;
   match: Match;
+  account = new Account();
   level: Level | null = null;
   mission: Mission | null = null;
   enemies: Enemy[] = [];
@@ -117,6 +119,11 @@ export class Game {
     this.ui.showLoading(0, '');
     await Assets.loadAll((k, label) => this.ui.showLoading(k, label));
     this.toMenu();
+    // compte joueur en ligne (boutique, cosmétiques) : chargé en arrière-plan, sans bloquer le jeu
+    if (this.profile && this.account.online && !this.testMode) void this.account.ensure(this.profile.name).then(() => this.weapons.rebuild(true));
+    // retour de paiement Stripe
+    const achat = new URLSearchParams(location.search).get('achat');
+    if (achat && this.profile) { history.replaceState(null, '', location.pathname); this.ui.showShop(achat === 'ok' ? 'Paiement reçu. Vos objets apparaissent dès que Stripe a confirmé le paiement (quelques secondes).' : 'Paiement annulé : aucun montant n’a été prélevé.'); }
     // lien d'invitation : ?salon=CODE
     const salon = new URLSearchParams(location.search).get('salon');
     if (salon && /^[A-Za-z0-9]{6}$/.test(salon) && !this.testMode) {

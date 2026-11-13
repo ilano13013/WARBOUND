@@ -14,6 +14,7 @@ import { Panels } from './Panels';
 import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
 import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
 import { LOADOUTS } from '../net/Match';
+import { Shop } from './Shop';
 import { icon } from './Icons';
 
 export function esc(s: string): string { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); }
@@ -156,25 +157,27 @@ export class UI {
   showMenu(): void {
     const g = this.g, p = g.profile;
     if (g.duel.phase === 'connecting' || g.duel.phase === 'lobby') g.duel.cancel();
-    const info = p ? `<div class="save-info">Sauvegarde : <b>${esc(p.name)}</b> — ${CLASSES[p.classId].name} niveau ${p.level}<br>Opérations accomplies : <b>${Object.keys(p.missions).length} / 5</b>${p.campaignDone ? ' · Campagne terminée' : ''}</div>` : g.store.corrupted ? '<div class="save-info bad">La sauvegarde précédente était corrompue et n’a pas pu être récupérée.</div>' : '<div class="save-info">Aucune sauvegarde. Créez votre opérateur pour commencer.</div>';
+    const info = p ? `<div class="save-info">Sauvegarde : <b>${esc(p.name)}</b> — ${CLASSES[p.classId].name} niveau ${p.level}<br>Opérations accomplies : <b>${Object.keys(p.missions).length} / 5</b>${p.campaignDone ? ' · Campagne terminée' : ''}${g.account.me?.badge ? ` · <em class="badge">${esc(g.account.me.badge)}</em>` : ''}</div>` : g.store.corrupted ? '<div class="save-info bad">La sauvegarde précédente était corrompue et n’a pas pu être récupérée.</div>' : '<div class="save-info">Aucune sauvegarde. Créez votre opérateur pour commencer.</div>';
     this.show('menu', '', `
       <div class="logo">WARBOUND</div><div class="logo-sub">The Fracture Chronicles</div>
       <div class="menu-list">
         <button class="btn ${p ? '' : 'primary'}" data-a="new">Nouvelle partie</button>
         <button class="btn ${p ? 'primary' : ''}" data-a="continue" ${p ? '' : 'disabled'}>Continuer</button>
         <button class="btn" data-a="online" ${p ? '' : 'disabled'}>Multijoueur en ligne</button>
+        <button class="btn" data-a="shop" ${p ? '' : 'disabled'}>Boutique</button>
         <button class="btn" data-a="duel" ${p ? '' : 'disabled'}>Défi d’armes par codes (sans serveur)</button>
         <button class="btn" data-a="classes">Sélection du personnage</button>
         <button class="btn" data-a="settings">Paramètres</button>
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.5.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.6.0</span></div>`, {
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
       duel: () => { if (g.profile) this.showDuel(); },
       online: () => { if (g.profile) this.showLobby(); },
+      shop: () => { if (g.profile) this.showShop(); },
       settings: () => this.showSettings(() => this.showMenu()),
       credits: () => this.showCredits(() => this.showMenu()),
       quit: () => { window.close(); this.show('quit', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>À bientôt, Warbound</h2></div><div class="panel-body col"><p class="brief">Votre progression est sauvegardée. Vous pouvez fermer cet onglet du navigateur.</p></div><div class="panel-foot"><button class="btn" data-a="back">Retour au menu</button></div></div>`, { back: () => this.showMenu() }); },
@@ -230,6 +233,11 @@ export class UI {
 
   // ---------- pause / mort / résultats ----------
 
+  // ---------- boutique ----------
+
+  private shop: Shop | null = null;
+  showShop(msg = ''): void { if (!this.g.profile) return; this.shop ??= new Shop(this); void this.shop.open(msg); }
+
   // ---------- multijoueur en ligne (salons) ----------
 
   private matchBoard(m: NonNullable<ResultsData['match']>): string {
@@ -279,7 +287,7 @@ export class UI {
     mt.onStatus = () => { if (this.current === 'lobby') setStatus(mt.status); };
     const connect = async (code: string) => {
       setStatus('Connexion au salon…');
-      const lb = new LobbyClient(code, g.profile!.name);
+      const lb = new LobbyClient(code, g.profile!.name, g.account.token);
       attach(lb);
       try { await lb.connect(); mt.lobby = lb; status = ''; history.replaceState(null, '', location.pathname); render(); }
       catch (e) { setStatus((e as Error).message); }

@@ -391,3 +391,17 @@ table.board tr.off td { opacity: 0.5; }
 #sboard { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(640px, 92vw); background: rgba(5, 7, 11, 0.9); border: 1px solid rgba(201, 169, 106, 0.3); padding: 12px; }
 #hud.duel-mode .hud-tr { display: none; }
 @media (max-width: 900px) { #kfeed { top: 140px; right: 14px; } #mbar { top: 34px; } #mzones { top: 76px; } }
+
+/* boutique */
+.shop-note { padding: 8px 12px; border: 1px solid rgba(255, 210, 74, 0.45); background: rgba(60, 46, 10, 0.35); color: #ffe6a0; font-size: 13px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.shop-card { display: flex; flex-direction: column; gap: 4px; padding: 10px; cursor: pointer; background: linear-gradient(160deg, rgba(26, 29, 38, 0.92), rgba(12, 14, 19, 0.95)); border: 1px solid rgba(201, 169, 106, 0.18); }
+.shop-card:hover { border-color: var(--gold); }
+.shop-card img, .shop-card .swatch { width: 100%; height: 90px; object-fit: contain; display: block; }
+.shop-card .price, .price { color: #ffd24a; font-weight: 700; }
+.swatch.camo_cendre { background: repeating-linear-gradient(45deg, #3a3a3c 0 14px, #5a5856 14px 24px, #232325 24px 34px), radial-gradient(#ff7a2a 1px, transparent 2px); }
+.swatch.camo_glacier { background: repeating-linear-gradient(90deg, #d8e4ee 0 16px, #9ab8d4 16px 26px, #f4f8fc 26px 40px, #5a7e9e 40px 48px); }
+.swatch.camo_fracture { background: linear-gradient(135deg, #1a0e2a 40%, #c08aff 42%, #1a0e2a 45%, #2a1446 70%, #c08aff 72%, #1a0e2a 74%); }
+.shop-preview { width: min(420px, 100%); height: 300px; background: radial-gradient(circle at 50% 40%, rgba(80, 90, 120, 0.35), rgba(5, 7, 11, 0.9)); border: 1px solid rgba(201, 169, 106, 0.2); }
+.cos-img { vertical-align: middle; margin-left: 8px; } .cos-img.emblem { height: 34px; } .cos-img.card { height: 30px; }
+label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.4; cursor: pointer; }

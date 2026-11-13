@@ -17,7 +17,7 @@ import { Weather } from './Weather';
  * noatmo, nobloom, nograde, nomsaa, noenv, nosurf, noweather (ex. ?fx=nobloom,noatmo). Sans effet en usage normal.
  */
 /** Numero de build, affiche avec le verdict de l'autodiagnostic. */
-export const BUILD = '2.5.0';
+export const BUILD = '2.6.0';
 export const DIAG: Set<string> = new Set((typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fx') || '' : '').split(',').filter(Boolean));
 
 export class Renderer {
