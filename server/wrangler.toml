@@ -25,6 +25,10 @@ database_name = "warbound"
 database_id = "6bd03c61-3845-41b8-a5f0-585f75caa731"
 migrations_dir = "migrations"
 
+# ménage hebdomadaire (lundi 03:17 UTC) : comptes sans achat inactifs depuis 3 ans
+[triggers]
+crons = ["17 3 * * 1"]
+
 [vars]
 # origines autorisées à ouvrir un salon (séparées par des virgules)
 ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http://localhost:4173,http://localhost:4174,http://localhost:5173"

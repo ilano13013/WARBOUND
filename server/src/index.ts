@@ -8,7 +8,7 @@
 import { Lobby } from './lobby';
 import { Guard } from './guard';
 import { MODES, ROOM_CODE_RE, newRoomCode, type ModeId } from './protocol';
-import { handleAccounts } from './accounts';
+import { handleAccounts, purgeInactive } from './accounts';
 
 export { Lobby, Guard };
 
@@ -94,5 +94,10 @@ export default {
     }
 
     return json({ error: 'Introuvable.' }, 404, h);
+  },
+
+  /** Ménage hebdomadaire (déclencheur planifié) : suppression des comptes sans achat inactifs depuis 3 ans. */
+  async scheduled(_ev: ScheduledController, env: Env): Promise<void> {
+    await purgeInactive(env, Date.now() - 3 * 365 * 24 * 3600 * 1000);
   },
 } satisfies ExportedHandler<Env>;

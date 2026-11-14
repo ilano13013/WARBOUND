@@ -30,7 +30,7 @@ Les achats sont réservés aux personnes majeures ou aux mineurs disposant de l'
 En cas de remboursement ou de contestation de paiement, les objets concernés sont retirés du compte.
 
 ## 10. Disponibilité du service
-Les services en ligne (salons, comptes, boutique) reposent sur des offres d'hébergement aux quotas limités et peuvent être temporairement indisponibles ; le jeu solo reste accessible. En cas d'arrêt définitif des services en ligne, les joueurs seront prévenus à l'avance par un message dans le jeu. ⚠ Préciser le délai de prévenance.
+Les services en ligne (salons, comptes, boutique) reposent sur des offres d'hébergement aux quotas limités et peuvent être temporairement indisponibles ; le jeu solo reste accessible. En cas d'arrêt définitif des services en ligne, les joueurs seront prévenus au moins 30 jours à l'avance par un message dans le jeu.
 
 ## 11. Réclamations et médiation
 Pour toute réclamation, contacter d'abord le vendeur par écrit : ilan.guedj.pro@hotmail.com.

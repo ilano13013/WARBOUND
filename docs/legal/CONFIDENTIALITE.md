@@ -9,7 +9,7 @@ Ilan GUEDJ, entrepreneur individuel (EI), 22 allée de la Demande, 13013 Marseil
 | Donnée | Finalité | Base légale | Durée |
 |---|---|---|---|
 | Profil de jeu solo (nom d'opérateur, progression, réglages) | Fonctionnement du jeu | Exécution du service | Stocké **uniquement dans votre navigateur** |
-| Identifiant de compte aléatoire, nom d'opérateur, empreinte du jeton de session | Compte en ligne, salons | Exécution du service | Jusqu'à la suppression du compte, sur demande ⚠ (durée maximale d'inactivité à fixer) |
+| Identifiant de compte aléatoire, nom d'opérateur, empreinte du jeton de session | Compte en ligne, salons | Exécution du service | Jusqu'à la suppression du compte sur demande ; un compte sans achat inactif depuis 3 ans est supprimé automatiquement |
 | Objets possédés, historique d'achats (montant, date, état) | Boutique, preuve d'achat | Exécution du contrat ; obligations comptables | 10 ans (pièces comptables) ⚠ à confirmer |
 | Adresse e-mail (transmise par Stripe lors d'un achat) | Récupération de compte, support | Exécution du contrat | Jusqu'à la suppression du compte ⚠ à confirmer |
 | Adresse IP (technique, non conservée en base) | Limitation des abus (création de salons et de comptes) | Intérêt légitime | Compteurs horaires effacés chaque jour |

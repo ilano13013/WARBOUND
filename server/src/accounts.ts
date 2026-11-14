@@ -30,6 +30,18 @@ export async function playerFromToken(env: AccountEnv, token: string | null | un
 }
 function bearer(req: Request): string | null { const h = req.headers.get('Authorization') || ''; return h.startsWith('Bearer ') ? h.slice(7).trim() : null; }
 
+/** Supprime les comptes inactifs depuis `before` qui n'ont jamais acheté (les justificatifs d'achat sont conservés). */
+export async function purgeInactive(env: AccountEnv, before: number): Promise<number> {
+  await ensureSchema(env);
+  const cond = 'last_seen < ? AND id NOT IN (SELECT player_id FROM purchases)';
+  const r = await env.DB.batch([
+    env.DB.prepare(`DELETE FROM equipped WHERE player_id IN (SELECT id FROM players WHERE ${cond})`).bind(before),
+    env.DB.prepare(`DELETE FROM entitlements WHERE player_id IN (SELECT id FROM players WHERE ${cond})`).bind(before),
+    env.DB.prepare(`DELETE FROM players WHERE ${cond}`).bind(before),
+  ]);
+  return r[2].meta.changes || 0;
+}
+
 /** Profil public vérifié (badge et cosmétiques équipés), utilisé par les salons. */
 export async function verifiedCosmetics(env: AccountEnv, playerId: string): Promise<{ badge: string | null; equipped: Record<string, string> }> {
   const eq = await env.DB.prepare('SELECT e.slot, e.item_id FROM equipped e JOIN entitlements t ON t.player_id = e.player_id AND t.item_id = e.item_id AND t.revoked = 0 WHERE e.player_id = ?').bind(playerId).all<{ slot: string; item_id: string }>();
