@@ -15,6 +15,7 @@ import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
 import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
 import { LOADOUTS } from '../net/Match';
 import { Shop } from './Shop';
+import { LEGAL, mdToHtml, type LegalDoc } from './Legal';
 import { icon } from './Icons';
 
 export function esc(s: string): string { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); }
@@ -171,7 +172,8 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span>v2.6.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.6.0</span></div>`, {
+      legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
       classes: () => this.showClassSelect(false),
@@ -232,6 +234,15 @@ export class UI {
   }
 
   // ---------- pause / mort / résultats ----------
+
+  // ---------- documents légaux ----------
+
+  showLegal(doc: LegalDoc, back: () => void): void {
+    const d = LEGAL[doc] || LEGAL.mentions;
+    this.show('legal', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>${d.title}</h2><span class="spacer"></span><button class="btn small" data-a="back">Retour</button></div>
+      <div class="panel-body col scroll legal">${mdToHtml(d.md)}</div>
+      <div class="panel-foot"><button class="btn" data-a="back">Retour</button></div></div>`, { back });
+  }
 
   // ---------- boutique ----------
 

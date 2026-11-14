@@ -23,7 +23,7 @@ const acc = await page.evaluate(() => ({ id: window.WB.game.account.me.id, owned
 ok(!!acc.id && acc.owned === 0, 'compte créé automatiquement à l’ouverture de la boutique', acc.id);
 ok(acc.payments, 'paiements signalés actifs (clés de test locales)');
 ok(await page.evaluate(() => document.querySelectorAll('.shop-card').length === 4), '4 produits affichés');
-ok(await page.evaluate(() => /1,99\s€\sTTC/.test(document.querySelector('.shop-card .price')?.textContent || '')), 'prix TTC affiché', await page.evaluate(() => document.querySelector('.shop-card .price')?.textContent));
+ok(await page.evaluate(() => /1,99\s€/.test(document.querySelector('.shop-card .price')?.textContent || '')), 'prix affiché', await page.evaluate(() => document.querySelector('.shop-card .price')?.textContent));
 await page.evaluate(() => document.querySelector('[data-a="sel"][data-v="pack_fondateur"]').click());
 await sleep(2500);
 await page.screenshot({ path: SHOTS + 'boutique-pack.png' });

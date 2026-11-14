@@ -405,3 +405,12 @@ table.board tr.off td { opacity: 0.5; }
 .shop-preview { width: min(420px, 100%); height: 300px; background: radial-gradient(circle at 50% 40%, rgba(80, 90, 120, 0.35), rgba(5, 7, 11, 0.9)); border: 1px solid rgba(201, 169, 106, 0.2); }
 .cos-img { vertical-align: middle; margin-left: 8px; } .cos-img.emblem { height: 34px; } .cos-img.card { height: 30px; }
 label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.4; cursor: pointer; }
+
+/* documents légaux */
+.legal-links a, .legal a { color: var(--gold2, #e0c27a); cursor: pointer; text-decoration: underline; }
+.legal-links { font-size: 12px; text-transform: none; letter-spacing: 0.03em; }
+.panel.narrow .legal { max-width: 760px; }
+.legal h2 { font-size: 22px; margin-top: 6px; } .legal h3 { font-size: 17px; margin-top: 14px; color: #e8dcc0; }
+.legal p, .legal li { font-size: 14px; line-height: 1.55; }
+.legal ul { margin: 4px 0 4px 18px; }
+.legal blockquote { border-left: 3px solid var(--gold); padding-left: 10px; color: #ffe6a0; }

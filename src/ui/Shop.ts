@@ -92,7 +92,7 @@ export class Shop {
 
   private price(p: CosProduct): string {
     const c = this.acc.catalog?.products.find((x) => x.sku === p.sku);
-    return `${euros(c ? c.priceCents : p.demoPriceCents)} TTC`;
+    return euros(c ? c.priceCents : p.demoPriceCents);
   }
   private owns(id: string): boolean { return !!this.acc.me?.owned.includes(id); }
   private ownsAll(p: CosProduct): boolean { return p.items.every((i) => this.owns(i)); }
@@ -128,7 +128,7 @@ export class Shop {
     const mode = this.mode();
     this.ui.show('shop', 'overlay', `<div class="panel"><div class="panel-head"><h2>Boutique</h2><span class="sub">100 % cosmétique — aucun avantage en jeu</span><span class="spacer"></span><button class="btn small" data-a="close">Fermer</button></div>
       <div class="panel-body col scroll"><div class="row" style="gap:6px;flex-wrap:wrap">${tabs}</div>${mode ? `<div class="shop-note">${esc(mode)}</div>` : ''}${body}</div>
-      <div class="panel-foot"><span class="label" id="shop-status" style="text-transform:none;letter-spacing:.03em">${esc(this.status)}</span></div></div>`, this.handlers());
+      <div class="panel-foot"><span class="legal-links"><a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span class="label" id="shop-status" style="text-transform:none;letter-spacing:.03em">${esc(this.status)}</span></div></div>`, this.handlers());
     const cv = document.getElementById('shop-preview') as HTMLCanvasElement | null;
     if (cv && this.sel) {
       this.preview = new Preview(cv);
@@ -162,6 +162,7 @@ export class Shop {
         <p class="brief">${esc(p.desc)}</p>
         <div class="label">Contenu</div>${items}
         <div class="kv"><span>Prix</span><span class="price">${this.price(p)}</span></div>
+        <p class="label" style="text-transform:none;letter-spacing:.03em">Prix final. TVA non applicable, art. 293 B du CGI.</p>
         <p class="label" style="text-transform:none;letter-spacing:.03em">Objet purement cosmétique : il ne modifie ni les dégâts, ni la précision, ni la cadence, ni la vitesse, ni les zones de touche. En 4v4, la couleur d’équipe reste imposée.</p>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           ${owned ? '<span class="good">Vous possédez cet objet</span>' : `<button class="btn primary" data-a="buy" ${canBuy ? '' : 'disabled'}>Acheter — ${this.price(p)}</button>`}
@@ -210,7 +211,7 @@ export class Shop {
         <p class="brief">Le paiement a lieu sur la page sécurisée de Stripe. WARBOUND ne voit ni ne conserve vos données de carte. L’objet est ajouté à votre compte dès que Stripe confirme le paiement.</p>
         <label class="chk"><input type="checkbox" id="c-age"> J’ai 18 ans ou plus, ou j’ai l’accord d’un parent ou tuteur pour cet achat.</label>
         <label class="chk"><input type="checkbox" id="c-wd"> Je demande la livraison immédiate de ce contenu numérique et je reconnais perdre mon droit de rétractation une fois l’objet livré.</label>
-        <p class="label" style="text-transform:none;letter-spacing:.03em">Voir les conditions générales de vente et la politique de confidentialité (documents en cours de validation).</p>
+        <p class="label" style="text-transform:none;letter-spacing:.03em">Prix final, TVA non applicable (art. 293 B du CGI). Lire les <a data-a="legal" data-v="cgv">conditions générales de vente</a> et la <a data-a="legal" data-v="privacy">politique de confidentialité</a>.</p>
       </div>
       <div class="panel-foot"><button class="btn primary" data-a="pay">Payer ${this.price(p)} avec Stripe</button><button class="btn" data-a="cancel">Annuler</button></div></div>`, {
       pay: () => {
@@ -219,6 +220,7 @@ export class Shop {
         void this.acc.checkout(p.sku).then((url) => { location.href = url; }, (e) => { this.status = (e as Error).message; this.render(); });
       },
       cancel: () => this.render(),
+      legal: (v) => this.ui.showLegal(v as 'cgv' | 'privacy', () => this.confirmBuy(p)),
     });
   }
 
@@ -226,6 +228,7 @@ export class Shop {
     const run = (p: Promise<unknown>) => { void p.then(() => this.render(), (e) => { this.status = (e as Error).message; this.render(); }); };
     return {
       close: () => this.close(),
+      legal: (v) => this.ui.showLegal(v as 'cgv' | 'mentions' | 'privacy', () => this.render()),
       tab: (v) => { this.tab = v as Tab; this.sel = null; this.render(); },
       cat: (v) => { this.cat = v as CosProduct['category'] | 'all'; this.render(); },
       sel: (v) => { this.sel = COS_PRODUCTS.find((p) => p.sku === v) || null; this.render(); },
