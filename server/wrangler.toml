@@ -22,7 +22,7 @@ new_sqlite_classes = ["Lobby", "Guard"]
 [[d1_databases]]
 binding = "DB"
 database_name = "warbound"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "6bd03c61-3845-41b8-a5f0-585f75caa731"
 migrations_dir = "migrations"
 
 [vars]
