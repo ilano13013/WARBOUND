@@ -313,12 +313,12 @@ Ordre recommandé : la phase 3a passe en premier, car elle corrige les deux déf
 | Phase | État | Remarques |
 |---|---|---|
 | 1. Audit | Fait | Ce document |
-| 2. Infrastructure | **Code prêt, non déployé** | `server/` (Worker, Durable Objects, D1, garde-fou) testé en local avec `wrangler dev` ; déploiement décrit dans `docs/DEPLOIEMENT.md`, à faire avec votre compte |
+| 2. Infrastructure | **Déployé** | Worker `warbound-lobby.amvprod.workers.dev` et base D1 `warbound` (offre gratuite), déployés depuis GitHub ; jeu publié aussi sur Cloudflare Pages ; Netlify conservé en secours |
 | 3. Multijoueur | Fait et testé en local | Salons par code ou lien, étoile WebRTC, autorité de l'hôte, protocole binaire, boucle réseau en Web Worker, reconnexion au salon ; 1v1, TDM 4v4. **Pas encore testé entre appareils et réseaux réels.** Migration d'hôte non faite (si l'hôte part, la partie s'arrête). La réconciliation se fait par correction de position (pas de rejeu des commandes). |
 | 4. Domination | Fait et testé en local | Zones A, B, C sur l'arène actuelle ; une carte 4v4 plus grande reste à faire |
 | 5. Boutique | Faite | 3 camouflages, Pack Fondateur, aperçu 3D, essai local en démonstration |
 | 6. Comptes et inventaire | Code prêt, testé en local | Compte anonyme, code de récupération ; connexion Google ou Discord non faite (demande vos applications OAuth) |
-| 7. Paiements | Code prêt, testé avec des événements signés localement | **Aucun appel réel à Stripe n'a été possible ici** ; à tester en mode test Stripe après création du compte |
+| 7. Paiements | **Mode test Stripe validé** | Achat, attribution, équipement et remboursement vérifiés par le propriétaire en mode test. Paiements réels **non activés** : en attente de la validation juridique et fiscale et d'une autorisation explicite |
 | 8–9. Bêta et vente | Non commencé | Après tests réels, validation légale et votre autorisation |
 
 ## Sources (consultées le 13/11/2026)

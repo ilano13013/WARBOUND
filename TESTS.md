@@ -15,6 +15,13 @@ gameplay 27/27, systems 29/29, settings sans échec, boss, survie 6/6, niveaux c
 - `tests/shop.mjs` : 15/15 — compte créé automatiquement, 4 produits, prix TTC, aperçu 3D, confirmation avec âge et renonciation au droit de rétractation, paiement bloqué tant que les cases ne sont pas cochées, achat confirmé par un webhook signé avec le secret de test, inventaire et badge, camouflage équipé et visible sur l'arme, **statistiques de l'arme identiques avant et après** (dégâts 27, cadence 720, dispersion 2,4, chargeur 30), historique, badge sur le profil.
 - Version publique (sans serveur) : « Multijoueur en ligne » annonce l'absence de serveur et propose le duel par codes ; la boutique est en démonstration, bouton d'achat désactivé, essai local possible.
 
+### Vérifié en ligne par le propriétaire du jeu (14/11/2026)
+Serveur déployé sur Cloudflare (`warbound-lobby.amvprod.workers.dev`, base D1 `warbound`), Stripe en **mode test** (clé secrète et secret de webhook saisis dans Cloudflare, jamais dans le dépôt). Constaté et confirmé par le propriétaire, pas par un test automatique :
+- la boutique affiche « MODE TEST STRIPE » ;
+- achat du Pack Fondateur avec une carte de test : objets présents dans l'inventaire, historique « Payé (test) » ;
+- camouflage Fondateur équipé et visible sur l'arme en jeu ;
+- remboursement depuis le tableau de bord Stripe : objets retirés de l'inventaire, historique « Remboursé ».
+
 ### Non testé (à faire avec vous)
 - Parties entre appareils et réseaux réels (dont 4G), latence et pertes de paquets réelles. Le ping affiché dans les tests (≈ 1,8 s) reflète la machine de test surchargée (rendu logiciel de 3 à 4 navigateurs), pas un réseau.
 - Déploiement Cloudflare réel, quotas réels, retour arrière.
