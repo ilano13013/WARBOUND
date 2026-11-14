@@ -2,6 +2,7 @@
 // boutons d'action. Les boutons passent par les mêmes actions que le clavier (Input.sim), la logique de jeu
 // est donc identique quel que soit l'appareil.
 import type { Game } from '../core/Game';
+import { icon } from './Icons';
 
 interface Btn { act: string; label: string; cls: string; solo?: boolean; mode: 'hold' | 'tap' | 'toggle' | 'fire' | 'ads' | 'swap' | 'pause' }
 const BTNS: Btn[] = [
@@ -34,6 +35,8 @@ export class TouchControls {
   private shown = false;
   /** Dernier texte affiché par bouton (évite de réécrire le DOM à chaque image). */
   private txt = new Map<string, string>();
+  /** Classe pour laquelle les icônes de compétences ont été posées. */
+  private iconsFor = '';
 
   constructor(private g: Game, parent: HTMLElement) {
     this.root = document.createElement('div');
@@ -135,27 +138,47 @@ export class TouchControls {
     if (!online) this.cooldowns();
   }
 
+  /** Icônes des compétences de la classe (mêmes images et couleurs que la barre de l'ordinateur), décompte par-dessus. */
+  private setIcons(): void {
+    const p = this.g.player;
+    const key = p.cls.id;
+    if (this.iconsFor === key) return;
+    this.iconsFor = key;
+    const put = (act: string, id: string, color: string, size: number) => {
+      const e = this.els.get(act)!;
+      e.innerHTML = `<span class="ico">${icon(id, size)}</span><span class="cdt"></span>`;
+      e.style.color = color;
+      e.classList.add('tc-icon');
+      this.txt.delete(act);
+    };
+    p.cls.skills.forEach((s, i) => put('skill' + (i + 1), s.id, s.color, 26));
+    put('ult', p.cls.ult.id, p.cls.ult.color, 28);
+    put('grenade', 'grenade', '#b8c890', 22);
+  }
+
   /** Recharge des compétences, énergie, charge de l'ultime et grenades, affichées sur les boutons. */
   private cooldowns(): void {
     const p = this.g.player;
     if (!p.cls) return;
+    this.setIcons();
     for (let i = 0; i < 3; i++) {
       const e = this.els.get('skill' + (i + 1))!;
       const cd = p.cds[i], k = cd > 0 ? Math.min(1, cd / (p.cdMax[i] || 1)) : 0;
-      this.label(e, 'skill' + (i + 1), cd > 0 ? (cd >= 10 ? String(Math.ceil(cd)) : cd.toFixed(1)) : String(i + 1));
+      this.label(e, 'skill' + (i + 1), cd > 0 ? (cd >= 10 ? String(Math.ceil(cd)) : cd.toFixed(1)) : '');
       e.style.setProperty('--cd', k.toFixed(3));
       e.classList.toggle('cd', cd > 0);
       e.classList.toggle('noen', cd <= 0 && p.energy < p.cls.skills[i].cost);
     }
     const u = this.els.get('ult')!;
-    this.label(u, 'ult', p.ult >= 100 ? 'ULT' : `${Math.floor(p.ult)}%`);
+    this.label(u, 'ult', p.ult >= 100 ? '' : `${Math.floor(p.ult)}%`);
     u.style.setProperty('--cd', (1 - Math.min(100, p.ult) / 100).toFixed(3));
     u.classList.toggle('cd', p.ult < 100);
     u.classList.toggle('ready', p.ult >= 100);
     const gr = this.els.get('grenade')!;
-    this.label(gr, 'grenade', `GREN. ${p.grenades}`);
+    this.label(gr, 'grenade', String(p.grenades));
     gr.classList.toggle('noen', p.grenades <= 0);
   }
 
-  private label(e: HTMLElement, key: string, t: string): void { if (this.txt.get(key) !== t) { this.txt.set(key, t); e.textContent = t; } }
+  /** Texte superposé à l'icône (décompte, pourcentage, nombre). */
+  private label(e: HTMLElement, key: string, t: string): void { if (this.txt.get(key) !== t) { this.txt.set(key, t); const c = e.querySelector('.cdt'); if (c) c.textContent = t; else e.textContent = t; } }
 }

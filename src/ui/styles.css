@@ -484,3 +484,12 @@ body.touch #radio { bottom: auto; top: 74px; width: min(520px, 60vw); font-size:
 .tc-btn.noen { opacity: 0.45; }
 .tc-ult.ready { background: rgba(255, 210, 74, 0.35); box-shadow: 0 0 14px rgba(255, 210, 74, 0.8); animation: ultpulse 1s ease-in-out infinite alternate; }
 @keyframes ultpulse { to { box-shadow: 0 0 22px rgba(255, 210, 74, 1); } }
+
+/* boutons de compétence avec icône (couleur de la compétence) et décompte superposé */
+.tc-btn.tc-icon { position: absolute; }
+.tc-btn.tc-icon .ico { display: grid; place-items: center; width: 100%; height: 100%; }
+.tc-btn.tc-icon .ico svg { display: block; filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8)); }
+.tc-btn.tc-icon .cdt { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font: 800 15px/1 var(--font, sans-serif); text-shadow: 0 0 4px #000, 0 0 2px #000; pointer-events: none; }
+.tc-btn.tc-icon.cd .ico { opacity: 0.45; }
+.tc-gren.tc-icon .cdt { inset: auto -4px -4px auto; width: 18px; height: 18px; border-radius: 50%; background: #1a1d24; border: 1px solid #b8c890; font-size: 11px; }
+.tc-ult.tc-icon .cdt { font-size: 12px; }

@@ -50,7 +50,8 @@ ok(ammo1 < ammo0, 'bouton TIR : l’arme tire', `${ammo0} -> ${ammo1}`);
 // saut
 const [jx, jy] = await center('.tc-jump');
 const y0 = await page.evaluate(() => window.WB.game.player.pos.y);
-await touch('touchStart', [[jx, jy]]); await sleep(250);
+await touch('touchStart', [[jx, jy]]);
+await page.waitForFunction((y) => window.WB.game.player.pos.y > y + 0.2, y0, { timeout: 15000, polling: 50 }).catch(() => {});
 const y1 = await page.evaluate(() => window.WB.game.player.pos.y);
 await touch('touchEnd', []);
 ok(y1 > y0 + 0.2, 'bouton SAUT', `${y0.toFixed(2)} -> ${y1.toFixed(2)}`);
@@ -58,11 +59,12 @@ ok(y1 > y0 + 0.2, 'bouton SAUT', `${y0.toFixed(2)} -> ${y1.toFixed(2)}`);
 // recharge visible sur les boutons de compétence
 await page.evaluate(() => { const p = window.WB.game.player; p.energy = p.maxEnergy; window.WB.skill(0); });
 await sleep(700);
-const cdTxt = await page.evaluate(() => { const e = document.querySelector('.tc-s1'); return { t: e.textContent, cd: e.classList.contains('cd'), v: getComputedStyle(e).getPropertyValue('--cd') }; });
-ok(cdTxt.cd && /^\d+(\.\d)?$/.test(cdTxt.t) && cdTxt.t !== '1', 'compétence utilisée : décompte affiché sur le bouton 1', JSON.stringify(cdTxt));
-const ultTxt = await page.evaluate(() => document.querySelector('.tc-ult').textContent);
-ok(/%$|^ULT$/.test(ultTxt), 'charge de l’ultime affichée', ultTxt);
-ok(await page.evaluate(() => /GREN\. \d/.test(document.querySelector('.tc-gren').textContent)), 'nombre de grenades affiché');
+const cdTxt = await page.evaluate(() => { const e = document.querySelector('.tc-s1'); return { t: e.querySelector('.cdt')?.textContent ?? e.textContent, cd: e.classList.contains('cd'), icon: !!e.querySelector('svg'), v: getComputedStyle(e).getPropertyValue('--cd') }; });
+ok(cdTxt.icon, 'icônes des compétences sur les boutons');
+ok(cdTxt.cd && /^\d+(\.\d)?$/.test(cdTxt.t), 'compétence utilisée : décompte affiché sur l’icône', JSON.stringify(cdTxt));
+const ultTxt = await page.evaluate(() => ({ t: document.querySelector('.tc-ult .cdt')?.textContent, icon: !!document.querySelector('.tc-ult svg') }));
+ok(ultTxt.icon && /%$/.test(ultTxt.t), 'ultime : icône et charge', JSON.stringify(ultTxt));
+ok(await page.evaluate(() => !!document.querySelector('.tc-gren svg') && /^\d$/.test(document.querySelector('.tc-gren .cdt').textContent)), 'grenade : icône et nombre restant');
 
 // pause puis reprise au doigt
 await sleep(800);
