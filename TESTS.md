@@ -1,5 +1,12 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.8 (matchmaking public et bots)
+
+- `server/test/quickplay.test.mjs` : 8/8 — partie rapide 1v1 crée une salle publique avec compte à rebours (15 s), le deuxième joueur rejoint la même salle, salle pleine : lancement en 3 s, lancement automatique sans statut prêt, partie en cours : nouveau joueur dirigé ailleurs, joueur seul en 4v4 : lancement au bout de 20 s, retour en attente avec nouveau compte à rebours après la partie.
+- `tests/quickplay.mjs` : 15/15 — 4v4 en solo : 1 joueur + 7 bots, équipes 4 contre 4, les 7 bots se déplacent, combattent, s'éliminent et mènent la partie jusqu'à la limite de score (4, réglée pour le test) ; Domination à deux : même salle, 6 bots, visibles chez les deux joueurs, zones capturées et synchronisées ; 1v1 en solo : un bot sert d'adversaire ; aucune erreur.
+- Non-régression : salons 17/17, comptes et paiements 26/26, partie privée à 4 navigateurs 23/23.
+- **Non testé** : niveau réel des bots face à de vrais joueurs (réglages de difficulté à ajuster selon vos retours) ; parties publiques entre vrais appareils.
+
 ## Version 2.7 (téléphones et tablettes)
 
 `tests/mobile.mjs` (émulation tactile Chromium, 844×390 en paysage) : 18/18 — mode tactile détecté, qualité basse au premier lancement, commandes affichées, joystick (13 à 16 m parcourus), visée au doigt, tir, saut, icônes des compétences, de l'ultime et de la grenade sur les boutons, décompte de recharge sur l'icône après utilisation, charge de l'ultime et nombre de grenades sur les boutons, pause et reprise au doigt, aide à la visée en solo (réticule amené sur l'ennemi : 0,108 rad pour un écart de 0,108 rad), aucun effet une fois désactivée, invitation à tourner l'écran en portrait, menus au doigt (paramètres avec sensibilité tactile), aucune erreur. Non-régression sur ordinateur : gameplay 27/27, settings sans échec.

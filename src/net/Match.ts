@@ -20,6 +20,8 @@ import { makeWeaponItem } from '../rpg/items';
 import { weaponStats, type WStats } from '../rpg/Stats';
 import { DUEL_SPAWNS, TEAM_SPAWNS, DOM_ZONES } from '../levels/duel';
 import { outfitMats } from '../render/Cosmetics';
+import { BotBrain } from './Bots';
+import { MODES } from './lobbyProtocol';
 
 export type TeamId = 'red' | 'blue';
 export interface Rules { score: number; time: number; respawn: number }
@@ -55,6 +57,9 @@ export interface MP {
   peer: Peer | null; hello: boolean; connected: boolean; rival: Rival | null; corrT: number;
   /** Cosmétiques équipés, vérifiés par le serveur de salons (lus dans la vue du salon, jamais dans un message de joueur). */
   cos: Record<string, string>;
+  /** Bot de remplacement (parties publiques), simulé par l'hôte. */
+  bot: boolean;
+  brain?: BotBrain;
 }
 export interface Zone { id: 'A' | 'B' | 'C'; pos: THREE.Vector3; r: number; owner: TeamId | null; prog: number; cap: TeamId | null; contested: boolean; pointT: number }
 export interface FeedLine { text: string; t: number; mine: boolean }
@@ -88,7 +93,12 @@ export class Match {
   private connectTimer: number | null = null;
   private predictedHit = 0;
 
-  constructor(private g: Game) {}
+  constructor(readonly g: Game) {}
+
+  /** Partie publique (matchmaking) : les places libres sont prises par des bots. */
+  pub = false;
+  /** Heure locale de réception du dernier état du salon (compte à rebours affiché). */
+  lobbyRecvAt = 0;
 
   get active(): boolean { return this.phase === 'playing'; }
   get isHost(): boolean { return this.role === 'host'; }
@@ -105,6 +115,7 @@ export class Match {
     this.reset();
     this.lobby = lobby;
     this.mode = room.mode; this.rules = { ...RULES[room.mode], ...(this.g.testMode && this.testRules ? this.testRules : {}) };
+    this.pub = !!room.pub;
     this.role = hostId === lobby.you ? 'host' : 'client';
     this.players = room.players.filter((p) => p.connected).map((p, i) => this.newPlayer(i, p.id, p.name, p.team as TeamId | null));
     this.me = this.players.findIndex((p) => p.id === lobby.you);
@@ -115,14 +126,15 @@ export class Match {
       this.mine!.hello = true; this.mine!.connected = true;
       this.setStatus('Connexion aux joueurs…');
       for (const p of this.players) if (p.idx !== this.me) void this.offer(p);
-      this.connectTimer = window.setTimeout(() => this.hostStart(), CONNECT_TIMEOUT);
+      // seul dans la partie (publique, les autres places seront des bots) : lancement immédiat
+      this.connectTimer = window.setTimeout(() => this.hostStart(), this.players.length > 1 ? CONNECT_TIMEOUT : 50);
     } else this.setStatus('Connexion à l’hôte…');
   }
 
   private newPlayer(idx: number, id: string, name: string, team: TeamId | null): MP {
     return { idx, id, name, team, loadout: 0, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, speed: 0, height: 1.8, ads: false, crouch: false,
       hp: 100, alive: false, invT: 0, respawnT: 0, lastIn: 0, hist: [], step: LOADOUTS[0], st: null, ammo: 0, reserve: 0, reloadT: 0, lastFire: 0, firingT: 0,
-      k: 0, d: 0, a: 0, rung: 0, ping: 0, dmgBy: new Map(), peer: null, hello: false, connected: false, rival: null, corrT: 0, cos: this.cosOf(id) };
+      k: 0, d: 0, a: 0, rung: 0, ping: 0, dmgBy: new Map(), peer: null, hello: false, connected: false, rival: null, corrT: 0, cos: this.cosOf(id), bot: false };
   }
 
   /** Hôte : crée l'invitation WebRTC d'un joueur et l'envoie par le salon. */
@@ -159,6 +171,7 @@ export class Match {
     if (this.connectTimer) { clearTimeout(this.connectTimer); this.connectTimer = null; }
     // les joueurs injoignables sont retirés de la partie
     for (const p of this.players) if (p.idx !== this.me && !p.hello) { p.connected = false; p.peer?.close(); p.peer = null; }
+    if (this.pub) this.addBots();
     this.t0 = this.now();
     this.endsAt = this.rules.time ? this.t0 + this.rules.time * 1000 : 0;
     if (this.mode === 'dom') this.zones = DOM_ZONES.map((z) => ({ id: z.id, pos: z.pos.clone(), r: z.r, owner: null, prog: 0, cap: null, contested: false, pointT: 0 }));
@@ -168,8 +181,25 @@ export class Match {
     this.g.startMatch();
   }
 
+  /** Complète la partie publique avec des bots vétérans (équipes équilibrées). */
+  private addBots(): void {
+    const names = ['Vipère', 'Corbeau', 'Spectre', 'Goliath', 'Faucon', 'Lynx', 'Orage', 'Basilic'];
+    const active = () => this.players.filter((p) => p.connected || p.idx === this.me || p.bot);
+    let i = 0;
+    while (active().length < MODES[this.mode].max && this.players.length < 16) {
+      const teams = MODES[this.mode].teams;
+      const red = active().filter((p) => p.team === 'red').length, blue = active().filter((p) => p.team === 'blue').length;
+      const p = this.newPlayer(this.players.length, `bot-${i}`, `${names[i % names.length]} [BOT]`, teams ? (red <= blue ? 'red' : 'blue') : null);
+      p.bot = true; p.connected = true; p.hello = true;
+      p.loadout = Math.floor(Math.random() * LOADOUTS.length);
+      p.brain = new BotBrain(this, p);
+      this.players.push(p);
+      i++;
+    }
+  }
+
   private initMsg(you: number): unknown {
-    return { t: 'init', you, mode: this.mode, rules: this.rules, players: this.players.map((p) => ({ idx: p.idx, id: p.id, name: p.name, team: p.team, connected: p.connected, x: p.x, y: p.y, z: p.z, yaw: p.yaw, alive: p.alive, step: p.step, k: p.k, d: p.d, a: p.a, rung: p.rung })), zones: this.zones.map((z) => ({ id: z.id, owner: z.owner })), timeLeft: this.endsAt ? (this.endsAt - this.now()) / 1000 : 0, score: this.teamScore };
+    return { t: 'init', you, mode: this.mode, rules: this.rules, players: this.players.map((p) => ({ idx: p.idx, id: p.id, name: p.name, team: p.team, connected: p.connected, bot: p.bot, x: p.x, y: p.y, z: p.z, yaw: p.yaw, alive: p.alive, step: p.step, k: p.k, d: p.d, a: p.a, rung: p.rung })), zones: this.zones.map((z) => ({ id: z.id, owner: z.owner })), timeLeft: this.endsAt ? (this.endsAt - this.now()) / 1000 : 0, score: this.teamScore };
   }
 
   /** Appelé par Game.startMatch une fois l'arène chargée. */
@@ -220,6 +250,7 @@ export class Match {
     const me = this.mine!;
     // l'hôte joue aussi : sa position passe par la même validation
     if (this.loaded && me.alive) this.acceptMove(me, this.localState(), now, true);
+    if (this.loaded) for (const p of this.players) if (p.bot && p.brain) p.brain.update(dt, now);
     for (const p of this.players) {
       if (!p.connected && p.idx !== this.me) continue;
       if (p.invT > 0) p.invT -= dt;
@@ -290,7 +321,7 @@ export class Match {
   }
 
   /** Validation du déplacement : vitesse horizontale, montée verticale et limites de la carte. */
-  private acceptMove(p: MP, s: { x: number; y: number; z: number; yaw: number; pitch: number; speed: number; height: number; ads: boolean; crouch: boolean }, now: number, local: boolean): void {
+  acceptMove(p: MP, s: { x: number; y: number; z: number; yaw: number; pitch: number; speed: number; height: number; ads: boolean; crouch: boolean }, now: number, local: boolean): void {
     const dt = Math.max(0.016, (now - (p.lastIn || now - 50)) / 1000);
     const horiz = Math.hypot(s.x - p.x, s.z - p.z), up = s.y - p.y;
     const b = this.g.level?.bounds;
@@ -467,8 +498,8 @@ export class Match {
     if (this.phase === 'connecting') { if (this.players.every((x) => x.hello || !x.connected || x.idx === this.me)) this.hostStart(); return; }
     if (this.phase !== 'playing') return;
     this.emit({ t: 'left', i: p.idx });
-    const others = this.players.filter((q) => q.idx !== this.me && q.connected);
-    if (!others.length) this.hostEnd('forfeit', this.mine);
+    const others = this.players.filter((q) => q.idx !== this.me && q.connected && !q.bot);
+    if (!others.length && !this.pub) this.hostEnd('forfeit', this.mine);
   }
 
   /** Le salon signale un joueur revenu pendant la partie : l'hôte lui renvoie une invitation. */
@@ -519,7 +550,7 @@ export class Match {
       case 'init': {
         if (local) return;
         this.me = m.you; this.mode = m.mode; this.rules = m.rules;
-        this.players = m.players.map((q: any) => { const p = this.newPlayer(q.idx, String(q.id || ''), q.name, q.team); Object.assign(p, { x: q.x, y: q.y, z: q.z, yaw: q.yaw, alive: q.alive, step: q.step, k: q.k, d: q.d, a: q.a, rung: q.rung, connected: q.connected }); return p; });
+        this.players = m.players.map((q: any) => { const p = this.newPlayer(q.idx, String(q.id || ''), q.name, q.team); Object.assign(p, { x: q.x, y: q.y, z: q.z, yaw: q.yaw, alive: q.alive, step: q.step, k: q.k, d: q.d, a: q.a, rung: q.rung, connected: q.connected, bot: !!q.bot }); return p; });
         this.zones = (m.zones || []).map((z: any) => { const d = DOM_ZONES.find((x) => x.id === z.id)!; return { id: z.id, pos: d.pos.clone(), r: d.r, owner: z.owner, prog: z.owner ? 1 : 0, cap: null, contested: false, pointT: 0 }; });
         this.timeLeft = m.timeLeft; this.teamScore = m.score;
         this.phase = 'playing';

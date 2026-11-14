@@ -4,6 +4,12 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.8 (matchmaking public et bots)
+
+- **Partie rapide** (Multijoueur en ligne → Partie rapide) pour chaque mode : le serveur envoie le joueur dans la partie publique ouverte la plus remplie, ou en crée une. Pas de statut « prêt » : la partie démarre seule après 20 s (15 s en 1v1), ou 3 s après qu'elle est pleine. Après la partie, elle repart automatiquement avec les joueurs restants et les nouveaux venus. Un code et un lien permettent aussi d'y inviter des amis.
+- **Bots vétérans** : les places libres sont prises par des bots simulés par l'hôte (réaction 0,35 à 0,6 s, visée rapide avec une petite erreur, déplacements latéraux en combat, chasse des ennemis, prise des zones A, B et C, montée à l'étage par l'escalier). Ils suivent exactement les mêmes règles que les joueurs : mêmes armes, mêmes dégâts, tirs résolus par l'autorité de la partie. Ils sont marqués [BOT].
+- Les parties privées entre amis fonctionnent comme avant (pas de bots).
+
 ## Version 2.7 (téléphones et tablettes)
 
 - **Jouable au doigt dans le navigateur** : détection automatique d'un écran tactile. Joystick dynamique à gauche (pousser à fond vers l'avant pour sprinter), visée en glissant le doigt à droite (aussi en gardant le doigt sur TIR ou VISÉE), boutons TIR, VISÉE, SAUT, ACCROUPI, RECHARGER, ACTION, ARME, et en solo GRENADE, compétences 1 à 3 et ULTIME ; pause, carte et scores en haut de l'écran. Les boutons de compétence montrent l'icône de la compétence (comme sur ordinateur), avec son temps de recharge par-dessus, et sont grisés quand l'énergie manque ; ULTIME affiche sa charge, GRENADE le nombre restant.
@@ -246,6 +252,7 @@ node tests/systems.mjs           # classes, talents, inventaire, sauvegarde, par
 node tests/boss.mjs              # phases des trois boss
 node tests/survival.mjs          # mode survie
 node tests/campaign.mjs          # parcours des cinq opérations (crédits après la 4)
+node tests/quickplay.mjs         # matchmaking public et bots (serveur local requis)
 node tests/mobile.mjs            # téléphone : commandes tactiles, aide à la visée, menus (émulation)
 node tests/duel.mjs              # Défi d'armes : deux navigateurs, connexion par codes, partie complète
 node tests/layout.mjs            # points d'apparition et accessibilité après habillage

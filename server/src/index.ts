@@ -7,14 +7,16 @@
 // et l'établissement des connexions, ce qui garde la consommation très en dessous des quotas gratuits.
 import { Lobby } from './lobby';
 import { Guard } from './guard';
+import { Matchmaker } from './matchmaker';
 import { MODES, ROOM_CODE_RE, newRoomCode, type ModeId } from './protocol';
 import { handleAccounts, purgeInactive } from './accounts';
 
-export { Lobby, Guard };
+export { Lobby, Guard, Matchmaker };
 
 export interface Env {
   LOBBY: DurableObjectNamespace<Lobby>;
   GUARD: DurableObjectNamespace<Guard>;
+  MATCH: DurableObjectNamespace<Matchmaker>;
   ALLOWED_ORIGINS: string;
   MAX_ROOMS_PER_DAY: string;
   MAX_JOINS_PER_DAY: string;
@@ -60,6 +62,25 @@ export default {
       }
       const r = await handleAccounts(req, env, url, (d, s = 200) => json(d, s, isWebhook ? {} : h));
       if (r) return r;
+    }
+
+    // partie rapide : salle publique existante ou nouvelle
+    if (url.pathname === '/api/quickplay' && req.method === 'POST') {
+      if (!allowed) return json({ error: 'Origine non autorisée.' }, 403, h);
+      let body: { mode?: string } = {};
+      try { body = await req.json(); } catch { /* */ }
+      const mode = (body.mode && body.mode in MODES ? body.mode : 'tdm') as ModeId;
+      const mm = env.MATCH.get(env.MATCH.idFromName('global'));
+      const found = await mm.find(mode);
+      if (found) return json({ code: found, mode, created: false }, 200, h);
+      const verdict = await guard(env).allowRoom(ip, Number(env.MAX_ROOMS_PER_DAY), Number(env.MAX_ROOMS_PER_IP_PER_HOUR));
+      if (!verdict.ok) return json({ error: verdict.reason }, 429, h);
+      for (let i = 0; i < 5; i++) {
+        const code = newRoomCode();
+        const stub = env.LOBBY.get(env.LOBBY.idFromName(code));
+        if (await stub.init(code, mode, MODES[mode].maps[0], true)) { await mm.update(code, mode, 1, MODES[mode].max, 'lobby'); return json({ code, mode, created: true }, 201, h); }
+      }
+      return json({ error: 'Impossible de créer la partie, réessayez.' }, 503, h);
     }
 
     if (url.pathname === '/api/rooms' && req.method === 'POST') {

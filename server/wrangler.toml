@@ -13,9 +13,17 @@ name = "GUARD"
 class_name = "Guard"
 
 # l'offre gratuite n'accepte que les Durable Objects adossés à SQLite
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "Matchmaker"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Lobby", "Guard"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Matchmaker"]
 
 # Base D1 (comptes, objets possédés, achats). Créer la base avec `npx wrangler d1 create warbound`,
 # puis remplacer database_id ci-dessous. En local (`npm run dev`), une base locale est utilisée.

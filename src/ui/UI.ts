@@ -179,7 +179,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.7.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.8.0</span></div>`, {
       legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
@@ -254,6 +254,7 @@ export class UI {
   // ---------- boutique ----------
 
   private shop: Shop | null = null;
+  private lobbyTimer: number | null = null;
   showShop(msg = ''): void { if (!this.g.profile) return; this.shop ??= new Shop(this); void this.shop.open(msg); }
 
   // ---------- multijoueur en ligne (salons) ----------
@@ -280,6 +281,10 @@ export class UI {
     const render = () => {
       const lb = mt.lobby, room = lb?.room;
       const body = room && lb ? this.roomHtml(room, lb, mt.loadout) : `
+        <div class="label">Partie rapide — publique</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">${(Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn ${id === 'tdm' ? 'primary' : ''}" data-a="quick" data-v="${id}">${MODES[id].name}</button>`).join('')}</div>
+        <p class="label" style="text-transform:none;letter-spacing:.03em">Vous rejoignez une partie ouverte ou en créez une. Elle démarre automatiquement ; les places libres sont prises par des bots de niveau vétéran.</p>
+        <div class="label" style="margin-top:10px">Partie privée entre amis</div>
         <div class="duel-cols">
           <div class="col grow"><div class="label">Créer un salon</div>
             ${(Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn ${id === 'tdm' ? 'primary' : ''}" data-a="create" data-v="${id}">${MODES[id].name}</button>`).join('')}
@@ -296,9 +301,9 @@ export class UI {
     };
     const setStatus = (s: string) => { status = s; const el = document.getElementById('lobby-status'); if (el) el.textContent = s; };
     const attach = (lb: LobbyClient) => {
-      lb.onRoom = (r) => { mt.onRoom(r); if (this.current === 'lobby') render(); };
+      lb.onRoom = (r) => { mt.lobbyRecvAt = performance.now(); mt.onRoom(r); if (this.current === 'lobby') render(); };
       lb.onStart = (host, r) => { mt.begin(lb, host, r); if (this.current === 'lobby') render(); };
-      lb.onEnd = () => { if (this.current === 'lobby') render(); };
+      lb.onEnd = () => { mt.lobbyRecvAt = performance.now(); if (this.current === 'lobby') render(); };
       lb.onError = (msg) => setStatus(msg);
       lb.onClose = () => { setStatus('Déconnecté du salon.'); if (mt.lobby === lb) mt.lobby = null; if (this.current === 'lobby') render(); };
     };
@@ -307,11 +312,12 @@ export class UI {
       setStatus('Connexion au salon…');
       const lb = new LobbyClient(code, g.profile!.name, g.account.token);
       attach(lb);
-      try { await lb.connect(); mt.lobby = lb; status = ''; history.replaceState(null, '', location.pathname); render(); }
+      try { await lb.connect(); mt.lobby = lb; mt.lobbyRecvAt = performance.now(); status = ''; history.replaceState(null, '', location.pathname); render(); }
       catch (e) { setStatus((e as Error).message); }
     };
     const handlers: Record<string, (v: string, el: HTMLElement) => void> = {
       back: () => { if (mt.lobby) { mt.lobby.leave(); mt.lobby = null; } this.showMenu(); },
+      quick: (v) => { setStatus('Recherche d’une partie…'); LobbyClient.quickplay(v as ModeId).then((code) => connect(code), (e) => setStatus((e as Error).message)); },
       create: (v) => { setStatus('Création du salon…'); LobbyClient.create(v as ModeId).then((code) => connect(code), (e) => setStatus((e as Error).message)); },
       join: () => { const code = ((document.getElementById('lobby-code') as HTMLInputElement | null)?.value || '').trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(code)) { setStatus('Le code fait 6 caractères.'); return; } void connect(code); },
       copy: (v) => { const t = v === 'link' ? LobbyClient.link(mt.lobby!.code) : mt.lobby!.code; void navigator.clipboard?.writeText(t).catch(() => {}); this.hud.toast(v === 'link' ? 'LIEN COPIÉ' : 'CODE COPIÉ', '#3aff8a'); },
@@ -324,6 +330,13 @@ export class UI {
     };
     if (mt.lobby) attach(mt.lobby);
     render();
+    // compte à rebours des parties publiques
+    if (this.lobbyTimer) clearInterval(this.lobbyTimer);
+    this.lobbyTimer = window.setInterval(() => {
+      if (this.current !== 'lobby') { clearInterval(this.lobbyTimer!); this.lobbyTimer = null; return; }
+      const el = document.getElementById('pub-count'), r = mt.lobby?.room;
+      if (el && r?.startIn != null && mt.lobbyRecvAt) el.textContent = String(Math.max(0, Math.ceil((r.startIn - (performance.now() - mt.lobbyRecvAt)) / 1000)));
+    }, 250);
     if (joinCode && !mt.lobby) void connect(joinCode);
   }
 
@@ -336,14 +349,15 @@ export class UI {
       ? `<div class="duel-cols">${(['red', 'blue'] as const).map((t) => `<div class="col grow"><div class="label" style="color:${t === 'red' ? '#ff6a5a' : '#6aa8ff'}">Équipe ${t === 'red' ? 'rouge' : 'bleue'} (${room.players.filter((p) => p.team === t).length})</div>${room.players.filter((p) => p.team === t).map(pl).join('')}</div>`).join('')}</div>`
       : `<div class="col">${room.players.map(pl).join('')}</div>`;
     return `
+      ${room.pub ? `<div class="shop-note">Partie publique — ${room.phase === 'playing' ? 'en cours' : `démarrage dans <b id="pub-count">${room.startIn != null ? Math.ceil(room.startIn / 1000) : '…'}</b> s`}. Les places libres seront prises par des bots vétérans. Vous pouvez inviter des amis avec le code ou le lien.</div>` : ''}
       <div class="kv"><span>Code du salon</span><span><b style="font-size:22px;letter-spacing:.2em">${room.code}</b> <button class="btn small" data-a="copy" data-v="code">Copier</button> <button class="btn small" data-a="copy" data-v="link">Copier le lien</button></span></div>
-      <div class="kv"><span>Mode</span><span>${host && room.phase === 'lobby' ? (Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn small ${id === room.mode ? 'primary' : ''}" data-a="mode" data-v="${id}">${MODES[id].name}</button>`).join(' ') : def.name}</span></div>
+      <div class="kv"><span>Mode</span><span>${host && room.phase === 'lobby' && !room.pub ? (Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn small ${id === room.mode ? 'primary' : ''}" data-a="mode" data-v="${id}">${MODES[id].name}</button>`).join(' ') : def.name}</span></div>
       <div class="kv"><span>Carte</span><span>Chantier de Valmorre</span></div>
       <div class="label">Joueurs (${room.players.length} / ${room.max})${host && def.teams ? ' — cliquez sur un joueur pour changer son équipe' : ''}</div>
       ${teams}
       ${room.mode !== 'duel' ? `<div class="label">Votre arme (identique pour tous les joueurs qui la choisissent, sans bonus)</div><div class="row" style="flex-wrap:wrap;gap:6px">${LOADOUTS.map((l, i) => `<button class="btn small ${i === loadout ? 'primary' : ''}" data-a="loadout" data-v="${i}">${l.label}</button>`).join('')}</div>` : '<p class="label" style="text-transform:none;letter-spacing:.03em">1v1 aux fusils de précision : 6 étapes, une élimination pour passer à la suivante.</p>'}
       <div class="row" style="gap:8px;margin-top:8px">
-        ${room.phase === 'playing' ? '<span class="label">Partie en cours…</span>' : host
+        ${room.pub ? '' : room.phase === 'playing' ? '<span class="label">Partie en cours…</span>' : host
           ? `<button class="btn primary" data-a="start">Lancer la partie</button>${def.teams ? '<button class="btn" data-a="balance">Équilibrer les équipes</button>' : ''}`
           : `<button class="btn primary" data-a="ready">${me?.ready ? 'Annuler « prêt »' : 'Je suis prêt'}</button>`}
       </div>

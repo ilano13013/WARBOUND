@@ -5,17 +5,22 @@
 // la durée facturable reste donc quasi nulle (offre gratuite : 13 000 Go·s par jour).
 import { DurableObject } from 'cloudflare:workers';
 import { playerFromToken, verifiedCosmetics, type AccountEnv } from './accounts';
+import type { Matchmaker } from './matchmaker';
+
+type LobbyEnv = AccountEnv & { MATCH?: DurableObjectNamespace<Matchmaker> };
 import { MODES, PROTOCOL_VERSION, type ClientMsg, type ModeId, type PlayerView, type RoomView, type ServerMsg, type Team } from './protocol';
 
 interface PlayerRec { id: string; name: string; team: Team; ready: boolean; tokenHash: string; joinedAt: number; leftAt: number | null; badge: string | null; cos?: Record<string, string> }
-interface RoomRec { code: string; mode: ModeId; map: string; phase: 'lobby' | 'playing'; hostId: string | null; createdAt: number; lastActive: number; players: PlayerRec[] }
+interface RoomRec { code: string; mode: ModeId; map: string; phase: 'lobby' | 'playing'; hostId: string | null; createdAt: number; lastActive: number; players: PlayerRec[]; pub?: boolean; startAt?: number | null }
 interface Attach { id: string | null }
 
 const IDLE_MS = 30 * 60_000;          // salon sans activité : fermé après 30 min
 const EMPTY_MS = 10 * 60_000;         // salon sans aucun joueur connecté : fermé après 10 min
 const GRACE_LOBBY_MS = 60_000;        // un joueur déconnecté garde sa place 60 s dans le salon
 const GRACE_GAME_MS = 120_000;        // ... et 120 s pendant une partie (reconnexion)
-const MAX_SIGNAL = 16_384;            // taille maximale d'un message de signalisation (octets)
+const MAX_SIGNAL = 16_384;
+const PUB_COUNTDOWN = { duel: 15_000, tdm: 20_000, dom: 20_000 } as const; // attente d'autres joueurs avant le lancement d'une partie publique
+const PUB_FULL_DELAY = 3_000;            // taille maximale d'un message de signalisation (octets)
 const NAME_RE = /[^\p{L}\p{N} _\-.'’]/gu;
 
 async function sha256(s: string): Promise<string> {
@@ -27,20 +32,20 @@ function randomId(bytes: number): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-export class Lobby extends DurableObject<AccountEnv> {
+export class Lobby extends DurableObject<LobbyEnv> {
   private room: RoomRec | null = null;
 
-  constructor(ctx: DurableObjectState, env: AccountEnv) {
+  constructor(ctx: DurableObjectState, env: LobbyEnv) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => { this.room = (await ctx.storage.get<RoomRec>('room')) || null; });
   }
 
   // ---------- appels du Worker ----------
 
-  async init(code: string, mode: ModeId, map: string): Promise<boolean> {
+  async init(code: string, mode: ModeId, map: string, pub = false): Promise<boolean> {
     if (this.room) return false;
     const now = Date.now();
-    this.room = { code, mode, map, phase: 'lobby', hostId: null, createdAt: now, lastActive: now, players: [] };
+    this.room = { code, mode, map, phase: 'lobby', hostId: null, createdAt: now, lastActive: now, players: [], pub, startAt: null };
     await this.save();
     await this.ctx.storage.setAlarm(now + EMPTY_MS);
     return true;
@@ -88,7 +93,7 @@ export class Lobby extends DurableObject<AccountEnv> {
         return;
       }
       case 'ready':
-        if (r.phase !== 'lobby') return;
+        if (r.phase !== 'lobby' || r.pub) return;
         me.ready = !!m.v; break;
       case 'team':
         if (!isHost || r.phase !== 'lobby' || !MODES[r.mode].teams || (m.team !== 'red' && m.team !== 'blue')) return;
@@ -98,7 +103,7 @@ export class Lobby extends DurableObject<AccountEnv> {
         if (!isHost || r.phase !== 'lobby') return;
         this.balance(); break;
       case 'config': {
-        if (!isHost || r.phase !== 'lobby' || !(m.mode in MODES)) return;
+        if (!isHost || r.phase !== 'lobby' || r.pub || !(m.mode in MODES)) return;
         const def = MODES[m.mode];
         if (r.players.length > def.max) { this.send(ws, { t: 'error', msg: `Trop de joueurs pour ce mode (${def.max} au maximum).` }); return; }
         r.mode = m.mode; r.map = def.maps.includes(m.map) ? m.map : def.maps[0];
@@ -106,7 +111,7 @@ export class Lobby extends DurableObject<AccountEnv> {
         this.balance(); break;
       }
       case 'start': {
-        if (!isHost || r.phase !== 'lobby') return;
+        if (!isHost || r.phase !== 'lobby' || r.pub) return;
         const err = this.canStart();
         if (err) { this.send(ws, { t: 'error', msg: err }); return; }
         r.phase = 'playing';
@@ -118,8 +123,10 @@ export class Lobby extends DurableObject<AccountEnv> {
         if (!isHost || r.phase !== 'playing') return;
         r.phase = 'lobby';
         for (const p of r.players) p.ready = false;
+        if (r.pub) await this.armPublic();
         await this.save();
         this.broadcast({ t: 'end', room: this.view() });
+        await this.report();
         return;
       default: return;
     }
@@ -136,14 +143,28 @@ export class Lobby extends DurableObject<AccountEnv> {
     if (!r) return;
     const now = Date.now();
     const connected = this.connectedIds();
+    // partie publique : lancement automatique à la fin du compte à rebours (les places libres seront des bots)
+    if (r.pub && r.phase === 'lobby' && r.startAt && now >= r.startAt - 100) {
+      r.startAt = null;
+      const present = r.players.filter((p) => connected.has(p.id));
+      if (present.length) {
+        r.players = present;
+        if (!r.hostId || !connected.has(r.hostId)) this.pickHost();
+        this.balance();
+        r.phase = 'playing';
+        await this.save();
+        this.broadcast({ t: 'start', host: r.hostId!, room: this.view() });
+        await this.report();
+      }
+    }
     const grace = r.phase === 'playing' ? GRACE_GAME_MS : GRACE_LOBBY_MS;
     const before = r.players.length;
     r.players = r.players.filter((p) => connected.has(p.id) || (p.leftAt !== null && now - p.leftAt < grace));
     if (r.hostId && !r.players.some((p) => p.id === r.hostId)) this.pickHost();
     const empty = connected.size === 0 && now - r.lastActive > EMPTY_MS;
     if (empty || now - r.lastActive > IDLE_MS) { await this.expire(); return; }
-    if (r.players.length !== before) { await this.save(); this.broadcastRoom(); }
-    await this.ctx.storage.setAlarm(now + (r.players.some((p) => p.leftAt !== null) ? 15_000 : 60_000));
+    if (r.players.length !== before) { await this.save(); this.broadcastRoom(); await this.report(); }
+    await this.schedule();
   }
 
   // ---------- logique ----------
@@ -176,10 +197,12 @@ export class Lobby extends DurableObject<AccountEnv> {
       } catch { /* base indisponible : on joue sans cosmétiques */ }
     }
     if (!r.hostId) r.hostId = p.id;
+    if (r.pub && r.phase === 'lobby') await this.armPublic(1);
     ws.serializeAttachment({ id: p.id } satisfies Attach);
     await this.save();
     this.send(ws, { t: 'welcome', you: p.id, token, room: this.view() });
     this.broadcastRoom(ws);
+    await this.report();
   }
 
   private async left(ws: WebSocket): Promise<void> {
@@ -193,8 +216,10 @@ export class Lobby extends DurableObject<AccountEnv> {
     if (r.phase === 'lobby') p.ready = false;
     // dans le salon, l'hôte parti est remplacé tout de suite ; en partie, la reconnexion reste possible
     if (r.phase === 'lobby' && r.hostId === p.id) this.pickHost(p.id);
+    if (r.pub && r.phase === 'lobby' && !this.connectedIds().size) r.startAt = null;
     await this.save();
     this.broadcastRoom();
+    await this.report();
     await this.ctx.storage.setAlarm(Date.now() + 15_000);
   }
 
@@ -232,7 +257,35 @@ export class Lobby extends DurableObject<AccountEnv> {
     r.hostId = next ? next.id : null;
   }
 
+  /** Partie publique : (ré)arme le compte à rebours ; extra = joueur qui vient d'arriver (pas encore compté comme connecté). */
+  private async armPublic(extra = 0): Promise<void> {
+    const r = this.room!, now = Date.now();
+    const n = this.connectedIds().size + extra;
+    if (!n) { r.startAt = null; return; }
+    if (!r.startAt) r.startAt = now + PUB_COUNTDOWN[r.mode];
+    if (n >= MODES[r.mode].max) r.startAt = Math.min(r.startAt, now + PUB_FULL_DELAY);
+    await this.schedule();
+  }
+
+  /** Prochaine alarme : lancement public en attente, sinon ménage. */
+  private async schedule(): Promise<void> {
+    const r = this.room;
+    if (!r) return;
+    const now = Date.now();
+    let next = now + (r.players.some((p) => p.leftAt !== null) ? 15_000 : 60_000);
+    if (r.pub && r.phase === 'lobby' && r.startAt) next = Math.min(next, r.startAt);
+    await this.ctx.storage.setAlarm(next);
+  }
+
+  /** Informe le matchmaking de l'état d'une salle publique. */
+  private async report(closed = false): Promise<void> {
+    const r = this.room;
+    if (!r?.pub || !this.env.MATCH) return;
+    try { await this.env.MATCH.get(this.env.MATCH.idFromName('global')).update(r.code, r.mode, closed ? -1 : this.connectedIds().size, MODES[r.mode].max, r.phase); } catch { /* matchmaking indisponible : la salle reste jouable */ }
+  }
+
   private async expire(): Promise<void> {
+    await this.report(true);
     for (const ws of this.ctx.getWebSockets()) { this.send(ws, { t: 'error', msg: 'Salon fermé pour inactivité.', fatal: true }); ws.close(4004, 'expiré'); }
     this.room = null;
     await this.ctx.storage.deleteAll();
@@ -253,7 +306,7 @@ export class Lobby extends DurableObject<AccountEnv> {
   private view(): RoomView {
     const r = this.room!, conn = this.connectedIds();
     const players: PlayerView[] = r.players.map((p) => ({ id: p.id, name: p.name, team: p.team, ready: p.ready, connected: conn.has(p.id), host: p.id === r.hostId, badge: p.badge, cos: p.cos || {} }));
-    return { code: r.code, mode: r.mode, map: r.map, max: MODES[r.mode].max, phase: r.phase, players, version: PROTOCOL_VERSION };
+    return { code: r.code, mode: r.mode, map: r.map, max: MODES[r.mode].max, phase: r.phase, players, version: PROTOCOL_VERSION, pub: !!r.pub, startIn: r.pub && r.startAt ? Math.max(0, r.startAt - Date.now()) : null };
   }
 
   private send(ws: WebSocket, m: ServerMsg): void { try { ws.send(JSON.stringify(m)); } catch { /* socket fermée */ } }

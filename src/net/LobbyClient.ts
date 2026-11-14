@@ -33,6 +33,14 @@ export class LobbyClient {
     return body.code as string;
   }
 
+  /** Partie rapide : salle publique existante ou nouvelle (matchmaking). */
+  static async quickplay(mode: ModeId): Promise<string> {
+    const r = await fetch(`${LOBBY_URL}/api/quickplay`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok || !body.code) throw new Error(body.error || `Matchmaking indisponible (${r.status}).`);
+    return body.code as string;
+  }
+
   /** Lien d'invitation à partager. */
   static link(code: string): string { const u = new URL(location.href); u.search = `?salon=${code}`; u.hash = ''; return u.toString(); }
 

@@ -21,7 +21,8 @@ export function newRoomCode(): string {
 
 /** cos : cosmétiques équipés, VÉRIFIÉS par le serveur dans la base des achats (jamais déclarés par le client). */
 export interface PlayerView { id: string; name: string; team: Team; ready: boolean; connected: boolean; host: boolean; badge: string | null; cos: Record<string, string> }
-export interface RoomView { code: string; mode: ModeId; map: string; max: number; phase: 'lobby' | 'playing'; players: PlayerView[]; version: number }
+/** pub : salle publique (partie rapide), lancée automatiquement à startAt (horodatage serveur, ms) ; places libres remplies par des bots. */
+export interface RoomView { code: string; mode: ModeId; map: string; max: number; phase: 'lobby' | 'playing'; players: PlayerView[]; version: number; pub: boolean; startIn: number | null }
 
 /** Messages du client vers le salon. */
 export type ClientMsg =
