@@ -32,6 +32,8 @@ export class TouchControls {
   private tracks = new Map<number, Track>();
   private crouchOn = false;
   private shown = false;
+  /** Dernier texte affiché par bouton (évite de réécrire le DOM à chaque image). */
+  private txt = new Map<string, string>();
 
   constructor(private g: Game, parent: HTMLElement) {
     this.root = document.createElement('div');
@@ -130,5 +132,30 @@ export class TouchControls {
     this.els.get('ads')!.classList.toggle('active', g.input.ads);
     this.els.get('crouch')!.classList.toggle('active', this.crouchOn);
     this.els.get('swap')!.style.display = g.weapons.slots.length > 1 ? '' : 'none';
+    if (!online) this.cooldowns();
   }
+
+  /** Recharge des compétences, énergie, charge de l'ultime et grenades, affichées sur les boutons. */
+  private cooldowns(): void {
+    const p = this.g.player;
+    if (!p.cls) return;
+    for (let i = 0; i < 3; i++) {
+      const e = this.els.get('skill' + (i + 1))!;
+      const cd = p.cds[i], k = cd > 0 ? Math.min(1, cd / (p.cdMax[i] || 1)) : 0;
+      this.label(e, 'skill' + (i + 1), cd > 0 ? (cd >= 10 ? String(Math.ceil(cd)) : cd.toFixed(1)) : String(i + 1));
+      e.style.setProperty('--cd', k.toFixed(3));
+      e.classList.toggle('cd', cd > 0);
+      e.classList.toggle('noen', cd <= 0 && p.energy < p.cls.skills[i].cost);
+    }
+    const u = this.els.get('ult')!;
+    this.label(u, 'ult', p.ult >= 100 ? 'ULT' : `${Math.floor(p.ult)}%`);
+    u.style.setProperty('--cd', (1 - Math.min(100, p.ult) / 100).toFixed(3));
+    u.classList.toggle('cd', p.ult < 100);
+    u.classList.toggle('ready', p.ult >= 100);
+    const gr = this.els.get('grenade')!;
+    this.label(gr, 'grenade', `GREN. ${p.grenades}`);
+    gr.classList.toggle('noen', p.grenades <= 0);
+  }
+
+  private label(e: HTMLElement, key: string, t: string): void { if (this.txt.get(key) !== t) { this.txt.set(key, t); e.textContent = t; } }
 }

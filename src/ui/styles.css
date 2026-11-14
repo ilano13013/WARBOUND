@@ -478,3 +478,9 @@ body.touch #compass { display: none; }
   #menu .menu-foot > span:first-child { display: none; }
 }
 body.touch #radio { bottom: auto; top: 74px; width: min(520px, 60vw); font-size: 12px; padding: 5px 30px; }
+
+/* recharge des compétences sur les boutons tactiles : secteur sombre qui se vide, nombre de secondes */
+.tc-btn.cd { background: conic-gradient(rgba(0, 0, 0, 0.72) calc(var(--cd, 0) * 360deg), rgba(10, 12, 18, 0.45) 0); color: #ffd24a; font-size: 13px; }
+.tc-btn.noen { opacity: 0.45; }
+.tc-ult.ready { background: rgba(255, 210, 74, 0.35); box-shadow: 0 0 14px rgba(255, 210, 74, 0.8); animation: ultpulse 1s ease-in-out infinite alternate; }
+@keyframes ultpulse { to { box-shadow: 0 0 22px rgba(255, 210, 74, 1); } }

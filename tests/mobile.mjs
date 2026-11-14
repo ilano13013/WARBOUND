@@ -55,6 +55,15 @@ const y1 = await page.evaluate(() => window.WB.game.player.pos.y);
 await touch('touchEnd', []);
 ok(y1 > y0 + 0.2, 'bouton SAUT', `${y0.toFixed(2)} -> ${y1.toFixed(2)}`);
 
+// recharge visible sur les boutons de compétence
+await page.evaluate(() => { const p = window.WB.game.player; p.energy = p.maxEnergy; window.WB.skill(0); });
+await sleep(700);
+const cdTxt = await page.evaluate(() => { const e = document.querySelector('.tc-s1'); return { t: e.textContent, cd: e.classList.contains('cd'), v: getComputedStyle(e).getPropertyValue('--cd') }; });
+ok(cdTxt.cd && /^\d+(\.\d)?$/.test(cdTxt.t) && cdTxt.t !== '1', 'compétence utilisée : décompte affiché sur le bouton 1', JSON.stringify(cdTxt));
+const ultTxt = await page.evaluate(() => document.querySelector('.tc-ult').textContent);
+ok(/%$|^ULT$/.test(ultTxt), 'charge de l’ultime affichée', ultTxt);
+ok(await page.evaluate(() => /GREN\. \d/.test(document.querySelector('.tc-gren').textContent)), 'nombre de grenades affiché');
+
 // pause puis reprise au doigt
 await sleep(800);
 const [px, py] = await center('.tc-pause');
