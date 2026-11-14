@@ -15,6 +15,7 @@ import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
 import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
 import { LOADOUTS } from '../net/Match';
 import { Shop } from './Shop';
+import { TouchControls } from './TouchControls';
 import { LEGAL, mdToHtml, type LegalDoc } from './Legal';
 import { icon } from './Icons';
 
@@ -53,6 +54,8 @@ export class UI {
   root: HTMLElement;
   screen: HTMLElement;
   panels: Panels;
+  touch: TouchControls;
+  private rotateEl: HTMLElement;
   private fadeEl: HTMLElement;
   private cineEl: HTMLElement;
   private handlers: Record<string, Handler> = {};
@@ -70,6 +73,9 @@ export class UI {
     this.cineEl = document.createElement('div'); this.cineEl.id = 'cine'; this.cineEl.className = 'hidden'; this.root.appendChild(this.cineEl);
     this.fadeEl = document.createElement('div'); this.fadeEl.id = 'fade'; this.root.appendChild(this.fadeEl);
     this.panels = new Panels(this);
+    this.touch = new TouchControls(g, this.root);
+    if (g.input.touch) document.body.classList.add('touch');
+    this.rotateEl = document.createElement('div'); this.rotateEl.id = 'rotate'; this.rotateEl.innerHTML = '<div><b>↻</b>Tournez votre téléphone en mode paysage</div>'; this.root.appendChild(this.rotateEl);
     const dispatch = (ev: Event, type: string) => {
       let t = ev.target as HTMLElement | null;
       while (t && t !== this.screen) {
@@ -133,6 +139,7 @@ export class UI {
 
   update(dt: number): void {
     const g = this.g;
+    this.touch.update();
     if (g.state === 'play' || g.state === 'dead') {
       if (!this.hud.root.classList.contains('hidden')) this.hud.update(dt);
       if (g.state === 'play') {
@@ -172,7 +179,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.6.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.7.0</span></div>`, {
       legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
@@ -463,7 +470,7 @@ export class UI {
     const g = this.g, s = g.settings;
     this.settingsBack = back;
     const slider = (id: string, label: string, min: number, max: number, step: number, val: number, fmt: (v: number) => string) => `<div class="statline" style="grid-template-columns:190px 1fr 60px"><span>${label}</span><input type="range" data-i="rng" data-v="${id}" min="${min}" max="${max}" step="${step}" value="${val}"><span id="val-${id}">${fmt(val)}</span></div>`;
-    const fmts: Record<string, (v: number) => string> = { renderScale: (v) => Math.round(v * 100) + ' %', sens: (v) => v.toFixed(2), sensY: (v) => '×' + v.toFixed(2), adsSens: (v) => '×' + v.toFixed(2), scopeSens: (v) => '×' + v.toFixed(2), fov: (v) => v + '°', volMaster: (v) => Math.round(v * 100) + ' %', volMusic: (v) => Math.round(v * 100) + ' %', volSfx: (v) => Math.round(v * 100) + ' %' };
+    const fmts: Record<string, (v: number) => string> = { renderScale: (v) => Math.round(v * 100) + ' %', sens: (v) => v.toFixed(2), sensY: (v) => '×' + v.toFixed(2), adsSens: (v) => '×' + v.toFixed(2), scopeSens: (v) => '×' + v.toFixed(2), touchSens: (v) => '×' + v.toFixed(2), fov: (v) => v + '°', volMaster: (v) => Math.round(v * 100) + ' %', volMusic: (v) => Math.round(v * 100) + ' %', volSfx: (v) => Math.round(v * 100) + ' %' };
     const render = () => {
       const q = (id: string, l: string) => `<button class="btn small ${s.quality === id ? 'primary' : ''}" data-a="quality" data-v="${id}">${l}</button>`;
       const binds = ACTIONS.map((a) => `<div class="keybind"><span>${a.label}</span><button class="btn small" data-a="bind" data-v="${a.id}">${bindLabel(s.binds[a.id])}</button></div>`).join('');
@@ -482,6 +489,7 @@ export class UI {
           ${slider('sensY', 'Sensibilité verticale', 0.3, 3, 0.05, s.sensY, fmts.sensY)}
           ${slider('adsSens', 'Sensibilité en visée', 0.2, 2.5, 0.05, s.adsSens, fmts.adsSens)}
           ${slider('scopeSens', 'Sensibilité dans la lunette', 0.2, 2.5, 0.05, s.scopeSens, fmts.scopeSens)}
+          ${g.input.touch ? `${slider('touchSens', 'Sensibilité tactile', 0.2, 3, 0.05, s.touchSens, fmts.touchSens)}<div class="statline" style="grid-template-columns:190px 1fr"><span>Aide à la visée (solo)</span><button class="btn small ${s.aimAssist ? 'primary' : ''}" data-a="aimAssist">${s.aimAssist ? 'Activée' : 'Désactivée'}</button></div>` : ''}
           <div class="row"><span style="width:190px;font-size:13px">Inverser l’axe vertical</span><button class="btn small ${s.invertY ? 'primary' : ''}" data-a="toggle" data-v="invertY">${s.invertY ? 'Oui' : 'Non'}</button></div>
           <div class="row"><span style="width:190px;font-size:13px">Entrée brute (sans accélération Windows)</span><button class="btn small ${s.rawInput ? 'primary' : ''}" data-a="toggle" data-v="rawInput">${s.rawInput ? 'Oui' : 'Non'}</button></div>
           <div class="row"><span style="width:190px;font-size:13px"></span><button class="btn small" data-a="sensReset">Sensibilité par défaut</button><span class="label" style="margin-left:8px">L’entrée brute s’applique au prochain clic dans le jeu</span></div>
@@ -497,7 +505,8 @@ export class UI {
         </div></div>
         <div class="panel-foot"><button class="btn primary" data-a="back">Valider</button><span class="label">Les paramètres sont enregistrés automatiquement</span></div></div>`, {
         quality: (v) => { s.quality = v as any; g.applySettings(); g.saveSettings(); render(); },
-        sensReset: () => { s.sens = 1; s.sensY = 1; s.adsSens = 1; s.scopeSens = 1; s.invertY = false; g.saveSettings(); render(); },
+        aimAssist: () => { s.aimAssist = !s.aimAssist; g.saveSettings(); render(); },
+        sensReset: () => { s.sens = 1; s.sensY = 1; s.adsSens = 1; s.scopeSens = 1; s.touchSens = 1; s.invertY = false; g.saveSettings(); render(); },
         toggle: (v) => { (s as any)[v] = !(s as any)[v]; g.applySettings(); g.saveSettings(); render(); },
         fullscreen: () => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().then(() => (navigator as any).keyboard?.lock?.().catch(() => undefined)).catch(() => undefined); },
         rng: (v, el) => { const val = parseFloat((el as HTMLInputElement).value); (s as any)[v] = val; const lab = document.getElementById('val-' + v); if (lab) lab.textContent = fmts[v](val); g.applySettings(); g.saveSettings(); },

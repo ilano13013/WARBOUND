@@ -48,6 +48,9 @@ export interface Settings {
   volSfx: number;
   showFps: boolean;
   reduceMotion: boolean;
+  /** Écran tactile : sensibilité de la visée au doigt et aide à la visée (solo uniquement). */
+  touchSens: number;
+  aimAssist: boolean;
   layout: 'azerty' | 'qwerty';
   binds: Record<string, string>;
 }
@@ -75,7 +78,7 @@ export function defaultBinds(layout: 'azerty' | 'qwerty'): Record<string, string
 export function defaultSettings(): Settings {
   return {
     version: SAVE_VERSION, quality: 'medium', renderScale: 1, sens: 1, sensY: 1, adsSens: 1, scopeSens: 1, invertY: false, rawInput: true, dynRes: true, fov: 100, volMaster: 0.8, volMusic: 0.5, volSfx: 0.9,
-    showFps: false, reduceMotion: false, layout: 'azerty', binds: defaultBinds('azerty'),
+    showFps: false, reduceMotion: false, touchSens: 1, aimAssist: true, layout: 'azerty', binds: defaultBinds('azerty'),
   };
 }
 
@@ -177,6 +180,8 @@ export function validateSettings(raw: any): Settings {
   s.volSfx = num(raw.volSfx, 0.9, 0, 1);
   s.showFps = !!raw.showFps;
   s.reduceMotion = !!raw.reduceMotion;
+  s.touchSens = num(raw.touchSens, 1, 0.2, 3);
+  s.aimAssist = raw.aimAssist === undefined ? true : !!raw.aimAssist;
   s.layout = raw.layout === 'qwerty' ? 'qwerty' : 'azerty';
   s.binds = defaultBinds(s.layout);
   if (raw.binds && typeof raw.binds === 'object') for (const a of ACTIONS) if (typeof raw.binds[a.id] === 'string' && /^[kc]:.+/.test(raw.binds[a.id])) s.binds[a.id] = raw.binds[a.id];

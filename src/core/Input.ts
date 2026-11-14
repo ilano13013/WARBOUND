@@ -35,6 +35,10 @@ export class Input {
   ads = false;
   locked = false;
   enabled = true;
+  /** Écran tactile (téléphone, tablette) : pas de verrouillage du pointeur, commandes à l'écran. */
+  touch = false;
+  /** Déplacement analogique du joystick tactile (-1..1 ; moveY > 0 = avancer). */
+  moveX = 0; moveY = 0;
   /** capture d'une touche pour le menu de configuration */
   captureCb: ((token: string) => void) | null = null;
   onEscape: (() => void) | null = null;
@@ -43,6 +47,8 @@ export class Input {
   doubleSprint = false;
 
   constructor(private canvas: HTMLElement, public settings: Settings, private testMode: boolean) {
+    const q = new URLSearchParams(location.search);
+    this.touch = q.get('touch') === '1' || (q.get('touch') !== '0' && !testMode && matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches);
     window.addEventListener('keydown', (e) => this.key(e, true));
     window.addEventListener('keyup', (e) => this.key(e, false));
     window.addEventListener('blur', () => this.reset());
@@ -68,7 +74,11 @@ export class Input {
   }
 
   lock(): void {
-    if (this.testMode) { this.locked = true; return; }
+    if (this.touch && !this.testMode) {
+      // Android : plein écran et paysage (iPhone : sans effet, l'ajout à l'écran d'accueil s'en charge)
+      try { if (!document.fullscreenElement) { const p: any = document.documentElement.requestFullscreen?.({ navigationUI: 'hide' } as FullscreenOptions); p?.then?.(() => (screen.orientation as any)?.lock?.('landscape')?.catch?.(() => undefined), () => undefined); } } catch { /* refusé hors d'un geste */ }
+    }
+    if (this.testMode || this.touch) { this.locked = true; return; }
     if (document.pointerLockElement !== this.canvas) {
       try {
         // entrée brute (sans accélération du pointeur Windows) si demandée et prise en charge, sinon verrouillage simple
@@ -82,7 +92,7 @@ export class Input {
   }
 
   unlock(): void {
-    if (this.testMode) { this.locked = false; return; }
+    if (this.testMode || this.touch) { this.locked = false; this.fire = false; this.ads = false; this.moveX = 0; this.moveY = 0; return; }
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
 
@@ -121,14 +131,17 @@ export class Input {
     }
   }
 
-  reset(): void { this.down.clear(); this.actionsDown.clear(); this.actionsPressed.clear(); this.fire = false; this.ads = false; }
+  reset(): void { this.down.clear(); this.actionsDown.clear(); this.actionsPressed.clear(); this.simulated.clear(); this.fire = false; this.ads = false; this.moveX = 0; this.moveY = 0; }
 
   held(a: string): boolean { return this.enabled && (this.actionsDown.has(a) || this.simulated.has(a)); }
   pressed(a: string): boolean { return this.enabled && this.actionsPressed.has(a); }
   /** Appui brut, même quand le gameplay est désactivé (menus). */
   rawPressed(a: string): boolean { return this.actionsPressed.has(a); }
 
-  /** Simulation pour le mode de test automatique. */
+  /** Visée au doigt : déplacement en pixels converti comme un mouvement de souris. */
+  look(dx: number, dy: number): void { const k = 2.2 * this.settings.touchSens; this.mouseDX += dx * k; this.mouseDY += dy * k; }
+
+  /** Simulation d'une action (tests automatiques et boutons tactiles). */
   sim(a: string, on: boolean): void {
     if (on) { if (!this.simulated.has(a)) this.actionsPressed.add(a); this.simulated.add(a); } else this.simulated.delete(a);
   }

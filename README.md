@@ -4,6 +4,14 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.7 (téléphones et tablettes)
+
+- **Jouable au doigt dans le navigateur** : détection automatique d'un écran tactile. Joystick dynamique à gauche (pousser à fond vers l'avant pour sprinter), visée en glissant le doigt à droite (aussi en gardant le doigt sur TIR ou VISÉE), boutons TIR, VISÉE, SAUT, ACCROUPI, RECHARGER, ACTION, ARME, et en solo GRENADE, compétences 1 à 3 et ULTIME ; pause, carte et scores en haut de l'écran.
+- **Aide à la visée** sur écran tactile, **en solo uniquement** (jamais en ligne) : attire doucement le réticule vers l'ennemi le plus proche du centre quand on vise ou tire. Désactivable dans Paramètres, avec la sensibilité tactile.
+- **Réglages adaptés** au premier lancement sur téléphone (qualité basse, résolution 80 %, résolution dynamique), menus compacts en paysage, HUD réduit, invitation à tourner l'écran en mode portrait.
+- **Installation sur l'écran d'accueil** (manifeste d'application web) : plein écran, orientation paysage. Sur Android, le plein écran est aussi demandé au premier contact ; sur iPhone, il passe par « Sur l'écran d'accueil » dans Safari.
+- Testé en émulation tactile (Chromium, 844×390) ; **non testé sur un vrai téléphone** : performances et confort à vérifier.
+
 ## Version 2.6 (multijoueur en ligne, boutique cosmétique)
 
 - **Multijoueur en ligne** (menu principal → *Multijoueur en ligne*) : salons privés créés par un serveur (code de 6 caractères ou lien d'invitation `?salon=CODE`), liste des joueurs, équipes Rouge et Bleu équilibrées automatiquement ou à la main par l'hôte, statut prêt, lancement par l'hôte, retour au salon et « rejouer », reconnexion après coupure, salons inactifs fermés automatiquement.
@@ -238,6 +246,7 @@ node tests/systems.mjs           # classes, talents, inventaire, sauvegarde, par
 node tests/boss.mjs              # phases des trois boss
 node tests/survival.mjs          # mode survie
 node tests/campaign.mjs          # parcours des cinq opérations (crédits après la 4)
+node tests/mobile.mjs            # téléphone : commandes tactiles, aide à la visée, menus (émulation)
 node tests/duel.mjs              # Défi d'armes : deux navigateurs, connexion par codes, partie complète
 node tests/layout.mjs            # points d'apparition et accessibilité après habillage
 ```

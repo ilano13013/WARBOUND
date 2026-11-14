@@ -151,6 +151,25 @@ export class Player {
     return amount;
   }
 
+  /** Aide à la visée : écran tactile, mode solo uniquement (jamais en ligne). Attire doucement le réticule vers l'ennemi
+   *  le plus proche du centre quand le joueur vise ou tire, sans jamais viser à sa place. */
+  private aimAssist(dt: number): void {
+    const g = this.g, inp = g.input;
+    if (!inp.touch || !g.settings.aimAssist || g.match.active || g.duel.active || this.dead) return;
+    if (!(g.weapons.adsK > 0.5 || inp.fire)) return;
+    const e = g.combat.crosshairTarget(7, 70);
+    if (!e) return;
+    const c = e.center(this.tmp), cam = g.r.camera.position;
+    const dx = c.x - cam.x, dy = c.y - cam.y, dz = c.z - cam.z;
+    const tYaw = Math.atan2(-dx, -dz), tPitch = Math.atan2(dy, Math.hypot(dx, dz));
+    let dyaw = tYaw - this.yaw;
+    while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+    while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+    const k = Math.min(1, dt * (g.weapons.adsK > 0.5 ? 5 : 2.5));
+    this.yaw += dyaw * k * 0.5;
+    this.pitch += (tPitch - this.pitch) * k * 0.5;
+  }
+
   /** Recul réel appliqué à la visée (degrés). */
   kick(pitchDeg: number, yawDeg: number): void {
     this.recoilPending.x += THREE.MathUtils.degToRad(pitchDeg);
@@ -203,21 +222,24 @@ export class Player {
       const rec = Math.min(this.recoilAccum, (this.recoilAccum * 7 + 0.01) * dt);
       this.pitch -= rec * 0.75; this.recoilAccum -= rec;
     }
+    this.aimAssist(dt);
     this.pitch = Math.max(-1.5, Math.min(1.5, this.pitch));
 
     if (this.mantleT > 0) { this.updateMantle(dt); this.updateCamera(dt, 0); return; }
 
     // direction souhaitée
-    const f = (inp.held('forward') ? 1 : 0) - (inp.held('back') ? 1 : 0);
-    const s = (inp.held('right') ? 1 : 0) - (inp.held('left') ? 1 : 0);
+    const f = Math.max(-1, Math.min(1, (inp.held('forward') ? 1 : 0) - (inp.held('back') ? 1 : 0) + inp.moveY));
+    const s = Math.max(-1, Math.min(1, (inp.held('right') ? 1 : 0) - (inp.held('left') ? 1 : 0) + inp.moveX));
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     this.wish.set(-sin * f + cos * s, 0, -cos * f - sin * s);
     const wl = this.wish.length();
-    if (wl > 0) this.wish.multiplyScalar(1 / wl);
-    this.moving = wl > 0;
+    // joystick : vitesse proportionnelle à l'inclinaison (clavier : toujours 1)
+    if (wl > 1) this.wish.multiplyScalar(1 / wl);
+    this.moving = wl > 0.05;
 
     // sprint / sprint tactique
-    const wantSprint = inp.held('sprint') && f > 0 && !this.crouching && !this.sliding && g.weapons.adsK < 0.3 && this.noSprintT <= 0;
+    // tactile : joystick poussé à fond vers l'avant = sprint
+    const wantSprint = (inp.held('sprint') || (inp.touch && inp.moveY > 0.85)) && f > 0 && !this.crouching && !this.sliding && g.weapons.adsK < 0.3 && this.noSprintT <= 0;
     if (inp.doubleSprint && this.tacCd <= 0 && f > 0) { this.tacT = 3.2; this.tacCd = 6; }
     if (this.tacT > 0) { this.tacT -= dt; if (!wantSprint) this.tacT = 0; }
     this.sprinting = wantSprint && this.grounded || (wantSprint && this.sprinting);

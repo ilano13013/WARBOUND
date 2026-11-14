@@ -113,6 +113,12 @@ export class Game {
   async init(): Promise<void> {
     const s = await this.store.loadSettings();
     Object.assign(this.settings, s);
+    // premier lancement sur téléphone ou tablette : réglages graphiques légers (modifiables ensuite)
+    if (this.input.touch) {
+      let first = true;
+      try { first = !localStorage.getItem('wb-touch-init'); localStorage.setItem('wb-touch-init', '1'); } catch { /* */ }
+      if (first) { this.settings.quality = 'low'; this.settings.renderScale = 0.8; this.settings.dynRes = true; void this.store.saveSettings(this.settings); }
+    }
     this.applySettings();
     this.profile = await this.store.loadProfile();
     this.last = performance.now();

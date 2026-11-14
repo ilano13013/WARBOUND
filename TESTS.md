@@ -1,5 +1,13 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.7 (téléphones et tablettes)
+
+`tests/mobile.mjs` (émulation tactile Chromium, 844×390 en paysage) : 14/14 — mode tactile détecté, qualité basse au premier lancement, commandes affichées, joystick (13 à 16 m parcourus), visée au doigt, tir, saut, pause et reprise au doigt, aide à la visée en solo (réticule amené sur l'ennemi : 0,108 rad pour un écart de 0,108 rad), aucun effet une fois désactivée, invitation à tourner l'écran en portrait, menus au doigt (paramètres avec sensibilité tactile), aucune erreur. Non-régression sur ordinateur : gameplay 27/27, settings sans échec.
+
+Problèmes trouvés : le menu principal débordait en paysage (boutons hors écran) — passé sur deux colonnes ; la radio passait sous les boutons — remontée. Deux faux échecs du test lui-même (attente faite à l'intérieur de la page, pendant laquelle le navigateur de test ne produit pas d'images ; capture trop lente en rendu logiciel) ont été corrigés dans le test.
+
+**Non testé** : vrais téléphones (performances, chauffe, confort des commandes, Safari iOS). L'aide à la visée n'existe pas en ligne : le code ne l'applique jamais quand une partie en ligne ou un duel est en cours.
+
 ## Version 2.6 (multijoueur en ligne, boutique, serveur)
 
 ### Suite `npm test` (machine non chargée)

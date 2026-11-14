@@ -207,7 +207,7 @@ export class HUD {
     if (!p.cls || !w) return;
     this.minimap.update(dt);
     this.matchHud.update();
-    this.clickHint.classList.toggle('hidden', g.input.locked || g.state !== 'play' || g.ui.blocking || g.testMode);
+    this.clickHint.classList.toggle('hidden', g.input.locked || g.input.touch || g.state !== 'play' || g.ui.blocking || g.testMode);
     // réticule
     this.fireKick = Math.max(0, this.fireKick - dt * 8);
     const gap = 4 + g.weapons.spreadNow * 7 + this.fireKick * 3;

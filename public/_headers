@@ -11,3 +11,5 @@
 /assets/sounds/*
   Cache-Control: public, max-age=604800
   Content-Type: audio/ogg
+/manifest.webmanifest
+  Content-Type: application/manifest+json
