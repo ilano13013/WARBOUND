@@ -33,7 +33,13 @@ En cas de remboursement ou de contestation de paiement, les objets concernés so
 Les services en ligne (salons, comptes, boutique) reposent sur des offres d'hébergement aux quotas limités et peuvent être temporairement indisponibles ; le jeu solo reste accessible. En cas d'arrêt définitif des services en ligne, les joueurs seront prévenus à l'avance par un message dans le jeu. ⚠ Préciser le délai de prévenance.
 
 ## 11. Réclamations et médiation
-Pour toute réclamation : ilan.guedj.pro@hotmail.com. En cas de litige non résolu, le consommateur peut recourir gratuitement au médiateur de la consommation suivant : ⚠ [NOM ET SITE DU MÉDIATEUR — à compléter après adhésion, obligatoire avant toute vente]. Plateforme européenne de règlement des litiges en ligne : selon sa disponibilité, à vérifier.
+Pour toute réclamation, contacter d'abord le vendeur par écrit : ilan.guedj.pro@hotmail.com.
+
+Conformément aux articles L611-1 et suivants du Code de la consommation, en cas de litige non résolu après cette réclamation écrite, le consommateur peut recourir gratuitement au médiateur de la consommation dont relève le vendeur :
+
+**ANM Consommation** — site : www.anm-conso.com — adresse postale : 2 rue de Colmar, 94300 Vincennes. ⚠ Adresse issue de la charte 2023 du médiateur : à vérifier sur anm-conso.com et sur le contrat d'adhésion.
+
+La saisine du médiateur est possible dans un délai d'un an à compter de la réclamation écrite adressée au vendeur, et à condition de ne pas avoir saisi la justice.
 
 ## 12. Droit applicable
 Les présentes conditions sont soumises au droit français. Le consommateur conserve la protection des dispositions impératives de la loi de son pays de résidence.
