@@ -21,7 +21,7 @@ La commande est passée depuis la boutique du jeu. Le paiement est réalisé par
 L'objet est ajouté au compte du joueur dès la confirmation du paiement, généralement en quelques secondes. Il reste attaché au compte et peut être retrouvé sur un autre appareil grâce au code de récupération (onglet Compte de la boutique).
 
 ## 7. Droit de rétractation
-Conformément à l'article L221-28, 13° du Code de la consommation, le droit de rétractation ne peut être exercé pour un contenu numérique fourni sur un support immatériel dont l'exécution a commencé avec l'accord préalable exprès du consommateur et sa renonciation expresse à son droit de rétractation. Cet accord et cette renonciation sont recueillis avant le paiement (case à cocher) et rappelés sur la page de paiement. Le reçu envoyé par Stripe après l'achat sert de confirmation sur support durable. ⚠ Vérifier que l'envoi des reçus par e-mail est activé dans Stripe (Paramètres → E-mails clients).
+Conformément à l'article L221-28, 13° du Code de la consommation, le droit de rétractation ne peut être exercé pour un contenu numérique fourni sur un support immatériel dont l'exécution a commencé avec l'accord préalable exprès du consommateur et sa renonciation expresse à son droit de rétractation. Cet accord et cette renonciation sont recueillis avant le paiement (case à cocher) et rappelés sur la page de paiement. Le reçu envoyé par Stripe après l'achat sert de confirmation sur support durable.
 
 ## 8. Mineurs
 Les achats sont réservés aux personnes majeures ou aux mineurs disposant de l'autorisation de leur représentant légal. En cas d'achat effectué sans autorisation, contacter ilan.guedj.pro@hotmail.com : la demande sera étudiée et l'achat remboursé le cas échéant.
