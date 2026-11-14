@@ -3,6 +3,7 @@
 // le navigateur ne peut pas s'attribuer un objet.
 import { PRODUCTS, ITEM_SLOT } from './catalog';
 import { createCheckoutSession, verifyWebhook } from './stripe';
+import { SCHEMA } from './schema';
 
 export interface AccountEnv {
   DB: D1Database;
@@ -23,6 +24,7 @@ function recoveryCode(): string { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
 
 export async function playerFromToken(env: AccountEnv, token: string | null | undefined): Promise<{ id: string; name: string } | null> {
   if (!token || token.length < 20 || token.length > 128) return null;
+  await ensureSchema(env);
   const row = await env.DB.prepare('SELECT id, name FROM players WHERE token_hash = ?').bind(await sha256(token)).first<{ id: string; name: string }>();
   return row || null;
 }
@@ -39,8 +41,17 @@ export async function verifiedCosmetics(env: AccountEnv, playerId: string): Prom
 
 type J = (data: unknown, status?: number) => Response;
 
+let schemaReady = false;
+/** Crée les tables si besoin (une fois par instance du Worker). */
+export async function ensureSchema(env: AccountEnv): Promise<void> {
+  if (schemaReady || !env.DB) return;
+  await env.DB.batch(SCHEMA.map((q) => env.DB.prepare(q)));
+  schemaReady = true;
+}
+
 export async function handleAccounts(req: Request, env: AccountEnv, url: URL, json: J): Promise<Response | null> {
   const p = url.pathname;
+  await ensureSchema(env);
   const now = Date.now();
 
   // catalogue public (prix TTC, faisant foi)
