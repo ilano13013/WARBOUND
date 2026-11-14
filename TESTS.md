@@ -5,7 +5,8 @@
 - `server/test/quickplay.test.mjs` : 8/8 — partie rapide 1v1 crée une salle publique avec compte à rebours (15 s), le deuxième joueur rejoint la même salle, salle pleine : lancement en 3 s, lancement automatique sans statut prêt, partie en cours : nouveau joueur dirigé ailleurs, joueur seul en 4v4 : lancement au bout de 20 s, retour en attente avec nouveau compte à rebours après la partie.
 - `tests/quickplay.mjs` : 15/15 — 4v4 en solo : 1 joueur + 7 bots, équipes 4 contre 4, les 7 bots se déplacent, combattent, s'éliminent et mènent la partie jusqu'à la limite de score (4, réglée pour le test) ; Domination à deux : même salle, 6 bots, visibles chez les deux joueurs, zones capturées et synchronisées ; 1v1 en solo : un bot sert d'adversaire ; aucune erreur.
 - Non-régression : salons 17/17, comptes et paiements 26/26, partie privée à 4 navigateurs 23/23.
-- **Non testé** : niveau réel des bots face à de vrais joueurs (réglages de difficulté à ajuster selon vos retours) ; parties publiques entre vrais appareils.
+- Niveau des bots baissé après retour du propriétaire (« trop forts ») : réaction 0,55–0,95 s, rotation 4 rad/s, erreur 2,2°, rafales de 3 à 6 tirs, tête visée 12 % du temps, vue 60 m. `tests/quickplay.mjs` relancé : 15/15, les bots mènent toujours une partie jusqu'au bout (4 à 3).
+- **Non testé** : ressenti de ce nouveau niveau face à de vrais joueurs ; parties publiques entre vrais appareils.
 
 ## Version 2.7 (téléphones et tablettes)
 

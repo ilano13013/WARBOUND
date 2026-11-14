@@ -1,11 +1,13 @@
 // Bots des parties publiques : ils remplacent les joueurs manquants. Simulés chez l'hôte, ils passent par
 // exactement les mêmes règles que les joueurs (déplacement validé, tir résolu par l'autorité, mêmes armes et dégâts).
-// Niveau « vétéran » : réaction 0,35 à 0,6 s, visée rapide avec une petite erreur, déplacements latéraux en combat.
+// Niveau ajusté après les premiers retours (trop forts) : réaction 0,55 à 0,95 s, rotation plus lente, erreur de visée
+// d'environ 2,2°, tir en rafales courtes avec pauses, tête visée rarement, vue limitée à 60 m.
 import * as THREE from 'three';
 import type { Match, MP } from './Match';
 
 const R = 0.36, H = 1.8, EYE = 1.62, GRAV = 20;
-const REACT = [0.35, 0.6], TURN = 7, ERR_DEG = 1.1, SIGHT = 85;
+const REACT = [0.55, 0.95], TURN = 4, ERR_DEG = 2.2, SIGHT = 60;
+const BURST = [3, 6], BURST_PAUSE = [0.35, 0.7], HEAD_CHANCE = 0.12;
 /** Accès à l'étage central (zone B) : pied d'escalier de chaque camp, puis ligne droite par le conteneur. */
 const STAIRS = { red: new THREE.Vector3(-18, 0, 0), blue: new THREE.Vector3(18, 0, 0) };
 
@@ -17,6 +19,7 @@ export class BotBrain {
   private goal = new THREE.Vector3(); private hasGoal = false;
   private target: MP | null = null; private reactT = 0; private thinkT = 0; private fireT = 0;
   private strafeT = 0; private strafeDir = 1; private aimHead = false;
+  private burstLeft = 0;
   private wasAlive = false;
 
   constructor(private m: Match, private p: MP) {}
@@ -74,7 +77,7 @@ export class BotBrain {
       this.reactT -= dt;
       if (this.reactT <= 0 && Math.abs(dyaw) < 0.08 && this.fireT <= 0 && p.st) {
         // direction réelle du tir : vers la cible, avec une petite erreur (plus grande si la cible bouge vite)
-        const err = (ERR_DEG + Math.min(1.2, t.speed * 0.12)) * Math.PI / 180;
+        const err = (ERR_DEG + Math.min(2, t.speed * 0.2) + (moved > 1 ? 0.8 : 0)) * Math.PI / 180;
         _a.set(_pos.x, _pos.y + EYE, _pos.z);
         _b.set(dx, dy, dz).normalize();
         const ex = (Math.random() * 2 - 1) * err, ey = (Math.random() * 2 - 1) * err;
@@ -82,8 +85,13 @@ export class BotBrain {
         _b.addScaledVector(_d, Math.tan(ex)).add(_d.set(0, Math.tan(ey), 0)).normalize();
         this.m.hostFire(p, { w: p.step.base, ox: _a.x, oy: _a.y, oz: _a.z, dx: _b.x, dy: _b.y, dz: _b.z });
         const auto = p.st.def.auto;
-        this.fireT = 60 / p.st.rpm + (auto ? 0.01 : 0.12 + Math.random() * 0.25);
-        if (!auto && Math.random() < 0.25) this.aimHead = !this.aimHead;
+        if (auto) {
+          // rafales courtes puis pause, au lieu d'un tir continu
+          if (this.burstLeft <= 0) this.burstLeft = BURST[0] + Math.floor(Math.random() * (BURST[1] - BURST[0] + 1));
+          this.burstLeft--;
+          this.fireT = 60 / p.st.rpm + (this.burstLeft <= 0 ? BURST_PAUSE[0] + Math.random() * (BURST_PAUSE[1] - BURST_PAUSE[0]) : 0.01);
+        } else this.fireT = 60 / p.st.rpm + 0.25 + Math.random() * 0.4;
+        if (Math.random() < HEAD_CHANCE) this.aimHead = !this.aimHead;
       }
     } else {
       // pas de cible : regarder dans le sens de la marche
@@ -108,7 +116,7 @@ export class BotBrain {
     }
     if (best !== this.target) {
       this.target = best;
-      if (best) { this.reactT = REACT[0] + Math.random() * (REACT[1] - REACT[0]); this.aimHead = Math.random() < 0.3; }
+      if (best) { this.reactT = REACT[0] + Math.random() * (REACT[1] - REACT[0]); this.aimHead = Math.random() < HEAD_CHANCE; this.burstLeft = 0; }
     }
     if (best) return;
     // objectif sans cible

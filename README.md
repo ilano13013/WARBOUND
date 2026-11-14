@@ -7,7 +7,7 @@ Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, 
 ## Version 2.8 (matchmaking public et bots)
 
 - **Partie rapide** (Multijoueur en ligne → Partie rapide) pour chaque mode : le serveur envoie le joueur dans la partie publique ouverte la plus remplie, ou en crée une. Pas de statut « prêt » : la partie démarre seule après 20 s (15 s en 1v1), ou 3 s après qu'elle est pleine. Après la partie, elle repart automatiquement avec les joueurs restants et les nouveaux venus. Un code et un lien permettent aussi d'y inviter des amis.
-- **Bots vétérans** : les places libres sont prises par des bots simulés par l'hôte (réaction 0,35 à 0,6 s, visée rapide avec une petite erreur, déplacements latéraux en combat, chasse des ennemis, prise des zones A, B et C, montée à l'étage par l'escalier). Ils suivent exactement les mêmes règles que les joueurs : mêmes armes, mêmes dégâts, tirs résolus par l'autorité de la partie. Ils sont marqués [BOT].
+- **Bots** : les places libres sont prises par des bots simulés par l'hôte (réaction 0,55 à 0,95 s, rotation modérée, erreur de visée d'environ 2,2°, tir en rafales courtes, tête rarement visée, vue limitée à 60 m — niveau baissé après les premiers essais ; déplacements latéraux en combat, chasse des ennemis, prise des zones A, B et C, montée à l'étage par l'escalier). Ils suivent exactement les mêmes règles que les joueurs : mêmes armes, mêmes dégâts, tirs résolus par l'autorité de la partie. Ils sont marqués [BOT].
 - Les parties privées entre amis fonctionnent comme avant (pas de bots).
 
 ## Version 2.7 (téléphones et tablettes)
