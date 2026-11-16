@@ -44,6 +44,7 @@ ALLOWED_ORIGINS = "https://warbound.netlify.app,https://warbound.pages.dev,http:
 MAX_ROOMS_PER_DAY = "1500"
 MAX_JOINS_PER_DAY = "12000"
 MAX_ROOMS_PER_IP_PER_HOUR = "10"
+MAX_ACCOUNTS_PER_IP_PER_HOUR = "5"
 # Paiements : désactivés tant que les secrets STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET ne sont pas définis
 # (`npx wrangler secret put STRIPE_SECRET_KEY`). Utiliser d'abord les clés de MODE TEST (sk_test_...).
 # Adresse du jeu, pour les retours après paiement :

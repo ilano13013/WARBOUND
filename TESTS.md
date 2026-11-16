@@ -1,5 +1,11 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.9 (classes et progression multijoueur)
+
+`tests/classes.mjs` : 11/11 — au niveau 1, Vektor-556 et viseur reflex verrouillés et AR-17 disponible ; XP ajoutée au compte (niveau 10) ; éléments de niveau supérieur toujours verrouillés ; classe personnalisée (Vektor-556, viseur reflex, compensateur, poignée verticale, Revolver Ash) enregistrée sur le compte ; retrouvée avec le niveau et la sélection après rechargement ; en partie, arme principale avec ses accessoires et arme secondaire ; passage à l'arme secondaire ; nouvelle classe appliquée à la réapparition ; XP de fin de partie affichée et enregistrée sur le serveur ; aucune erreur. Non-régression : partie privée 23/23, parties publiques avec bots 15/15, matchmaking 8/8, comptes et paiements 26/26, salons 17/17.
+
+Problèmes trouvés : (1) le matchmaking pouvait envoyer un joueur dans une salle publique dont tous les joueurs s'étaient déconnectés — une salle vide est maintenant retirée du matchmaking ; (2) la limite anti-abus de création de comptes (5 par heure et par adresse) bloquait les séries de tests locales : elle devient réglable (`MAX_ACCOUNTS_PER_IP_PER_HOUR`, 5 en production).
+
 ## Version 2.8 (matchmaking public et bots)
 
 - `server/test/quickplay.test.mjs` : 8/8 — partie rapide 1v1 crée une salle publique avec compte à rebours (15 s), le deuxième joueur rejoint la même salle, salle pleine : lancement en 3 s, lancement automatique sans statut prêt, partie en cours : nouveau joueur dirigé ailleurs, joueur seul en 4v4 : lancement au bout de 20 s, retour en attente avec nouveau compte à rebours après la partie.

@@ -58,6 +58,10 @@ let schemaReady = false;
 export async function ensureSchema(env: AccountEnv): Promise<void> {
   if (schemaReady || !env.DB) return;
   await env.DB.batch(SCHEMA.map((q) => env.DB.prepare(q)));
+  // colonnes ajoutées après coup (sans effet si elles existent déjà)
+  for (const q of ['ALTER TABLE players ADD COLUMN mp_xp INTEGER NOT NULL DEFAULT 0', 'ALTER TABLE players ADD COLUMN mp_classes TEXT']) {
+    try { await env.DB.prepare(q).run(); } catch { /* colonne déjà présente */ }
+  }
   schemaReady = true;
 }
 
@@ -107,7 +111,10 @@ export async function handleAccounts(req: Request, env: AccountEnv, url: URL, js
     const ent = await env.DB.prepare('SELECT item_id, revoked FROM entitlements WHERE player_id = ?').bind(me.id).all<{ item_id: string; revoked: number }>();
     const pur = await env.DB.prepare('SELECT id, sku, amount_cents, currency, status, livemode, created_at FROM purchases WHERE player_id = ? ORDER BY created_at DESC').bind(me.id).all();
     const cos = await verifiedCosmetics(env, me.id);
-    return json({ id: me.id, name: me.name, owned: (ent.results || []).filter((e) => !e.revoked).map((e) => e.item_id), revoked: (ent.results || []).filter((e) => e.revoked).map((e) => e.item_id), equipped: cos.equipped, badge: cos.badge, purchases: pur.results || [] });
+    const mp = await env.DB.prepare('SELECT mp_xp, mp_classes FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number; mp_classes: string | null }>();
+    let classes: unknown = [];
+    try { classes = mp?.mp_classes ? JSON.parse(mp.mp_classes) : []; } catch { classes = []; }
+    return json({ mp: { xp: mp?.mp_xp || 0, classes }, id: me.id, name: me.name, owned: (ent.results || []).filter((e) => !e.revoked).map((e) => e.item_id), revoked: (ent.results || []).filter((e) => e.revoked).map((e) => e.item_id), equipped: cos.equipped, badge: cos.badge, purchases: pur.results || [] });
   }
 
   if (p === '/api/me/equip' && req.method === 'POST') {
@@ -121,6 +128,26 @@ export async function handleAccounts(req: Request, env: AccountEnv, url: URL, js
     const own = await env.DB.prepare('SELECT 1 FROM entitlements WHERE player_id = ? AND item_id = ? AND revoked = 0').bind(me.id, item).first();
     if (!own) return json({ error: 'Objet non possédé.' }, 403);
     await env.DB.prepare('INSERT INTO equipped (player_id, slot, item_id) VALUES (?, ?, ?) ON CONFLICT(player_id, slot) DO UPDATE SET item_id = excluded.item_id').bind(me.id, slot, item).run();
+    return json({ ok: true });
+  }
+
+  // progression multijoueur : XP gagnée en fin de partie (plafonnée par appel) et classes personnalisées
+  if (p === '/api/me/mp/xp' && req.method === 'POST') {
+    let body: { xp?: number } = {};
+    try { body = await req.json(); } catch { /* */ }
+    const xp = Math.floor(Number(body.xp));
+    if (!Number.isFinite(xp) || xp <= 0 || xp > 6000) return json({ error: 'XP invalide.' }, 400);
+    await env.DB.prepare('UPDATE players SET mp_xp = mp_xp + ? WHERE id = ?').bind(xp, me.id).run();
+    const r = await env.DB.prepare('SELECT mp_xp FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number }>();
+    return json({ xp: r?.mp_xp || 0 });
+  }
+  if (p === '/api/me/mp/classes' && req.method === 'POST') {
+    const raw = await req.text();
+    if (raw.length > 4000) return json({ error: 'Classes trop volumineuses.' }, 400);
+    let body: { classes?: unknown } = {};
+    try { body = JSON.parse(raw); } catch { return json({ error: 'Corps illisible.' }, 400); }
+    if (!Array.isArray(body.classes) || body.classes.length > 5) return json({ error: 'Cinq classes au maximum.' }, 400);
+    await env.DB.prepare('UPDATE players SET mp_classes = ? WHERE id = ?').bind(JSON.stringify(body.classes), me.id).run();
     return json({ ok: true });
   }
 

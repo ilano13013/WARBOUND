@@ -29,7 +29,7 @@ export class BotBrain {
     if (!level) return;
     if (!p.alive) { this.wasAlive = false; return; }
     if (!this.wasAlive) { this.wasAlive = true; this.path = null; this.target = null; this.vy = 0; this.hasGoal = false; }
-    p.reserve = 999; // munitions de réserve illimitées pour les bots
+    for (const w of Object.values(p.wpn)) w.reserve = 999; // munitions de réserve illimitées pour les bots
     this.thinkT -= dt; this.repathT -= dt; this.fireT -= dt; this.strafeT -= dt;
     if (this.thinkT <= 0) { this.thinkT = 0.25; this.think(); }
 

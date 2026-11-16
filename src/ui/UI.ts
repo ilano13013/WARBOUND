@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { Game, ResultsData } from '../core/Game';
 import { HUD } from './HUD';
 import { CLASSES, CLASS_ORDER, type ClassId } from '../data/classes';
-import { WEAPONS, FAMILY_LABEL } from '../data/weapons';
+import { WEAPONS, FAMILY_LABEL, ATTACHMENTS } from '../data/weapons';
 import { DIFFICULTIES } from '../data/enemies';
 import { ACTIONS, defaultBinds, newProfile } from '../save/Save';
 import { bindLabel } from '../core/Input';
@@ -13,7 +13,8 @@ import { buildWeaponModel } from '../player/WeaponModels';
 import { Panels } from './Panels';
 import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
 import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
-import { LOADOUTS } from '../net/Match';
+import { Classes } from './Classes';
+import { mpLevelOf, WEAPON_UNLOCK, ATTACH_UNLOCK } from '../data/mpProgress';
 import { Shop } from './Shop';
 import { TouchControls } from './TouchControls';
 import { LEGAL, mdToHtml, type LegalDoc } from './Legal';
@@ -179,7 +180,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.8.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.9.0</span></div>`, {
       legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
@@ -254,6 +255,8 @@ export class UI {
   // ---------- boutique ----------
 
   private shop: Shop | null = null;
+  private classesInst: Classes | null = null;
+  get classes(): Classes { return (this.classesInst ??= new Classes(this)); }
   private lobbyTimer: number | null = null;
   showShop(msg = ''): void { if (!this.g.profile) return; this.shop ??= new Shop(this); void this.shop.open(msg); }
 
@@ -265,6 +268,18 @@ export class UI {
       <table class="board"><tr><th>Joueur</th><th>Élim.</th><th>Morts</th><th>Assist.</th><th>Ping</th></tr>${m.board.map(row).join('')}</table>`;
   }
 
+  private mpResults(m: NonNullable<ResultsData['mp']>): string {
+    const a = mpLevelOf(m.before), b = mpLevelOf(m.after);
+    const unlocked: string[] = [];
+    for (const [id, lv] of Object.entries(WEAPON_UNLOCK)) if (lv > a.level && lv <= b.level) unlocked.push(WEAPONS[id]?.name || id);
+    for (const [id, lv] of Object.entries(ATTACH_UNLOCK)) if (lv > a.level && lv <= b.level) unlocked.push(ATTACHMENTS[id]?.name || id);
+    const pct = b.need ? Math.round((b.into / b.need) * 100) : 100;
+    return `<div class="label">Progression multijoueur</div>
+      <div class="mp-rank"><b>${b.level > a.level ? `Niveau ${a.level} → ${b.level}` : `Niveau ${b.level}`}</b><div class="mp-bar"><i style="width:${pct}%"></i></div><span class="label">+${m.after - m.before} XP${m.saved ? '' : ' (non enregistrée : compte hors ligne)'}</span></div>
+      ${m.events.length ? `<table class="board">${m.events.map((e) => `<tr><td>${esc(e.label)}</td><td>+${e.xp}</td></tr>`).join('')}</table>` : ''}
+      ${unlocked.length ? `<div class="toast" style="animation:none;color:#ffd24a;margin:6px 0">DÉBLOQUÉ : ${unlocked.map(esc).join(' · ')}</div>` : ''}`;
+  }
+
   /** Salon en ligne : création, invitation par code ou lien, équipes, prêt, lancement par l'hôte. */
   showLobby(joinCode = ''): void {
     const g = this.g, mt = g.match;
@@ -274,13 +289,16 @@ export class UI {
         <div class="panel-foot"><button class="btn primary" data-a="duel">Défi d’armes par codes</button><button class="btn" data-a="back">Retour</button></div></div>`, { duel: () => this.showDuel(), back: () => this.showMenu() });
       return;
     }
-    let loadout = 0;
-    try { loadout = Math.max(0, Math.min(LOADOUTS.length - 1, Number(localStorage.getItem('wb-loadout')) || 0)); } catch { /* */ }
-    mt.loadout = loadout;
+    const cl = this.classes;
+    mt.cls = cl.selected();
+    // compte en ligne (rang, classes) : chargé en arrière-plan puis réaffiché
+    if (g.account.online && !g.account.me) void g.account.ensure(g.profile!.name).then(() => { mt.cls = cl.selected(); if (this.current === 'lobby') render(); });
     let status = mt.status && mt.phase === 'idle' ? mt.status : '';
     const render = () => {
       const lb = mt.lobby, room = lb?.room;
-      const body = room && lb ? this.roomHtml(room, lb, mt.loadout) : `
+      const body = room && lb ? this.roomHtml(room, lb) : `
+        ${cl.rankHtml()}
+        <div class="row" style="gap:8px;margin:4px 0 10px"><button class="btn" data-a="classes">Créer une classe</button></div>
         <div class="label">Partie rapide — publique</div>
         <div class="row" style="gap:8px;flex-wrap:wrap">${(Object.keys(MODES) as ModeId[]).map((id) => `<button class="btn ${id === 'tdm' ? 'primary' : ''}" data-a="quick" data-v="${id}">${MODES[id].name}</button>`).join('')}</div>
         <p class="label" style="text-transform:none;letter-spacing:.03em">Vous rejoignez une partie ouverte ou en créez une. Elle démarre automatiquement ; les places libres sont prises par des bots de niveau vétéran.</p>
@@ -326,7 +344,8 @@ export class UI {
       swap: (v) => { const p = mt.lobby?.room?.players.find((x) => x.id === v); if (p && mt.lobby?.isHost) mt.lobby.send({ t: 'team', id: v, team: p.team === 'red' ? 'blue' : 'red' }); },
       mode: (v) => { if (mt.lobby?.isHost) mt.lobby.send({ t: 'config', mode: v as ModeId, map: 'chantier' }); },
       start: () => mt.lobby?.send({ t: 'start' }),
-      loadout: (v) => { mt.loadout = Number(v) || 0; try { localStorage.setItem('wb-loadout', String(mt.loadout)); } catch { /* */ } render(); },
+      pickclass: (v) => { if (cl.select(v)) render(); },
+      classes: () => cl.showEditor(() => this.showLobby()),
     };
     if (mt.lobby) attach(mt.lobby);
     render();
@@ -340,7 +359,7 @@ export class UI {
     if (joinCode && !mt.lobby) void connect(joinCode);
   }
 
-  private roomHtml(room: RoomView, lb: LobbyClient, loadout: number): string {
+  private roomHtml(room: RoomView, lb: LobbyClient): string {
     const me = room.players.find((p) => p.id === lb.you), host = lb.isHost, def = MODES[room.mode];
     const pl = (p: RoomView['players'][number]) => `<div class="lobby-player ${p.connected ? '' : 'off'}" ${host && def.teams && room.phase === 'lobby' ? `data-a="swap" data-v="${p.id}" title="Changer d’équipe"` : ''}>
       <span>${p.host ? '★ ' : ''}${esc(p.name)}${p.badge ? ` <em class="badge">${esc(p.badge)}</em>` : ''}${p.id === lb.you ? ' <span class="label">(vous)</span>' : ''}</span>
@@ -355,7 +374,7 @@ export class UI {
       <div class="kv"><span>Carte</span><span>Chantier de Valmorre</span></div>
       <div class="label">Joueurs (${room.players.length} / ${room.max})${host && def.teams ? ' — cliquez sur un joueur pour changer son équipe' : ''}</div>
       ${teams}
-      ${room.mode !== 'duel' ? `<div class="label">Votre arme (identique pour tous les joueurs qui la choisissent, sans bonus)</div><div class="row" style="flex-wrap:wrap;gap:6px">${LOADOUTS.map((l, i) => `<button class="btn small ${i === loadout ? 'primary' : ''}" data-a="loadout" data-v="${i}">${l.label}</button>`).join('')}</div>` : '<p class="label" style="text-transform:none;letter-spacing:.03em">1v1 aux fusils de précision : 6 étapes, une élimination pour passer à la suivante.</p>'}
+      ${room.mode !== 'duel' ? `${this.classes.rankHtml()}<div class="label">Votre classe</div>${this.classes.pickerHtml()}<div class="row" style="margin-top:6px"><button class="btn small" data-a="classes">Créer une classe</button></div>` : '<p class="label" style="text-transform:none;letter-spacing:.03em">1v1 aux fusils de précision : 6 étapes, une élimination pour passer à la suivante.</p>'}
       <div class="row" style="gap:8px;margin-top:8px">
         ${room.pub ? '' : room.phase === 'playing' ? '<span class="label">Partie en cours…</span>' : host
           ? `<button class="btn primary" data-a="start">Lancer la partie</button>${def.teams ? '<button class="btn" data-a="balance">Équilibrer les équipes</button>' : ''}`
@@ -418,12 +437,13 @@ export class UI {
     this.show('pause', 'overlay', `<div class="panel narrow"><div class="panel-head"><h2>Pause</h2><span class="sub">${esc(g.mission?.name || '')}</span></div>
       <div class="panel-body"><div class="col" style="width:240px">
         <button class="btn primary" data-a="resume">Reprendre</button>
-        <button class="btn" data-a="char">Personnage</button>
+        ${g.match.active && g.match.mode !== 'duel' ? '<button class="btn" data-a="chclass">Changer de classe</button>' : '<button class="btn" data-a="char">Personnage</button>'}
         <button class="btn" data-a="settings">Paramètres</button>
         ${hub ? '<button class="btn" data-a="menu">Menu principal</button>' : g.match.active ? '<button class="btn danger" data-a="abandon">Quitter la partie</button>' : g.duel.active ? '<button class="btn danger" data-a="abandon">Abandonner le duel</button>' : '<button class="btn danger" data-a="abandon">Abandonner — retour au QG</button>'}
       </div><div class="col grow"><div class="label">Commandes</div>${keys}<div class="kv"><span>Tir / Visée</span><span>Clic gauche / droit</span></div></div></div></div>`, {
       resume: () => this.resume(),
       char: () => this.panels.character(),
+      chclass: () => this.classes.showPicker(() => this.showPause()),
       settings: () => this.showSettings(() => this.showPause()),
       menu: () => { g.save(); this.closeAll(); g.toMenu(); },
       abandon: () => g.match.active ? this.confirm('Quitter la partie ?', g.match.isHost ? 'Vous êtes l’hôte : la partie s’arrêtera pour tous les joueurs.' : 'Votre équipe jouera en infériorité numérique.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : g.duel.active ? this.confirm('Abandonner le duel ?', 'Votre adversaire remporte la partie.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()) : this.confirm('Abandonner la mission ?', 'L’expérience gagnée est conservée, mais le butin de mission sera perdu.', () => { this.closeAll(); g.abandon(); }, () => this.showPause()),
@@ -448,6 +468,7 @@ export class UI {
       <div class="panel-body col scroll">
         <div class="results-grid">${st(fmtTime(d.time), 'Temps')}${st(String(d.kills), 'Éliminations')}${st(Math.round(d.accuracy * 100) + ' %', 'Précision')}${st(String(d.headshots), 'Tirs à la tête')}${st(String(d.deaths), 'Morts')}</div>
         ${d.duel ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(`${d.duel.me} / ${d.duel.total}`, 'Votre arme atteinte')}${st(`${d.duel.opp} / ${d.duel.total}`, esc(d.duel.oppName))}${st(d.victory ? 'GAGNÉ' : 'PERDU', 'Défi d’armes')}</div>` : ''}
+        ${d.mp ? this.mpResults(d.mp) : ''}
         ${d.match ? this.matchBoard(d.match) : ''}
         ${d.mode === 'survival' ? `<div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st(String(d.wave), 'Vague atteinte')}${st(String(d.score), 'Score')}${st(d.record ? 'NOUVEAU RECORD' : String(g.profile!.survival.bestScore), d.record ? 'Record personnel' : 'Meilleur score')}</div>` : ''}
         <div class="results-grid" style="grid-template-columns:repeat(3,1fr)">${st('+' + Math.round(d.xp) + ' XP', 'Expérience gagnée')}${st('Niveau ' + d.levelAfter, CLASSES[g.profile!.classId].name)}${st('+' + d.materials, 'Éclats de faille')}</div>

@@ -16,6 +16,7 @@ export class MatchHUD {
   private root: HTMLElement;
   private bar: HTMLElement; private zonesEl: HTMLElement; private feedEl: HTMLElement; private board: HTMLElement; private tags: HTMLElement;
   private cache = '';
+  private deadHint: HTMLElement;
   private zoneMeshes: { z: Zone; ring: THREE.Mesh; fill: THREE.Mesh; group: THREE.Group }[] = [];
   private zoneLevel: unknown = null;
 
@@ -26,6 +27,7 @@ export class MatchHUD {
     this.feedEl = el('div', '', this.root, 'kfeed');
     this.tags = el('div', '', this.root, 'mtags');
     this.board = el('div', 'hidden', this.root, 'sboard');
+    this.deadHint = el('div', 'hidden', this.root, 'mdead');
   }
 
   update(): void {
@@ -50,6 +52,9 @@ export class MatchHUD {
       const pct = Math.round((z.owner && !z.cap ? 1 : z.prog) * 100);
       return `<span class="mz${z.contested ? ' cont' : ''}" style="border-color:${col};background:linear-gradient(0deg,${capCol}66 ${pct}%,transparent ${pct}%)">${z.id}</span>`;
     }).join('');
+    const dead = g.player.dead && mt.mode !== 'duel';
+    this.deadHint.classList.toggle('hidden', !dead);
+    if (dead) { const t = `Classe : ${mt.cls.name} — ${g.input.touch ? 'bouton II' : 'Échap'} → « Changer de classe » pour la prochaine apparition`; if (this.deadHint.textContent !== t) this.deadHint.textContent = t; }
     const feed = mt.feed.map((f) => `<div class="${f.mine ? 'mine' : ''}">${esc(f.text)}</div>`).join('');
     const key = bar + zones + feed;
     if (key !== this.cache) { this.cache = key; this.bar.innerHTML = bar; this.zonesEl.innerHTML = zones; this.feedEl.innerHTML = feed; }

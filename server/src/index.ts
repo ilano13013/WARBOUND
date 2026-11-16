@@ -21,6 +21,7 @@ export interface Env {
   MAX_ROOMS_PER_DAY: string;
   MAX_JOINS_PER_DAY: string;
   MAX_ROOMS_PER_IP_PER_HOUR: string;
+  MAX_ACCOUNTS_PER_IP_PER_HOUR?: string;
   DB: D1Database;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
@@ -57,7 +58,7 @@ export default {
       const isWebhook = url.pathname === '/api/stripe/webhook';
       if (!isWebhook && req.method !== 'GET' && !allowed) return json({ error: 'Origine non autorisée.' }, 403, h);
       if (url.pathname === '/api/account' && req.method === 'POST') {
-        const v = await guard(env).allowAccount(ip, 5);
+        const v = await guard(env).allowAccount(ip, Number(env.MAX_ACCOUNTS_PER_IP_PER_HOUR || 5));
         if (!v.ok) return json({ error: v.reason }, 429, h);
       }
       const r = await handleAccounts(req, env, url, (d, s = 200) => json(d, s, isWebhook ? {} : h));

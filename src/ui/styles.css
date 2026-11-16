@@ -493,3 +493,12 @@ body.touch #radio { bottom: auto; top: 74px; width: min(520px, 60vw); font-size:
 .tc-btn.tc-icon.cd .ico { opacity: 0.45; }
 .tc-gren.tc-icon .cdt { inset: auto -4px -4px auto; width: 18px; height: 18px; border-radius: 50%; background: #1a1d24; border: 1px solid #b8c890; font-size: 11px; }
 .tc-ult.tc-icon .cdt { font-size: 12px; }
+
+/* rang multijoueur et classes */
+.mp-rank { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.mp-rank b { color: #ffd24a; white-space: nowrap; }
+.mp-bar { flex: 1; min-width: 80px; height: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(201, 169, 106, 0.25); }
+.mp-bar i { display: block; height: 100%; background: linear-gradient(90deg, #a07a3a, #ffd24a); }
+.class-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.panel-head .mp-rank { min-width: 220px; margin-right: 12px; }
+#mdead { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); background: rgba(5, 7, 11, 0.75); padding: 6px 14px; font-size: 13px; color: #9ad8ff; white-space: nowrap; }

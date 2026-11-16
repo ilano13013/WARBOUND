@@ -20,6 +20,7 @@ import { makeWeaponItem } from '../rpg/items';
 import { weaponStats, type WStats } from '../rpg/Stats';
 import { DUEL_SPAWNS, TEAM_SPAWNS, DOM_ZONES } from '../levels/duel';
 import { outfitMats } from '../render/Cosmetics';
+import { PRESET_CLASSES, sanitizeClass, MP_XP, type ClassDef } from '../data/mpProgress';
 import { BotBrain } from './Bots';
 import { MODES } from './lobbyProtocol';
 
@@ -30,14 +31,14 @@ export const RULES: Record<ModeId, Rules> = {
   tdm: { score: 75, time: 600, respawn: 3 },
   dom: { score: 200, time: 720, respawn: 5 },
 };
-/** Armes au choix en 4v4 : statistiques de base, sans talent ni bonus (identiques pour tous). */
-export const LOADOUTS: LadderStep[] = [
-  { base: 'ar17', attach: {}, label: 'AR-17 Phantom' },
-  { base: 'vesper', attach: {}, label: 'Vesper-9' },
-  { base: 'titan', attach: {}, label: 'Titan-46' },
-  { base: 'requiem', attach: {}, label: 'Requiem DMR' },
-  { base: 'frostbite', attach: {}, label: 'Frostbite .50' },
-];
+/** Équipement d'une classe : arme principale (avec accessoires) puis arme secondaire. Statistiques de base pour tous. */
+export function classKit(c: ClassDef): LadderStep[] {
+  return [
+    { base: c.primary, attach: { ...c.pAttach } as Record<string, string>, label: WEAPONS[c.primary]?.name || c.primary },
+    { base: c.secondary, attach: {}, label: WEAPONS[c.secondary]?.name || c.secondary },
+  ];
+}
+interface WeaponSlot { st: WStats; ammo: number; reserve: number; reloadT: number }
 
 const SNAP_HZ = 20, INPUT_HZ = 20;
 const MAX_SPEED = 9.5;            // m/s (sprint tactique 8,2 + marge)
@@ -49,10 +50,14 @@ const ZONE_POINT_EVERY = 5;       // s entre deux points par zone tenue
 const EYE = 1.62;
 
 export interface MP {
-  idx: number; id: string; name: string; team: TeamId | null; loadout: number;
+  idx: number; id: string; name: string; team: TeamId | null;
+  /** Classe jouée et classe choisie pour la prochaine apparition. */
+  cls: ClassDef; pendingCls: ClassDef | null;
+  /** Équipement en cours (arme principale en tête) et état de chaque arme chez l'hôte. */
+  kit: LadderStep[]; wpn: Record<string, WeaponSlot>; lastW: string;
   x: number; y: number; z: number; yaw: number; pitch: number; speed: number; height: number; ads: boolean; crouch: boolean;
   hp: number; alive: boolean; invT: number; respawnT: number; lastIn: number; hist: { t: number; x: number; y: number; z: number; h: number }[];
-  step: LadderStep; st: WStats | null; ammo: number; reserve: number; reloadT: number; lastFire: number; firingT: number;
+  step: LadderStep; st: WStats | null; lastFire: number; firingT: number;
   k: number; d: number; a: number; rung: number; ping: number; dmgBy: Map<number, { dmg: number; t: number }>;
   peer: Peer | null; hello: boolean; connected: boolean; rival: Rival | null; corrT: number;
   /** Cosmétiques équipés, vérifiés par le serveur de salons (lus dans la vue du salon, jamais dans un message de joueur). */
@@ -81,8 +86,9 @@ export class Match {
   feed: FeedLine[] = [];
   loaded = false;
   result: { title: string; sub: string; victory: boolean | null } | null = null;
-  /** Arme choisie localement pour le 4v4 (indice dans LOADOUTS). */
-  loadout = 0;
+  /** Classe choisie localement (4v4) et XP multijoueur gagnée dans la partie en cours. */
+  cls: ClassDef = PRESET_CLASSES[0];
+  xpEvents: { label: string; xp: number }[] = [];
   onStatus: () => void = () => {};
   /** Tests automatisés uniquement : règles raccourcies (score, durée). */
   testRules: Partial<Rules> | null = null;
@@ -119,7 +125,7 @@ export class Match {
     this.role = hostId === lobby.you ? 'host' : 'client';
     this.players = room.players.filter((p) => p.connected).map((p, i) => this.newPlayer(i, p.id, p.name, p.team as TeamId | null));
     this.me = this.players.findIndex((p) => p.id === lobby.you);
-    this.mine!.loadout = this.loadout;
+    this.mine!.cls = this.cls;
     this.phase = 'connecting';
     lobby.onSignal = (from, data) => void this.onSignal(from, data);
     if (this.isHost) {
@@ -132,8 +138,8 @@ export class Match {
   }
 
   private newPlayer(idx: number, id: string, name: string, team: TeamId | null): MP {
-    return { idx, id, name, team, loadout: 0, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, speed: 0, height: 1.8, ads: false, crouch: false,
-      hp: 100, alive: false, invT: 0, respawnT: 0, lastIn: 0, hist: [], step: LOADOUTS[0], st: null, ammo: 0, reserve: 0, reloadT: 0, lastFire: 0, firingT: 0,
+    return { idx, id, name, team, cls: PRESET_CLASSES[0], pendingCls: null, kit: [], wpn: {}, lastW: '', x: 0, y: 0, z: 0, yaw: 0, pitch: 0, speed: 0, height: 1.8, ads: false, crouch: false,
+      hp: 100, alive: false, invT: 0, respawnT: 0, lastIn: 0, hist: [], step: LADDER[0], st: null, lastFire: 0, firingT: 0,
       k: 0, d: 0, a: 0, rung: 0, ping: 0, dmgBy: new Map(), peer: null, hello: false, connected: false, rival: null, corrT: 0, cos: this.cosOf(id), bot: false };
   }
 
@@ -157,7 +163,7 @@ export class Match {
       this.hostPeer?.close();
       const peer = new Peer('guest', !this.g.testMode);
       this.hostPeer = peer;
-      peer.onOpen = () => { this.setStatus('Connecté à l’hôte. Chargement…'); peer.send({ t: 'hello', loadout: this.loadout }); };
+      peer.onOpen = () => { this.setStatus('Connecté à l’hôte. Chargement…'); peer.send({ t: 'hello', cls: this.cls }); };
       peer.onMessage = (m) => this.clientMsg(m);
       peer.onBinary = (b) => this.clientBinary(b);
       peer.onClose = () => { if (this.phase === 'playing' || this.phase === 'connecting') this.finishLocal(null, 'L’hôte a quitté la partie.'); };
@@ -175,7 +181,7 @@ export class Match {
     this.t0 = this.now();
     this.endsAt = this.rules.time ? this.t0 + this.rules.time * 1000 : 0;
     if (this.mode === 'dom') this.zones = DOM_ZONES.map((z) => ({ id: z.id, pos: z.pos.clone(), r: z.r, owner: null, prog: 0, cap: null, contested: false, pointT: 0 }));
-    for (const p of this.players) if (p.connected || p.idx === this.me) { this.giveWeapon(p, this.mode === 'duel' ? LADDER[0] : LOADOUTS[p.loadout] || LOADOUTS[0]); this.respawn(p, true); }
+    for (const p of this.players) if (p.connected || p.idx === this.me) { this.giveKit(p, this.mode === 'duel' ? [LADDER[0]] : classKit(p.cls)); this.respawn(p, true); }
     for (const p of this.players) if (p.peer && p.hello) p.peer.send(this.initMsg(p.idx));
     this.phase = 'playing';
     this.g.startMatch();
@@ -191,7 +197,7 @@ export class Match {
       const red = active().filter((p) => p.team === 'red').length, blue = active().filter((p) => p.team === 'blue').length;
       const p = this.newPlayer(this.players.length, `bot-${i}`, `${names[i % names.length]} [BOT]`, teams ? (red <= blue ? 'red' : 'blue') : null);
       p.bot = true; p.connected = true; p.hello = true;
-      p.loadout = Math.floor(Math.random() * LOADOUTS.length);
+      p.cls = PRESET_CLASSES[Math.floor(Math.random() * PRESET_CLASSES.length)];
       p.brain = new BotBrain(this, p);
       this.players.push(p);
       i++;
@@ -209,7 +215,7 @@ export class Match {
     p.godMode = true; // les dégâts du joueur local ne viennent que de l'hôte
     for (const mp of this.players) if (mp.idx !== this.me && (mp.connected || !this.isHost)) this.makeRival(mp);
     const me = this.mine!;
-    this.applyWeapon(me.step);
+    this.applyKit(me.kit.length ? me.kit : [me.step]);
     if (me.alive) this.placeLocal(me); else { p.dead = true; g.state = 'dead'; }
     this.ticker.start(1000 / SNAP_HZ);
   }
@@ -255,7 +261,7 @@ export class Match {
       if (!p.connected && p.idx !== this.me) continue;
       if (p.invT > 0) p.invT -= dt;
       if (p.firingT > 0) p.firingT -= dt;
-      if (p.reloadT > 0) { p.reloadT -= dt; if (p.reloadT <= 0) this.finishReload(p); }
+      for (const w of Object.values(p.wpn)) if (w.reloadT > 0) { w.reloadT -= dt; if (w.reloadT <= 0) this.finishReload(w); }
       if (!p.alive) { p.respawnT -= dt; if (p.respawnT <= 0) this.respawn(p); }
     }
     if (this.mode === 'dom') this.domTick(dt);
@@ -295,12 +301,12 @@ export class Match {
       case 'hello':
         if (p.hello) return;
         p.hello = true;
-        p.loadout = Number.isInteger(m.loadout) && m.loadout >= 0 && m.loadout < LOADOUTS.length ? m.loadout : 0;
+        p.cls = sanitizeClass(m.cls);
         if (this.phase === 'connecting' && this.players.every((x) => x.hello || x.idx === this.me)) this.hostStart();
         else if (this.phase === 'playing') {
           // arrivée en cours de partie (reconnexion)
           p.connected = true;
-          this.giveWeapon(p, this.mode === 'duel' ? LADDER[Math.min(p.rung, LADDER.length - 1)] : LOADOUTS[p.loadout]);
+          this.giveKit(p, this.mode === 'duel' ? [LADDER[Math.min(p.rung, LADDER.length - 1)]] : classKit(p.cls));
           p.peer!.send(this.initMsg(p.idx));
           this.respawn(p, true);
           if (this.loaded) this.makeRival(p);
@@ -308,7 +314,8 @@ export class Match {
         }
         return;
       case 'fire': this.hostFire(p, m); return;
-      case 'reload': this.startReload(p); return;
+      case 'reload': this.startReload(p, String(m.w || p.lastW)); return;
+      case 'setclass': if (this.mode !== 'duel') p.pendingCls = sanitizeClass(m.cls); return;
       case 'po': if (Number.isFinite(m.s)) p.ping = p.ping ? p.ping * 0.7 + (this.now() - m.s) * 0.3 : this.now() - m.s; return;
       case 'quit': this.hostLost(p); return;
     }
@@ -335,22 +342,26 @@ export class Match {
     while (p.hist.length && now - p.hist[0].t > 1000) p.hist.shift();
   }
 
-  private giveWeapon(p: MP, step: LadderStep): void {
-    p.step = step;
-    const item = makeWeaponItem(step.base, 'common', 1);
-    item.attach = { ...step.attach } as typeof item.attach;
-    p.st = weaponStats(item, {}, 'arcanist');
-    p.ammo = p.st.mag; p.reserve = p.st.mag * 5; p.reloadT = 0;
+  /** Équipe un joueur (chez l'hôte) : une arme par entrée, munitions pleines. */
+  private giveKit(p: MP, kit: LadderStep[]): void {
+    p.kit = kit; p.step = kit[0]; p.wpn = {};
+    for (const s of kit) {
+      const item = makeWeaponItem(s.base, 'common', 1);
+      item.attach = { ...s.attach } as typeof item.attach;
+      const st = weaponStats(item, {}, 'arcanist');
+      p.wpn[s.base] = { st, ammo: st.mag, reserve: st.mag * 5, reloadT: 0 };
+    }
+    p.st = p.wpn[kit[0].base].st; p.lastW = kit[0].base;
   }
 
-  private startReload(p: MP): void {
-    if (!p.st || p.reloadT > 0 || p.ammo >= p.st.mag || p.reserve <= 0 || !p.alive) return;
-    p.reloadT = p.st.reload * 0.9; // marge : l'horloge du client et celle de l'hôte ne sont pas alignées
+  private startReload(p: MP, w: string): void {
+    const s = p.wpn[w];
+    if (!s || s.reloadT > 0 || s.ammo >= s.st.mag || s.reserve <= 0 || !p.alive) return;
+    s.reloadT = s.st.reload * 0.9; // marge : l'horloge du client et celle de l'hôte ne sont pas alignées
   }
-  private finishReload(p: MP): void {
-    if (!p.st) return;
-    const take = Math.min(p.st.mag - p.ammo, p.reserve);
-    p.ammo += take; p.reserve -= take;
+  private finishReload(s: WeaponSlot): void {
+    const take = Math.min(s.st.mag - s.ammo, s.reserve);
+    s.ammo += take; s.reserve -= take;
   }
 
   /** Position d'un joueur à un instant passé (interpolation dans l'historique). */
@@ -369,18 +380,19 @@ export class Match {
 
   /** Tir : validé et résolu par l'hôte. */
   hostFire(p: MP, m: any): void {
-    const st = p.st, now = this.now();
-    if (!st || !p.alive || m.w !== p.step.base) return;
+    const ws = p.wpn[String(m.w)], now = this.now();
+    if (!ws || !p.alive) return;
+    const st = ws.st;
     if (![m.ox, m.oy, m.oz, m.dx, m.dy, m.dz].every(Number.isFinite)) return;
     const minGap = (60 / st.rpm) * 1000 * 0.85;
     if (now - p.lastFire < minGap) return;                         // cadence impossible
-    if (p.reloadT > 0 || p.ammo <= 0) { p.peer?.send({ t: 'ammo', a: p.ammo, r: p.reserve }); return; }
+    if (ws.reloadT > 0 || ws.ammo <= 0) { p.peer?.send({ t: 'ammo', a: ws.ammo, r: ws.reserve }); return; }
     _o.set(m.ox, m.oy, m.oz);
     if (_o.distanceTo(_a.set(p.x, p.y + p.height * 0.9, p.z)) > 2.2) return; // tir depuis une position qui n'est pas la sienne
     _d.set(m.dx, m.dy, m.dz).normalize();
-    p.lastFire = now; p.ammo--; p.firingT = 0.4;
+    p.lastFire = now; ws.ammo--; p.firingT = 0.4; p.lastW = String(m.w);
     p.invT = 0; // tirer annule la protection d'apparition
-    if (p.ammo === 0 && p.reserve > 0) this.startReload(p);
+    if (ws.ammo === 0 && ws.reserve > 0) this.startReload(p, p.lastW);
     // résolution sur les positions passées : latence du tireur, bornée
     const rewind = p.idx === this.me ? 0 : Math.min(REWIND_MAX, p.ping / 2000 + 0.1);
     const wall = this.g.level?.world.raycast(_o, _d, 300, 'shoot');
@@ -395,7 +407,7 @@ export class Match {
       if (tb !== null && tb < bestT - 0.02) { bestT = tb; best = v; head = false; }
     }
     const end = _a.copy(_o).addScaledVector(_d, Math.min(bestT, 120));
-    const shot = { t: 'shot', i: p.idx, ex: +end.x.toFixed(2), ey: +end.y.toFixed(2), ez: +end.z.toFixed(2), sil: st.silent ? 1 : 0, w: p.step.base };
+    const shot = { t: 'shot', i: p.idx, ex: +end.x.toFixed(2), ey: +end.y.toFixed(2), ez: +end.z.toFixed(2), sil: st.silent ? 1 : 0, w: p.lastW };
     for (const q of this.players) if (q !== p && q.peer && q.hello) q.peer.send(shot);
     if (p.idx !== this.me) this.clientMsg(shot, true);
     if (!best) return;
@@ -414,7 +426,7 @@ export class Match {
 
   private toPlayer(p: MP, m: any): void { if (p.idx === this.me) this.clientMsg(m, true); else p.peer?.send(m); }
 
-  private kill(v: MP, k: MP | null, head: boolean): void {
+  kill(v: MP, k: MP | null, head: boolean): void {
     const now = this.now();
     v.alive = false; v.hp = 0; v.d++; v.respawnT = this.rules.respawn;
     let assist = -1;
@@ -424,13 +436,13 @@ export class Match {
       for (const [idx, e] of v.dmgBy) if (idx !== k.idx && now - e.t < 10_000 && e.dmg >= 20) { const a = this.players[idx]; if (a) { a.a++; assist = idx; } }
     }
     v.dmgBy.clear();
-    this.emit({ t: 'kill', k: k ? k.idx : -1, v: v.idx, w: k ? k.step.base : '', h: head ? 1 : 0, a: assist });
+    this.emit({ t: 'kill', k: k ? k.idx : -1, v: v.idx, w: k ? k.lastW : '', h: head ? 1 : 0, a: assist });
     if (!k || k === v) return;
     if (this.mode === 'duel') {
       if (k.rung >= LADDER.length - 1) { this.hostEnd('score', k); return; }
       k.rung++;
-      this.giveWeapon(k, LADDER[k.rung]);
-      this.toPlayer(k, { t: 'weapon', step: k.step, rung: k.rung });
+      this.giveKit(k, [LADDER[k.rung]]);
+      this.toPlayer(k, { t: 'weapon', step: k.step, kit: k.kit, rung: k.rung });
     } else if (this.mode === 'tdm' && k.team && this.teamScore[k.team] >= this.rules.score) this.hostEnd('score');
   }
 
@@ -446,8 +458,10 @@ export class Match {
     }
     p.x = best.pos.x; p.y = best.pos.y; p.z = best.pos.z; p.yaw = best.yaw; p.pitch = 0;
     p.hp = 100; p.alive = true; p.invT = SPAWN_PROTECT; p.hist = []; p.lastIn = this.now();
-    if (p.st) { p.ammo = p.st.mag; p.reserve = p.st.mag * 5; p.reloadT = 0; }
-    if (this.phase === 'playing') this.emit({ t: 'spawn', i: p.idx, x: p.x, y: p.y, z: p.z, yaw: p.yaw, step: p.step });
+    // nouvelle classe choisie pendant la mort : appliquée à cette apparition
+    if (p.pendingCls && this.mode !== 'duel') { p.cls = p.pendingCls; p.pendingCls = null; this.giveKit(p, classKit(p.cls)); }
+    for (const w of Object.values(p.wpn)) { w.ammo = w.st.mag; w.reserve = w.st.mag * 5; w.reloadT = 0; }
+    if (this.phase === 'playing') this.emit({ t: 'spawn', i: p.idx, x: p.x, y: p.y, z: p.z, yaw: p.yaw, step: p.step, kit: p.kit });
   }
 
   private domTick(dt: number): void {
@@ -469,7 +483,8 @@ export class Match {
           if (z.prog >= 1) {
             const lost = z.owner;
             z.owner = team; z.prog = 1; z.cap = null; z.pointT = 0;
-            this.emit({ t: 'zcap', id: z.id, team, lost });
+            const who = this.players.filter((q) => q.alive && q.team === team && Math.hypot(q.x - z.pos.x, q.z - z.pos.z) < z.r).map((q) => q.idx);
+            this.emit({ t: 'zcap', id: z.id, team, lost, who });
           }
         }
       } else if (!z.contested && z.cap && z.owner !== z.cap) { z.prog = Math.max(0, z.prog - dt / ZONE_CAP_TIME / 2); if (z.prog === 0) z.cap = null; }
@@ -592,21 +607,23 @@ export class Match {
       case 'spawn': {
         const p = this.players[m.i];
         if (!p) return;
-        Object.assign(p, { x: m.x, y: m.y, z: m.z, yaw: m.yaw, alive: true, hp: 100, step: m.step });
+        Object.assign(p, { x: m.x, y: m.y, z: m.z, yaw: m.yaw, alive: true, hp: 100, step: m.step, kit: Array.isArray(m.kit) ? m.kit : [m.step] });
         if (!this.loaded) return;
-        if (m.i === this.me) { this.applyWeapon(m.step); this.placeLocal(p); }
+        if (m.i === this.me) { this.applyKit(p.kit); this.placeLocal(p); }
         else this.makeRival(p);
         return;
       }
       case 'weapon':
         if (m.rung !== undefined && this.mine) this.mine.rung = m.rung;
-        if (this.loaded) { this.applyWeapon(m.step); g.ui.hud.banner(m.rung === LADDER.length - 1 ? 'DERNIÈRE ARME' : `ARME ${m.rung + 1} / ${LADDER.length}`, m.step.label); g.audio.swap(); }
+        if (this.mine) this.mine.kit = Array.isArray(m.kit) ? m.kit : [m.step];
+        if (this.loaded) { this.applyKit(this.mine?.kit || [m.step]); g.ui.hud.banner(m.rung === LADDER.length - 1 ? 'DERNIÈRE ARME' : `ARME ${m.rung + 1} / ${LADDER.length}`, m.step.label); g.audio.swap(); }
         return;
       case 'zcap': {
         const z = this.zones.find((x) => x.id === m.id);
         if (z) { z.owner = m.team; z.prog = 1; z.cap = null; }
         const myTeam = this.mine?.team;
         if (m.team === myTeam) g.ui.hud.toast(`ZONE ${m.id} CAPTURÉE`, '#3aff8a');
+        if (Array.isArray(m.who) && m.who.includes(this.me)) this.addXp(`Capture ${m.id}`, MP_XP.capture);
         else if (m.lost === myTeam) g.ui.hud.toast(`ZONE ${m.id} PERDUE`, '#ff5a4a');
         else g.ui.hud.toast(`ZONE ${m.id} PRISE PAR L’ADVERSAIRE`, '#ff9a4a');
         g.audio.objective();
@@ -633,10 +650,17 @@ export class Match {
       g.audio.tone(110, 1.0, { type: 'sawtooth', to: 40, vol: 0.25, filter: 500 });
     } else {
       v.rival?.kill();
-      if (m.k === this.me) g.ui.hud.toast(`${v.name} ÉLIMINÉ`, '#3aff8a');
-      if (m.a === this.me) g.ui.hud.toast('ASSISTANCE', '#9ad8ff');
+      if (m.k === this.me) { g.ui.hud.toast(`${v.name} ÉLIMINÉ`, '#3aff8a'); this.addXp(m.h ? 'Élimination (tête)' : 'Élimination', MP_XP.kill + (m.h ? MP_XP.head : 0)); }
+      if (m.a === this.me) { g.ui.hud.toast('ASSISTANCE', '#9ad8ff'); this.addXp('Assistance', MP_XP.assist); }
     }
   }
+
+  /** XP multijoueur gagnée (envoyée au compte en fin de partie). */
+  private addXp(label: string, xp: number): void {
+    this.xpEvents.push({ label, xp });
+    if (this.loaded) this.g.ui.hud.pickup(`+${xp} ${label.toUpperCase()}`, '#ffd24a');
+  }
+  get xpTotal(): number { return this.xpEvents.reduce((a, e) => a + e.xp, 0); }
 
   private pushFeed(text: string, mine: boolean): void { this.feed.push({ text, t: this.now(), mine }); if (this.feed.length > 6) this.feed.shift(); }
 
@@ -647,6 +671,7 @@ export class Match {
     if (typeof m.w === 'number') { victory = m.w === this.me; title = victory ? 'VICTOIRE' : 'DÉFAITE'; }
     else if (m.w === 'draw') { victory = null; title = 'ÉGALITÉ'; }
     else { victory = m.w === me?.team; title = victory ? 'VICTOIRE' : 'DÉFAITE'; }
+    if (m.why !== 'forfeit' || victory) { this.addXp('Partie terminée', MP_XP.finish); if (victory) this.addXp('Victoire', MP_XP.win); else if (victory === null) this.addXp('Égalité', MP_XP.draw); }
     const sub = m.why === 'time' ? 'Temps écoulé' : m.why === 'forfeit' ? 'Les adversaires ont quitté la partie' : this.mode === 'duel' ? 'Échelle d’armes terminée' : 'Limite de score atteinte';
     this.finishLocal(victory, sub, title);
   }
@@ -666,11 +691,15 @@ export class Match {
   // Joueur local
   // =====================================================================
 
-  private applyWeapon(step: LadderStep): void {
-    const item = makeWeaponItem(step.base, 'common', 1);
-    item.attach = { ...step.attach } as typeof item.attach;
-    item.name = step.label;
-    this.g.weapons.override = [item];
+  /** Équipement du joueur local (arme principale puis secondaire). */
+  private applyKit(kit: LadderStep[]): void {
+    this.g.weapons.override = kit.map((step) => {
+      const item = makeWeaponItem(step.base, 'common', 1);
+      item.attach = { ...step.attach } as typeof item.attach;
+      item.name = step.label;
+      return item;
+    });
+    this.g.weapons.cur = 0;
     this.g.weapons.rebuild();
     for (const s of this.g.weapons.slots) s.reserve = s.st.mag * 5;
     this.g.ui.hud.weaponChanged();
@@ -702,7 +731,18 @@ export class Match {
     const m = { t: 'fire', w: weaponId, ox: +o.x.toFixed(3), oy: +o.y.toFixed(3), oz: +o.z.toFixed(3), dx: +d.x.toFixed(4), dy: +d.y.toFixed(4), dz: +d.z.toFixed(4) };
     if (this.isHost) this.hostFire(this.mine!, m); else this.hostPeer?.send(m);
   }
-  onReload(): void { if (this.isHost) this.startReload(this.mine!); else this.hostPeer?.send({ t: 'reload' }); }
+  onReload(): void {
+    const w = this.g.weapons.w?.st.def.id || '';
+    if (this.isHost) this.startReload(this.mine!, w); else this.hostPeer?.send({ t: 'reload', w });
+  }
+
+  /** Change la classe pour la prochaine apparition (4v4). */
+  setClass(c: ClassDef): void {
+    this.cls = c;
+    if (this.phase !== 'playing' || this.mode === 'duel') return;
+    if (this.isHost) this.mine!.pendingCls = c; else this.hostPeer?.send({ t: 'setclass', cls: c });
+    this.g.ui.hud.toast(`CLASSE « ${c.name.toUpperCase()} » À LA PROCHAINE APPARITION`, '#9ad8ff');
+  }
 
   /** Image par image (affichage). */
   frame(dt: number, simulated: boolean): void { if (this.predictedHit > 0) this.predictedHit -= dt; this.tick(dt, simulated); }
@@ -733,7 +773,7 @@ export class Match {
   reset(): void {
     this.closePeers();
     this.players = []; this.zones = []; this.feed = []; this.teamScore = { red: 0, blue: 0 };
-    this.loaded = false; this.result = null; this.phase = 'idle'; this.timeLeft = 0; this.seq = 0; this.tickN = 0;
+    this.loaded = false; this.result = null; this.phase = 'idle'; this.timeLeft = 0; this.seq = 0; this.tickN = 0; this.xpEvents = [];
   }
 
   /** Hôte : replace un joueur (correction de position officielle). Sert aux tests et aux sorties de carte. */

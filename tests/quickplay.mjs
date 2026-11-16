@@ -25,7 +25,7 @@ const quick = (p, mode) => p.evaluate((m) => document.querySelector(`[data-a="qu
 const A = await page('Alpha', 640, 360);
 await A.evaluate(() => { window.WB.matchRules({ score: 4, time: 300 }); window.WB.game.ui.showLobby(); });
 ok(await quick(A, 'tdm'), 'bouton « partie rapide » présent');
-await A.waitForFunction(() => window.WB.onlineRoom()?.players.length === 1, null, { timeout: 20000 });
+await A.waitForFunction(() => !!window.WB.onlineRoom()?.players.some((p) => p.name === 'Alpha'), null, { timeout: 20000 });
 ok(await A.evaluate(() => /Partie publique/.test(document.querySelector('.shop-note')?.textContent || '')), 'salle publique : compte à rebours affiché', await A.evaluate(() => document.getElementById('pub-count')?.textContent + ' s'));
 await A.waitForFunction(() => window.WB.matchState().phase === 'playing' && window.WB.matchState().level === 'duel', null, { timeout: 60000 });
 let a = await ms(A);

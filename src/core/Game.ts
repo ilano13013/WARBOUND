@@ -29,7 +29,7 @@ import { buildOp5 } from '../levels/op5';
 import { buildSurvival } from '../levels/survival';
 import { buildDuel } from '../levels/duel';
 import { Duel } from '../net/Duel';
-import { Match, LOADOUTS } from '../net/Match';
+import { Match } from '../net/Match';
 import { MODES } from '../net/lobbyProtocol';
 import { Account } from '../net/Account';
 import { Cinematics } from '../cinematic/Cinematics';
@@ -44,6 +44,7 @@ export interface ResultsData {
   wave?: number; score?: number; record?: boolean; final?: boolean;
   duel?: { me: number; opp: number; total: number; oppName: string };
   match?: { board: ReturnType<Match['scoreboard']>; teams: boolean; red: number; blue: number };
+  mp?: { before: number; after: number; events: { label: string; xp: number }[]; saved: boolean };
 }
 
 export const INVENTORY_CAP = 48;
@@ -330,7 +331,13 @@ export class Game {
     this.audio.setMusic('menu');
     this.ui.hud.setVisible(false);
     const me = mt.mine;
+    // XP multijoueur : ajoutée au compte (affichage immédiat, enregistrement en arrière-plan)
+    const before = this.account.me?.mp?.xp || 0, gained = mt.xpTotal, saved = !!this.account.me && gained > 0;
+    if (saved) void this.account.addMpXp(gained).catch(() => undefined);
+    else if (this.account.me?.mp) this.account.me.mp.xp = before;
+    if (saved && this.account.me) this.account.me.mp = { xp: before + gained, classes: this.account.me.mp?.classes || [] };
     this.ui.showResults({
+      mp: { before, after: before + gained, events: mt.xpEvents.slice(), saved: saved || gained === 0 },
       title: r.title, subtitle: r.sub, victory: r.victory !== false, mode: 'match',
       time: m.stats.time, kills: me?.k ?? 0, accuracy: m.stats.shots ? m.stats.hits / m.stats.shots : 0, deaths: me?.d ?? 0, headshots: m.stats.headshots,
       xp: m.stats.xp, items: [], materials: 0, levelBefore: this.levelStartLevel, levelAfter: p.level,

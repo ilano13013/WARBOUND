@@ -4,6 +4,13 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.9 (classes et progression multijoueur)
+
+- **Progression multijoueur** séparée du solo, enregistrée sur le compte en ligne : 30 niveaux. XP : élimination 100 (+25 à la tête), assistance 50, capture de zone 150, partie terminée 200, victoire 300, égalité 100. Écran de fin avec le détail des gains, la montée de niveau et les nouveaux déblocages.
+- **Déblocages** : armes (AR-17, Vesper-9 et Sidearm P9 au niveau 1 ; Requiem DMR 3, Spectre-PDW 5, Revolver Ash 7, Vektor-556 9, Titan-46 11, Ember-45 13, Frostbite .50 16, Aegis-762 19, Bastion-LMG 22) et accessoires (viseur reflex 2, compensateur 4, chargeur étendu 6, poignée verticale 8, ACOG 10, silencieux 12, chargeur rapide 14, poignée d'assaut 17, canon lourd 20, lunette x8 24). Les modifications arcaniques ne sont pas proposées en multijoueur.
+- **Créer une classe** (Multijoueur en ligne → Créer une classe) : 5 classes personnalisées (nom, arme principale, accessoires par emplacement, arme secondaire) avec aperçu des statistiques, en plus de 4 classes prédéfinies (Assaut, Rapproché, Précision, Soutien). Les classes suivent le compte d'un appareil à l'autre.
+- **En partie** : choix de la classe dans le salon ; changement en cours de partie par le menu pause (« Changer de classe »), appliqué à la réapparition suivante. Arme principale et secondaire (touches 1 et 2, molette ou bouton ARME au doigt). Le 1v1 aux fusils de précision garde son échelle d'armes.
+
 ## Version 2.8 (matchmaking public et bots)
 
 - **Partie rapide** (Multijoueur en ligne → Partie rapide) pour chaque mode : le serveur envoie le joueur dans la partie publique ouverte la plus remplie, ou en crée une. Pas de statut « prêt » : la partie démarre seule après 20 s (15 s en 1v1), ou 3 s après qu'elle est pleine. Après la partie, elle repart automatiquement avec les joueurs restants et les nouveaux venus. Un code et un lien permettent aussi d'y inviter des amis.
@@ -252,6 +259,7 @@ node tests/systems.mjs           # classes, talents, inventaire, sauvegarde, par
 node tests/boss.mjs              # phases des trois boss
 node tests/survival.mjs          # mode survie
 node tests/campaign.mjs          # parcours des cinq opérations (crédits après la 4)
+node tests/classes.mjs           # classes et progression multijoueur (serveur local requis)
 node tests/quickplay.mjs         # matchmaking public et bots (serveur local requis)
 node tests/mobile.mjs            # téléphone : commandes tactiles, aide à la visée, menus (émulation)
 node tests/duel.mjs              # Défi d'armes : deux navigateurs, connexion par codes, partie complète

@@ -281,7 +281,9 @@ export class Lobby extends DurableObject<LobbyEnv> {
   private async report(closed = false): Promise<void> {
     const r = this.room;
     if (!r?.pub || !this.env.MATCH) return;
-    try { await this.env.MATCH.get(this.env.MATCH.idFromName('global')).update(r.code, r.mode, closed ? -1 : this.connectedIds().size, MODES[r.mode].max, r.phase); } catch { /* matchmaking indisponible : la salle reste jouable */ }
+    const n = this.connectedIds().size;
+    // une salle sans aucun joueur connecté n'est plus proposée (elle expirera d'elle-même)
+    try { await this.env.MATCH.get(this.env.MATCH.idFromName('global')).update(r.code, r.mode, closed || n === 0 ? -1 : n, MODES[r.mode].max, r.phase); } catch { /* matchmaking indisponible : la salle reste jouable */ }
   }
 
   private async expire(): Promise<void> {
