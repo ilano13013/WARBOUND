@@ -502,3 +502,48 @@ body.touch #radio { bottom: auto; top: 74px; width: min(520px, 60vw); font-size:
 .class-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .panel-head .mp-rank { min-width: 220px; margin-right: 12px; }
 #mdead { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); background: rgba(5, 7, 11, 0.75); padding: 6px 14px; font-size: 13px; color: #9ad8ff; white-space: nowrap; }
+
+/* atelier d'arme (création de classe) */
+.panel.gunsmith { width: min(1320px, 97vw); height: min(780px, 94vh); display: flex; flex-direction: column; }
+.gs-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px 1fr 260px; gap: 12px; padding: 10px 14px; }
+.gs-classes { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.gs-stage { position: relative; min-height: 0; border: 1px solid rgba(201, 169, 106, 0.15); background: radial-gradient(ellipse at 50% 45%, rgba(70, 82, 110, 0.45), rgba(5, 7, 11, 0.95) 70%), repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px), repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px); overflow: hidden; }
+.gs-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gs-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.gs-lines line { stroke: rgba(232, 220, 192, 0.45); stroke-width: 0.25; vector-effect: non-scaling-stroke; }
+.gs-lines circle { fill: #ffd24a; }
+.gs-weapon { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
+.gs-weapon > div { cursor: pointer; text-align: center; padding: 4px 16px; background: rgba(5, 7, 11, 0.7); border: 1px solid rgba(201, 169, 106, 0.35); }
+.gs-weapon > div b { display: block; font-size: 18px; letter-spacing: 0.08em; color: #fff; }
+.gs-weapon > div span { font-size: 11px; color: var(--gold2, #e0c27a); letter-spacing: 0.1em; text-transform: uppercase; }
+.gs-arrow { width: 36px; height: 36px; font-size: 26px; line-height: 1; color: #ffd24a; background: rgba(5, 7, 11, 0.7); border: 1px solid rgba(201, 169, 106, 0.4); cursor: pointer; }
+.gs-card { position: absolute; min-width: 150px; max-width: 220px; padding: 6px 10px; cursor: pointer; background: rgba(8, 10, 14, 0.72); border-left: 3px solid rgba(201, 169, 106, 0.4); }
+.gs-card b { display: block; font-size: 13px; letter-spacing: 0.12em; color: #e8dcc0; }
+.gs-card span { font-size: 12px; color: #9aa4b4; }
+.gs-card.set { border-left-color: #ffd24a; } .gs-card.set span { color: #fff; }
+.gs-card.on, .gs-card:hover { background: rgba(201, 169, 106, 0.22); border-left-color: #ffd24a; }
+.gs-sec { left: 3%; bottom: 4%; } .gs-camo { right: 3%; top: 20%; cursor: default; }
+.gs-picker { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(5, 7, 11, 0.94); border-top: 1px solid rgba(201, 169, 106, 0.4); padding: 8px 10px 10px; }
+.gs-picker-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold2, #e0c27a); margin-bottom: 6px; }
+.gs-opts { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.gs-opt { flex: 0 0 auto; min-width: 150px; text-align: left; padding: 7px 10px; background: rgba(20, 23, 30, 0.95); border: 1px solid rgba(201, 169, 106, 0.2); color: #e8dcc0; cursor: pointer; }
+.gs-opt b { display: block; font-size: 13px; } .gs-opt span { font-size: 11px; color: #9aa4b4; }
+.gs-opt.on { border-color: #ffd24a; background: rgba(201, 169, 106, 0.18); }
+.gs-opt:disabled { opacity: 0.45; cursor: default; }
+.gs-opt em, .gs-stat u { font-style: normal; }
+em.up { color: #3aff8a; } em.down { color: #ff6a5a; }
+.gs-side { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.gs-name input { width: 100%; background: rgba(8, 10, 14, 0.9); color: #fff; border: 1px solid rgba(201, 169, 106, 0.35); font: 600 16px/1.2 var(--font, sans-serif); padding: 6px 8px; }
+.gs-stat { display: grid; grid-template-columns: 80px 30px 1fr; align-items: center; gap: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.gs-stat b { color: #fff; text-align: right; }
+.gs-bar { position: relative; height: 6px; background: rgba(255, 255, 255, 0.08); }
+.gs-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #e8dcc0; }
+.gs-bar u { position: absolute; top: 0; bottom: 0; } .gs-bar u.up { background: #3aff8a; } .gs-bar u.down { background: #ff5a4a; }
+.gs-equip { margin-top: auto; background: linear-gradient(180deg, #ffd24a, #c9a030) !important; color: #1a1408 !important; font-weight: 800; }
+@media (max-height: 520px), (max-width: 900px) {
+  .gs-body { grid-template-columns: 1fr 190px; padding: 6px 8px; }
+  .gs-classes { display: none; }
+  .gs-card { min-width: 110px; padding: 4px 7px; } .gs-card b { font-size: 11px; } .gs-card span { font-size: 10px; }
+  .gs-weapon > div b { font-size: 14px; }
+  .gs-stat { grid-template-columns: 64px 24px 1fr; font-size: 10px; }
+}

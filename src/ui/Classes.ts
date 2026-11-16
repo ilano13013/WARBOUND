@@ -2,7 +2,8 @@
 // Les classes personnalisées sont enregistrées sur le compte en ligne (repli local sans compte).
 import type { UI } from './UI';
 import { esc } from './UI';
-import { WEAPONS, ATTACHMENTS, type AttachSlot } from '../data/weapons';
+import { WEAPONS, ATTACHMENTS, FAMILY_LABEL, type AttachSlot } from '../data/weapons';
+import { Preview } from './Preview3D';
 import { PRESET_CLASSES, CUSTOM_SLOTS, WEAPON_UNLOCK, ATTACH_UNLOCK, MP_SLOTS, classLevel, attachAllowed, sanitizeClass, mpLevelOf, MP_MAX_LEVEL, type ClassDef } from '../data/mpProgress';
 import { makeWeaponItem } from '../rpg/items';
 import { weaponStats } from '../rpg/Stats';
@@ -79,58 +80,123 @@ export class Classes {
     });
   }
 
-  // ---------- éditeur ----------
+  // ---------- atelier d'arme (éditeur de classe) ----------
+
+  private preview: Preview | null = null;
+
+  /** Statistiques normalisées (0 à 100) d'une arme équipée de ses accessoires. */
+  private stats(id: string, attach: Partial<Record<AttachSlot, string>>): Record<string, number> {
+    const item = makeWeaponItem(id, 'common', 1); item.attach = { ...attach };
+    const st = weaponStats(item, {}, 'arcanist');
+    const c = (v: number) => Math.max(2, Math.min(100, v));
+    return {
+      'Dégâts': c((st.damage / 160) * 100),
+      'Cadence': c((st.rpm / 950) * 100),
+      'Précision': c(100 - st.hipSpread * 9 - st.adsSpread * 60),
+      'Portée': c((st.rangeEnd / 220) * 100),
+      'Mobilité': c(((st.mobility - 0.85) / 0.2) * 100),
+      'Contrôle': c(100 - st.recoilV * 14),
+    };
+  }
 
   showEditor(back: () => void, slot = 0): void {
     const list = this.custom();
     let i = Math.max(0, Math.min(CUSTOM_SLOTS - 1, slot));
     let status = '';
+    let open: 'primary' | 'secondary' | AttachSlot | null = null;
     const lv = this.level;
+    const camo = this.g.account.equipped('camo');
+    const prims = Object.values(WEAPONS).filter((w) => w.slot === 'primary').sort((a, b) => (WEAPON_UNLOCK[a.id] ?? 99) - (WEAPON_UNLOCK[b.id] ?? 99));
+    // emplacements autour de l'arme : position de la carte et point visé sur l'arme (en % de la scène)
+    const POS: Record<string, { card: string; at: [number, number]; from: [number, number] }> = {
+      optic: { card: 'left:3%;top:20%', at: [50, 40], from: [22, 25] },
+      muzzle: { card: 'left:3%;top:52%', at: [27, 50], from: [22, 57] },
+      mag: { card: 'left:36%;bottom:4%', at: [52, 62], from: [48, 88] },
+      grip: { card: 'right:3%;bottom:20%', at: [60, 58], from: [78, 74] },
+    };
+    const disposePreview = () => { this.preview?.dispose(); this.preview = null; };
+    const leave = () => { disposePreview(); back(); };
+
     const render = () => {
       const c = list[i];
-      const prim = Object.values(WEAPONS).filter((w) => w.slot === 'primary').sort((a, b) => (WEAPON_UNLOCK[a.id] ?? 99) - (WEAPON_UNLOCK[b.id] ?? 99));
-      const sec = Object.values(WEAPONS).filter((w) => w.slot === 'secondary');
-      const wbtn = (id: string, kind: 'primary' | 'secondary') => {
-        const need = WEAPON_UNLOCK[id] ?? 99, locked = need > lv, on = (kind === 'primary' ? c.primary : c.secondary) === id;
-        return `<button class="btn small ${on ? 'primary' : ''}" data-a="${kind}" data-v="${id}" ${locked ? 'disabled' : ''}>${esc(WEAPONS[id].name)}${locked ? ` — niv. ${need}` : ''}</button>`;
-      };
-      const slots = MP_SLOTS.map((s) => {
+      const w = WEAPONS[c.primary];
+      const base = this.stats(c.primary, {}), cur = this.stats(c.primary, c.pAttach);
+      const statRows = Object.keys(cur).map((k) => {
+        const b = base[k], v = cur[k], lo = Math.min(b, v), d = v - b;
+        return `<div class="gs-stat"><span>${k}</span><b>${Math.round(v)}</b><div class="gs-bar"><i style="width:${lo}%"></i>${d ? `<u class="${d > 0 ? 'up' : 'down'}" style="left:${lo}%;width:${Math.abs(d)}%"></u>` : ''}</div></div>`;
+      }).join('');
+      const card = (s: AttachSlot) => {
         const opts = Object.values(ATTACHMENTS).filter((a) => attachAllowed(c.primary, s, a.id));
         if (!opts.length) return '';
-        return `<div class="kv"><span>${SLOT_LABEL[s]}</span><span class="row" style="gap:4px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn small ${!c.pAttach[s] ? 'primary' : ''}" data-a="att" data-v="${s}:">Aucun</button>
-          ${opts.map((a) => { const need = ATTACH_UNLOCK[a.id] ?? 99, locked = need > lv; return `<button class="btn small ${c.pAttach[s] === a.id ? 'primary' : ''}" data-a="att" data-v="${s}:${a.id}" ${locked ? 'disabled' : ''} title="${esc(a.desc)}">${esc(a.name)}${locked ? ` — niv. ${need}` : ''}</button>`; }).join('')}
-        </span></div>`;
-      }).join('');
-      const item = makeWeaponItem(c.primary, 'common', 1); item.attach = { ...c.pAttach };
-      const st = weaponStats(item, {}, 'arcanist');
-      const bar = (label: string, v: number, max: number, txt: string) => `<div class="statline" style="grid-template-columns:110px 1fr 70px"><span>${label}</span><div class="mp-bar"><i style="width:${Math.min(100, (v / max) * 100).toFixed(0)}%"></i></div><span>${txt}</span></div>`;
-      const stats = bar('Dégâts', st.damage, 160, st.damage.toFixed(0)) + bar('Cadence', st.rpm, 950, `${Math.round(st.rpm)} c/min`) + bar('Portée', st.rangeEnd, 200, `${Math.round(st.rangeEnd)} m`) + bar('Mobilité', st.mobility, 1.05, `${Math.round(st.mobility * 100)} %`) + bar('Chargeur', st.mag, 120, String(st.mag)) + bar('Recul', 6 - st.recoilV, 6, st.recoilV.toFixed(1));
-      this.ui.show('classes', 'overlay', `<div class="panel"><div class="panel-head"><h2>Créer une classe</h2><span class="sub">Multijoueur</span><span class="spacer"></span>${this.rankHtml()}<button class="btn small" data-a="back">Retour</button></div>
-        <div class="panel-body"><div class="col" style="width:200px">${list.map((x, k) => `<button class="btn small ${k === i ? 'primary' : ''}" data-a="slot" data-v="${k}">${esc(x.name)}</button>`).join('')}
-          <p class="label" style="text-transform:none;letter-spacing:.03em">Les armes et accessoires se débloquent en gagnant des niveaux en multijoueur. Tout le monde dispose des mêmes statistiques : aucun talent ni bonus de classe solo.</p></div>
-        <div class="col grow scroll">
-          <div class="kv"><span>Nom</span><span><input id="cls-name" class="code-input" style="width:220px;font-size:15px;letter-spacing:.05em;text-transform:none" maxlength="18" value="${esc(c.name)}"></span></div>
-          <div class="label">Arme principale</div><div class="row" style="gap:5px;flex-wrap:wrap">${prim.map((w) => wbtn(w.id, 'primary')).join('')}</div>
-          <div class="label">Accessoires</div>${slots}
-          <div class="label">Arme secondaire</div><div class="row" style="gap:5px;flex-wrap:wrap">${sec.map((w) => wbtn(w.id, 'secondary')).join('')}</div>
-          <div class="label">Statistiques — ${esc(WEAPONS[c.primary].name)}</div>${stats}
-        </div></div>
-        <div class="panel-foot"><button class="btn primary" data-a="save">Enregistrer</button><button class="btn" data-a="use">Enregistrer et jouer cette classe</button><span class="label" style="text-transform:none;letter-spacing:.03em">${esc(status)}</span></div></div>`, handlers);
+        const cur = c.pAttach[s] ? ATTACHMENTS[c.pAttach[s]!].name : 'Aucun';
+        return `<div class="gs-card ${open === s ? 'on' : ''} ${c.pAttach[s] ? 'set' : ''}" style="${POS[s].card}" data-a="open" data-v="${s}"><b>${SLOT_LABEL[s].toUpperCase()}</b><span>${esc(cur)}</span></div>`;
+      };
+      const lines = MP_SLOTS.filter((s) => POS[s] && Object.values(ATTACHMENTS).some((a) => attachAllowed(c.primary, s, a.id)))
+        .map((s) => `<line x1="${POS[s].from[0]}" y1="${POS[s].from[1]}" x2="${POS[s].at[0]}" y2="${POS[s].at[1]}"/><circle cx="${POS[s].at[0]}" cy="${POS[s].at[1]}" r="0.7"/>`).join('');
+      // liste de choix de l'emplacement ouvert
+      let picker = '';
+      if (open === 'primary' || open === 'secondary') {
+        const pool = Object.values(WEAPONS).filter((x) => x.slot === open).sort((a, b) => (WEAPON_UNLOCK[a.id] ?? 99) - (WEAPON_UNLOCK[b.id] ?? 99));
+        picker = pool.map((x) => { const need = WEAPON_UNLOCK[x.id] ?? 99, locked = need > lv, on = (open === 'primary' ? c.primary : c.secondary) === x.id; return `<button class="gs-opt ${on ? 'on' : ''}" data-a="${open}" data-v="${x.id}" ${locked ? 'disabled' : ''}><b>${esc(x.name)}</b><span>${locked ? `🔒 Niveau ${need}` : FAMILY_LABEL[x.family]}</span></button>`; }).join('');
+      } else if (open) {
+        const s = open;
+        const opts = Object.values(ATTACHMENTS).filter((a) => attachAllowed(c.primary, s, a.id));
+        picker = `<button class="gs-opt ${!c.pAttach[s] ? 'on' : ''}" data-a="att" data-v="${s}:"><b>Aucun</b><span>Retirer</span></button>` + opts.map((a) => {
+          const need = ATTACH_UNLOCK[a.id] ?? 99, locked = need > lv;
+          const delta = this.stats(c.primary, { ...c.pAttach, [s]: a.id });
+          const ch = Object.keys(delta).map((k) => [k, Math.round(delta[k] - cur[k])] as [string, number]).filter(([, d]) => d).slice(0, 2).map(([k, d]) => `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d} ${k}</em>`).join(' ');
+          return `<button class="gs-opt ${c.pAttach[s] === a.id ? 'on' : ''}" data-a="att" data-v="${s}:${a.id}" ${locked ? 'disabled' : ''} title="${esc(a.desc)}"><b>${esc(a.name)}</b><span>${locked ? `🔒 Niveau ${need}` : ch || esc(a.desc)}</span></button>`;
+        }).join('');
+      }
+      const pIdx = prims.findIndex((x) => x.id === c.primary);
+      this.ui.show('classes', 'overlay', `<div class="panel gunsmith"><div class="panel-head"><h2>Atelier</h2><span class="sub">${esc(c.name)}</span><span class="spacer"></span>${this.rankHtml()}<button class="btn small" data-a="back">Retour</button></div>
+        <div class="gs-body">
+          <div class="gs-classes">${list.map((x, k) => `<button class="btn small ${k === i ? 'primary' : ''}" data-a="slot" data-v="${k}">${esc(x.name)}</button>`).join('')}</div>
+          <div class="gs-stage">
+            <canvas id="gs-canvas"></canvas>
+            <svg class="gs-lines" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>
+            <div class="gs-weapon"><button class="gs-arrow" data-a="cycle" data-v="-1">‹</button><div data-a="open" data-v="primary"><b>${esc(w.name)}</b><span>${FAMILY_LABEL[w.family]} — arme principale</span></div><button class="gs-arrow" data-a="cycle" data-v="1">›</button></div>
+            ${MP_SLOTS.map(card).join('')}
+            <div class="gs-card gs-sec ${open === 'secondary' ? 'on' : ''}" data-a="open" data-v="secondary"><b>SECONDAIRE</b><span>${esc(WEAPONS[c.secondary].name)}</span></div>
+            <div class="gs-card gs-camo"><b>CAMOUFLAGE</b><span>${camo ? 'Équipé (boutique)' : 'Aucun — voir la Boutique'}</span></div>
+            ${open ? `<div class="gs-picker"><div class="gs-picker-head">${open === 'primary' ? 'Arme principale' : open === 'secondary' ? 'Arme secondaire' : SLOT_LABEL[open]}<button class="btn small" data-a="close">Fermer</button></div><div class="gs-opts">${picker}</div></div>` : ''}
+          </div>
+          <div class="gs-side">
+            <div class="gs-name"><input id="cls-name" maxlength="18" value="${esc(c.name)}" aria-label="Nom de la classe"></div>
+            <div class="label">${esc(w.name)}</div>
+            ${statRows}
+            <p class="label" style="text-transform:none;letter-spacing:.03em">Vert : gain des accessoires ; rouge : perte. Statistiques identiques pour tous les joueurs.</p>
+            <button class="btn primary gs-equip" data-a="use">Équiper</button>
+            <button class="btn" data-a="save">Enregistrer</button>
+            <span class="label" style="text-transform:none;letter-spacing:.03em">${esc(status)}</span>
+          </div>
+        </div></div>`, handlers);
+      void pIdx;
+      const cv = document.getElementById('gs-canvas') as HTMLCanvasElement | null;
+      if (cv) { disposePreview(); this.preview = new Preview(cv); this.preview.showWeapon(camo, c.primary, c.pAttach, false); this.ui.leaveHook = disposePreview; }
     };
     const readName = () => { const v = (document.getElementById('cls-name') as HTMLInputElement | null)?.value; if (v !== undefined) list[i].name = v.replace(/[<>]/g, '').slice(0, 18) || `Classe ${i + 1}`; };
     const save = async (use: boolean) => {
       readName();
       for (let k = 0; k < list.length; k++) list[k] = sanitizeClass(list[k], list[k]);
-      try { await this.saveCustom(list); status = 'Classes enregistrées.'; if (use) this.select(`c${i}`); }
+      try { await this.saveCustom(list); status = use ? 'Classe équipée.' : 'Classes enregistrées.'; if (use) this.select(`c${i}`); }
       catch (e) { status = (e as Error).message; }
       render();
     };
+    const setPrimary = (v: string) => { if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i] = sanitizeClass({ ...list[i], primary: v }, list[i]); };
     const handlers: Record<string, (v: string) => void> = {
-      back,
-      slot: (v) => { readName(); i = Number(v) || 0; render(); },
-      primary: (v) => { readName(); if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i] = sanitizeClass({ ...list[i], primary: v, pAttach: list[i].pAttach }, list[i]); render(); },
-      secondary: (v) => { readName(); if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i].secondary = v; render(); },
+      back: leave,
+      slot: (v) => { readName(); i = Number(v) || 0; open = null; render(); },
+      open: (v) => { readName(); open = open === v ? null : (v as typeof open); render(); },
+      close: () => { readName(); open = null; render(); },
+      cycle: (v) => {
+        readName();
+        const unlocked = prims.filter((x) => (WEAPON_UNLOCK[x.id] ?? 99) <= lv);
+        const k = unlocked.findIndex((x) => x.id === list[i].primary);
+        setPrimary(unlocked[(k + Number(v) + unlocked.length) % unlocked.length].id); render();
+      },
+      primary: (v) => { readName(); setPrimary(v); open = null; render(); },
+      secondary: (v) => { readName(); if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i].secondary = v; open = null; render(); },
       att: (v) => { readName(); const [s, a] = v.split(':') as [AttachSlot, string]; if (a && (ATTACH_UNLOCK[a] ?? 99) > lv) return; if (a) list[i].pAttach[s] = a; else delete list[i].pAttach[s]; render(); },
       save: () => void save(false),
       use: () => void save(true),

@@ -96,7 +96,11 @@ export class UI {
   }
 
   /** Affiche un écran HTML et enregistre ses gestionnaires d'actions. */
+  /** Nettoyage à faire en quittant l'écran courant (aperçu 3D, minuteries). */
+  leaveHook: (() => void) | null = null;
+
   show(name: string, cls: string, html: string, handlers: Record<string, Handler>, block = true): void {
+    const lh = this.leaveHook; this.leaveHook = null; lh?.();
     this.current = name;
     this.screen.className = 'screen ' + cls;
     this.screen.id = name;
