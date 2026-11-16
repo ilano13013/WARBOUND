@@ -4,6 +4,14 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.10 (niveaux d'armes, grenades et atouts)
+
+- **Niveaux d'armes** : chaque arme gagne de l'XP quand on élimine avec elle (100, +25 à la tête) et 100 XP à la fin d'une partie terminée avec elle en arme principale. De 10 à 11 niveaux par arme ; chaque niveau à partir du 2 débloque un accessoire de cette arme, dans l'ordre : viseur reflex, compensateur, chargeur étendu, poignée verticale, ACOG, silencieux, chargeur rapide, poignée d'assaut, canon lourd, lunette x8 (selon compatibilité). XP par arme enregistrée sur le compte ; progression affichée dans l'atelier et sur l'écran de fin.
+- **Niveau joueur** : il débloque désormais les armes, l'équipement létal (Grenade Frag niveau 3, Semtex niveau 8) et les atouts.
+- **Équipement létal** gérés par l'hôte : la Frag rebondit et explose après 2,2 s (rayon 6 m) ; la Semtex colle à la première surface ou au premier joueur touché et explose après 1,6 s. Dégâts dégressifs, arrêtés par les murs, pas de tir allié, moitié des dégâts sur soi. Une grenade par vie. Touche G (ou bouton GREN. au doigt). Les bots en lancent aussi.
+- **Atouts** (3 emplacements) : Vigueur (niv. 1, régénération après 2,5 s au lieu de 5) / Gilet renforcé (niv. 5, explosifs −50 %) ; Rechargement rapide (niv. 2, −30 %) / Munitions supplémentaires (niv. 7, +2 chargeurs, +1 grenade) ; Pillard (niv. 4, un chargeur récupéré par élimination) / Fantôme (niv. 10, tirs absents de la mini-carte adverse). Effets appliqués par l'hôte. Aucun atout ni grenade en 1v1.
+- **Régénération de la santé en multijoueur** (gérée par l'hôte ; elle manquait).
+
 ## Version 2.9 (classes et progression multijoueur)
 
 - **Progression multijoueur** séparée du solo, enregistrée sur le compte en ligne : 30 niveaux. XP : élimination 100 (+25 à la tête), assistance 50, capture de zone 150, partie terminée 200, victoire 300, égalité 100. Écran de fin avec le détail des gains, la montée de niveau et les nouveaux déblocages.

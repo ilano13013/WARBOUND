@@ -31,6 +31,8 @@ export class WeaponSystem {
   arms: Arms | null = null;
   /** Armes imposées (Défi d'armes) : statistiques de base, sans talent ni bonus de classe. */
   override: Item[] | null = null;
+  /** Multiplicateur de durée de rechargement (atout multijoueur). */
+  reloadMul = 1;
   private casings: { m: THREE.Mesh; v: THREE.Vector3; t: number }[] = [];
   private cycleT = 0; private reloadEmpty = false;
 
@@ -94,7 +96,7 @@ export class WeaponSystem {
   startReload(): void {
     const w = this.w; const p = this.g.player;
     if (!w || this.reloading > 0 || this.swapT > 0 || w.ammo >= w.st.mag || w.reserve <= 0 || p.has('colossus')) return;
-    this.reloadDur = w.st.reload;
+    this.reloadDur = w.st.reload * (this.g.match.active ? this.reloadMul : 1);
     this.reloading = this.reloadDur; this.reloadStage = 0; this.reloadEmpty = w.ammo === 0;
     if (this.g.match.active) this.g.match.onReload();
   }

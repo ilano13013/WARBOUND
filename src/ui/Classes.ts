@@ -4,7 +4,7 @@ import type { UI } from './UI';
 import { esc } from './UI';
 import { WEAPONS, ATTACHMENTS, FAMILY_LABEL, type AttachSlot } from '../data/weapons';
 import { Preview } from './Preview3D';
-import { PRESET_CLASSES, CUSTOM_SLOTS, WEAPON_UNLOCK, ATTACH_UNLOCK, MP_SLOTS, classLevel, attachAllowed, sanitizeClass, mpLevelOf, MP_MAX_LEVEL, type ClassDef } from '../data/mpProgress';
+import { PRESET_CLASSES, CUSTOM_SLOTS, WEAPON_UNLOCK, MP_SLOTS, LETHALS, PERKS, PERK_SLOT_LABEL, classLockReason, attachAllowed, attachLevel, weaponLevelOf, sanitizeClass, mpLevelOf, MP_MAX_LEVEL, type ClassDef } from '../data/mpProgress';
 import { makeWeaponItem } from '../rpg/items';
 import { weaponStats } from '../rpg/Stats';
 
@@ -18,6 +18,9 @@ export class Classes {
   /** XP et niveau multijoueur du compte (0 sans compte). */
   get xp(): number { return this.g.account.me?.mp?.xp || 0; }
   get level(): number { return mpLevelOf(this.xp).level; }
+  /** XP et niveau d'une arme (compte). */
+  weaponXp(id: string): number { return this.g.account.me?.mp?.weapons?.[id] || 0; }
+  weaponLevel(id: string): number { return weaponLevelOf(id, this.weaponXp(id)).level; }
 
   /** Les 5 classes personnalisées (compte, sinon stockage local), complétées par défaut. */
   custom(): ClassDef[] {
@@ -33,12 +36,10 @@ export class Classes {
   }
 
   /** Toutes les classes jouables : prédéfinies puis personnalisées. */
-  all(): { c: ClassDef; key: string; preset: boolean; locked: boolean; need: number }[] {
-    const lv = this.level;
-    return [
-      ...PRESET_CLASSES.map((c, i) => ({ c, key: `p${i}`, preset: true, need: classLevel(c), locked: classLevel(c) > lv })),
-      ...this.custom().map((c, i) => ({ c, key: `c${i}`, preset: false, need: classLevel(c), locked: classLevel(c) > lv })),
-    ];
+  all(): { c: ClassDef; key: string; preset: boolean; locked: boolean; why: string }[] {
+    const lv = this.level, wl = (id: string) => this.weaponLevel(id);
+    const mk = (c: ClassDef, key: string, preset: boolean) => { const why = classLockReason(c, lv, wl); return { c, key, preset, locked: !!why, why }; };
+    return [...PRESET_CLASSES.map((c, i) => mk(c, `p${i}`, true)), ...this.custom().map((c, i) => mk(c, `c${i}`, false))];
   }
 
   /** Classe sélectionnée (mémorisée), ou la première disponible. */
@@ -67,7 +68,7 @@ export class Classes {
   /** Boutons de choix de classe (salon, pause). */
   pickerHtml(): string {
     const sel = this.selectedKey();
-    return `<div class="class-pick">${this.all().map((x) => `<button class="btn small ${x.key === sel && !x.locked ? 'primary' : ''}" data-a="pickclass" data-v="${x.key}" ${x.locked ? 'disabled' : ''} title="${esc(WEAPONS[x.c.primary]?.name || '')} + ${esc(WEAPONS[x.c.secondary]?.name || '')}">${esc(x.c.name)}${x.locked ? ` — niv. ${x.need}` : ''}</button>`).join('')}</div>`;
+    return `<div class="class-pick">${this.all().map((x) => `<button class="btn small ${x.key === sel && !x.locked ? 'primary' : ''}" data-a="pickclass" data-v="${x.key}" ${x.locked ? 'disabled' : ''} title="${esc(WEAPONS[x.c.primary]?.name || '')} + ${esc(WEAPONS[x.c.secondary]?.name || '')}">${esc(x.c.name)}${x.locked ? ` — ${esc(x.why)}` : ''}</button>`).join('')}</div>`;
   }
 
   /** Choix de classe pendant une partie (prochaine apparition). */
@@ -103,7 +104,7 @@ export class Classes {
     const list = this.custom();
     let i = Math.max(0, Math.min(CUSTOM_SLOTS - 1, slot));
     let status = '';
-    let open: 'primary' | 'secondary' | AttachSlot | null = null;
+    let open: 'primary' | 'secondary' | 'lethal' | 'perk0' | 'perk1' | 'perk2' | AttachSlot | null = null;
     const lv = this.level;
     const camo = this.g.account.equipped('camo');
     const prims = Object.values(WEAPONS).filter((w) => w.slot === 'primary').sort((a, b) => (WEAPON_UNLOCK[a.id] ?? 99) - (WEAPON_UNLOCK[b.id] ?? 99));
@@ -120,6 +121,7 @@ export class Classes {
     const render = () => {
       const c = list[i];
       const w = WEAPONS[c.primary];
+      const wlv = this.weaponLevel(c.primary);
       const base = this.stats(c.primary, {}), cur = this.stats(c.primary, c.pAttach);
       const statRows = Object.keys(cur).map((k) => {
         const b = base[k], v = cur[k], lo = Math.min(b, v), d = v - b;
@@ -138,32 +140,47 @@ export class Classes {
       if (open === 'primary' || open === 'secondary') {
         const pool = Object.values(WEAPONS).filter((x) => x.slot === open).sort((a, b) => (WEAPON_UNLOCK[a.id] ?? 99) - (WEAPON_UNLOCK[b.id] ?? 99));
         picker = pool.map((x) => { const need = WEAPON_UNLOCK[x.id] ?? 99, locked = need > lv, on = (open === 'primary' ? c.primary : c.secondary) === x.id; return `<button class="gs-opt ${on ? 'on' : ''}" data-a="${open}" data-v="${x.id}" ${locked ? 'disabled' : ''}><b>${esc(x.name)}</b><span>${locked ? `🔒 Niveau ${need}` : FAMILY_LABEL[x.family]}</span></button>`; }).join('');
-      } else if (open) {
-        const s = open;
+      } else if (open && open !== 'lethal' && !open.startsWith('perk')) {
+        const s = open as AttachSlot;
         const opts = Object.values(ATTACHMENTS).filter((a) => attachAllowed(c.primary, s, a.id));
         picker = `<button class="gs-opt ${!c.pAttach[s] ? 'on' : ''}" data-a="att" data-v="${s}:"><b>Aucun</b><span>Retirer</span></button>` + opts.map((a) => {
-          const need = ATTACH_UNLOCK[a.id] ?? 99, locked = need > lv;
+          const need = attachLevel(c.primary, a.id), locked = need > wlv;
           const delta = this.stats(c.primary, { ...c.pAttach, [s]: a.id });
           const ch = Object.keys(delta).map((k) => [k, Math.round(delta[k] - cur[k])] as [string, number]).filter(([, d]) => d).slice(0, 2).map(([k, d]) => `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d} ${k}</em>`).join(' ');
-          return `<button class="gs-opt ${c.pAttach[s] === a.id ? 'on' : ''}" data-a="att" data-v="${s}:${a.id}" ${locked ? 'disabled' : ''} title="${esc(a.desc)}"><b>${esc(a.name)}</b><span>${locked ? `🔒 Niveau ${need}` : ch || esc(a.desc)}</span></button>`;
+          return `<button class="gs-opt ${c.pAttach[s] === a.id ? 'on' : ''}" data-a="att" data-v="${s}:${a.id}" ${locked ? 'disabled' : ''} title="${esc(a.desc)}"><b>${esc(a.name)}</b><span>${locked ? `🔒 ${esc(w.name)} niv. ${need}` : ch || esc(a.desc)}</span></button>`;
+        }).join('');
+      } else if (open === 'lethal') {
+        picker = `<button class="gs-opt ${!c.lethal ? 'on' : ''}" data-a="lethal" data-v=""><b>Aucun</b><span>Pas d’équipement létal</span></button>` + Object.values(LETHALS).map((l) => {
+          const locked = l.unlock > lv;
+          return `<button class="gs-opt ${c.lethal === l.id ? 'on' : ''}" data-a="lethal" data-v="${l.id}" ${locked ? 'disabled' : ''}><b>${esc(l.name)}</b><span>${locked ? `🔒 Niveau ${l.unlock}` : esc(l.desc)}</span></button>`;
+        }).join('');
+      } else if (open) {
+        const k = Number(open.slice(4));
+        picker = `<button class="gs-opt ${!c.perks[k] ? 'on' : ''}" data-a="perk" data-v="${k}:"><b>Aucun</b><span>Emplacement vide</span></button>` + Object.values(PERKS).filter((x) => x.slot === k).map((x) => {
+          const locked = x.unlock > lv;
+          return `<button class="gs-opt ${c.perks[k] === x.id ? 'on' : ''}" data-a="perk" data-v="${k}:${x.id}" ${locked ? 'disabled' : ''}><b>${esc(x.name)}</b><span>${locked ? `🔒 Niveau ${x.unlock}` : esc(x.desc)}</span></button>`;
         }).join('');
       }
       const pIdx = prims.findIndex((x) => x.id === c.primary);
+      const wr = weaponLevelOf(c.primary, this.weaponXp(c.primary)), wlvPct = wr.need ? Math.round((wr.into / wr.need) * 100) : 100;
+      const kitTile = (v: string, label: string, val: string | null) => `<button class="gs-kit-t ${open === v ? 'on' : ''} ${val ? 'set' : ''}" data-a="open" data-v="${v}"><b>${label}</b><span>${esc(val || 'Aucun')}</span></button>`;
+      const kit = `<div class="gs-kit">${kitTile('lethal', 'Létal', c.lethal ? LETHALS[c.lethal].name : null)}${[0, 1, 2].map((k) => kitTile(`perk${k}`, PERK_SLOT_LABEL[k], c.perks[k] ? PERKS[c.perks[k]!].name : null)).join('')}</div>`;
       this.ui.show('classes', 'overlay', `<div class="panel gunsmith"><div class="panel-head"><h2>Atelier</h2><span class="sub">${esc(c.name)}</span><span class="spacer"></span>${this.rankHtml()}<button class="btn small" data-a="back">Retour</button></div>
         <div class="gs-body">
           <div class="gs-classes">${list.map((x, k) => `<button class="btn small ${k === i ? 'primary' : ''}" data-a="slot" data-v="${k}">${esc(x.name)}</button>`).join('')}</div>
           <div class="gs-stage">
             <canvas id="gs-canvas"></canvas>
             <svg class="gs-lines" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>
-            <div class="gs-weapon"><button class="gs-arrow" data-a="cycle" data-v="-1">‹</button><div data-a="open" data-v="primary"><b>${esc(w.name)}</b><span>${FAMILY_LABEL[w.family]} — arme principale</span></div><button class="gs-arrow" data-a="cycle" data-v="1">›</button></div>
+            <div class="gs-weapon"><button class="gs-arrow" data-a="cycle" data-v="-1">‹</button><div data-a="open" data-v="primary"><b>${esc(w.name)}</b><span>${FAMILY_LABEL[w.family]} — arme niv. ${wr.level}/${wr.max}</span><div class="mp-bar gs-wbar"><i style="width:${wlvPct}%"></i></div></div><button class="gs-arrow" data-a="cycle" data-v="1">›</button></div>
             ${MP_SLOTS.map(card).join('')}
             <div class="gs-card gs-sec ${open === 'secondary' ? 'on' : ''}" data-a="open" data-v="secondary"><b>SECONDAIRE</b><span>${esc(WEAPONS[c.secondary].name)}</span></div>
             <div class="gs-card gs-camo"><b>CAMOUFLAGE</b><span>${camo ? 'Équipé (boutique)' : 'Aucun — voir la Boutique'}</span></div>
-            ${open ? `<div class="gs-picker"><div class="gs-picker-head">${open === 'primary' ? 'Arme principale' : open === 'secondary' ? 'Arme secondaire' : SLOT_LABEL[open]}<button class="btn small" data-a="close">Fermer</button></div><div class="gs-opts">${picker}</div></div>` : ''}
+            ${open ? `<div class="gs-picker"><div class="gs-picker-head">${open === 'primary' ? 'Arme principale' : open === 'secondary' ? 'Arme secondaire' : open === 'lethal' ? 'Équipement létal' : open.startsWith('perk') ? PERK_SLOT_LABEL[Number(open.slice(4))] : SLOT_LABEL[open]}<button class="btn small" data-a="close">Fermer</button></div><div class="gs-opts">${picker}</div></div>` : ''}
           </div>
           <div class="gs-side">
             <div class="gs-name"><input id="cls-name" maxlength="18" value="${esc(c.name)}" aria-label="Nom de la classe"></div>
-            <div class="label">${esc(w.name)}</div>
+            ${kit}
+            <div class="label">${esc(w.name)} — ${wr.level >= wr.max ? 'niveau d’arme maximal' : `${wr.into} / ${wr.need} XP d’arme`}</div>
             ${statRows}
             <p class="label" style="text-transform:none;letter-spacing:.03em">Vert : gain des accessoires ; rouge : perte. Statistiques identiques pour tous les joueurs.</p>
             <button class="btn primary gs-equip" data-a="use">Équiper</button>
@@ -183,7 +200,13 @@ export class Classes {
       catch (e) { status = (e as Error).message; }
       render();
     };
-    const setPrimary = (v: string) => { if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i] = sanitizeClass({ ...list[i], primary: v }, list[i]); };
+    const setPrimary = (v: string) => {
+      if ((WEAPON_UNLOCK[v] ?? 99) > lv) return;
+      list[i] = sanitizeClass({ ...list[i], primary: v }, list[i]);
+      // accessoires gardés seulement s'ils sont débloqués sur la nouvelle arme
+      const wl = this.weaponLevel(v);
+      for (const [s, a] of Object.entries(list[i].pAttach)) if (a && attachLevel(v, a) > wl) delete list[i].pAttach[s as AttachSlot];
+    };
     const handlers: Record<string, (v: string) => void> = {
       back: leave,
       slot: (v) => { readName(); i = Number(v) || 0; open = null; render(); },
@@ -197,7 +220,9 @@ export class Classes {
       },
       primary: (v) => { readName(); setPrimary(v); open = null; render(); },
       secondary: (v) => { readName(); if ((WEAPON_UNLOCK[v] ?? 99) > lv) return; list[i].secondary = v; open = null; render(); },
-      att: (v) => { readName(); const [s, a] = v.split(':') as [AttachSlot, string]; if (a && (ATTACH_UNLOCK[a] ?? 99) > lv) return; if (a) list[i].pAttach[s] = a; else delete list[i].pAttach[s]; render(); },
+      att: (v) => { readName(); const [s, a] = v.split(':') as [AttachSlot, string]; if (a && attachLevel(list[i].primary, a) > this.weaponLevel(list[i].primary)) return; if (a) list[i].pAttach[s] = a; else delete list[i].pAttach[s]; render(); },
+      lethal: (v) => { readName(); if (v && (LETHALS[v]?.unlock ?? 99) > lv) return; list[i].lethal = v || null; open = null; render(); },
+      perk: (v) => { readName(); const [k, id] = v.split(':'); if (id && (PERKS[id]?.unlock ?? 99) > lv) return; list[i].perks[Number(k)] = id || null; open = null; render(); },
       save: () => void save(false),
       use: () => void save(true),
     };

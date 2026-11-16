@@ -87,5 +87,15 @@ const co = await api('/api/me/checkout', { method: 'POST', token: back.body.toke
 ok(co.status === 502 && typeof co.body.error === 'string', 'paiement avec une clé de test invalide : erreur propre, aucun objet attribué', `${co.status} ${co.body.error}`);
 ok((await api('/api/me/checkout', { method: 'POST', token: back.body.token, body: { sku: 'inconnu' } })).status === 404, 'produit inconnu refusé');
 
+// progression multijoueur : XP joueur et XP d'armes
+const TK = back.body.token;
+const x1 = await api('/api/me/mp/xp', { method: 'POST', token: TK, body: { xp: 500, weapons: { ar17: 400, vesper: 100 } } });
+ok(x1.status === 200 && x1.body.xp === 500 && x1.body.weapons.ar17 === 400, 'XP joueur et XP d’arme ajoutées', JSON.stringify(x1.body));
+const x2 = await api('/api/me/mp/xp', { method: 'POST', token: TK, body: { weapons: { ar17: 99999, '../x': 50, Bad: 5 } } });
+ok(x2.status === 200 && x2.body.weapons.ar17 === 4400 && !('../x' in x2.body.weapons) && !('Bad' in x2.body.weapons), 'XP d’arme plafonnée par appel, identifiants invalides ignorés', JSON.stringify(x2.body.weapons));
+ok((await api('/api/me/mp/xp', { method: 'POST', token: TK, body: { xp: -5 } })).status === 400, 'XP négative refusée');
+const meMp = (await api('/api/me', { token: TK })).body.mp;
+ok(meMp.xp === 500 && meMp.weapons.vesper === 100, 'XP d’armes relue avec le compte', JSON.stringify(meMp));
+
 console.log(`\n${pass} réussis, ${fail} échoués`);
 process.exit(fail ? 1 : 0);

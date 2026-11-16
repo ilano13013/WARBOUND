@@ -197,7 +197,7 @@ export class Player {
     if (this.noSprintT > 0) this.noSprintT -= dt;
     if (this.shieldT > 0) { this.shieldT -= dt; if (this.shieldT <= 0) this.shield = 0; }
     if (this.killStackT > 0) { this.killStackT -= dt; if (this.killStackT <= 0) this.killStacks = 0; }
-    if (this.grenades < 2) { this.grenadeCd -= dt; if (this.grenadeCd <= 0) { this.grenades++; this.grenadeCd = 22; } }
+    if (this.grenades < 2 && !g.match.active && !g.duel.active) { this.grenadeCd -= dt; if (this.grenadeCd <= 0) { this.grenades++; this.grenadeCd = 22; } }
     if (this.dead) { this.eye += (0.35 - this.eye) * Math.min(1, dt * 3); this.updateCamera(dt, 0); return; }
 
     // régénération

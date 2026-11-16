@@ -207,6 +207,8 @@ export class HUD {
     if (!p.cls || !w) return;
     this.minimap.update(dt);
     this.matchHud.update();
+    const lethal = g.match.active && !!g.match.myLoad.lt;
+    if (this.cache.lethal !== String(lethal)) { this.cache.lethal = String(lethal); this.root.classList.toggle('mp-lethal', lethal); }
     this.clickHint.classList.toggle('hidden', g.input.locked || g.input.touch || g.state !== 'play' || g.ui.blocking || g.testMode);
     // réticule
     this.fireKick = Math.max(0, this.fireKick - dt * 8);

@@ -355,6 +355,8 @@ h1, h2, h3, .logo, .title-xl, #banner b, #levelup b, #bossbar .bn, .item-name, .
 @media (max-width: 900px) { #minimap { width: 118px; height: 118px; right: 14px; top: 12px; } .hud-tr { top: 140px; } }
 /* Défi d'armes : compétences et grenades désactivées, leur barre est masquée */
 #hud.duel-mode .hud-bc { display: none; }
+#hud.duel-mode.mp-lethal .hud-bc { display: flex; }
+#hud.duel-mode.mp-lethal .hud-bc .skill:not(.gren) { display: none; }
 
 /* salons en ligne */
 .code-input { width: 160px; background: rgba(8, 10, 14, 0.9); color: #fff; border: 1px solid rgba(201, 169, 106, 0.35); font: 600 24px/1.2 ui-monospace, Consolas, monospace; letter-spacing: 0.3em; text-transform: uppercase; padding: 6px 10px; }
@@ -523,10 +525,10 @@ body.touch #radio { bottom: auto; top: 74px; width: min(520px, 60vw); font-size:
 .gs-card.set { border-left-color: #ffd24a; } .gs-card.set span { color: #fff; }
 .gs-card.on, .gs-card:hover { background: rgba(201, 169, 106, 0.22); border-left-color: #ffd24a; }
 .gs-sec { left: 3%; bottom: 4%; } .gs-camo { right: 3%; top: 20%; cursor: default; }
-.gs-picker { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(5, 7, 11, 0.94); border-top: 1px solid rgba(201, 169, 106, 0.4); padding: 8px 10px 10px; }
+.gs-picker { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; background: #05070b; border-top: 1px solid rgba(201, 169, 106, 0.4); padding: 8px 10px 10px; }
 .gs-picker-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold2, #e0c27a); margin-bottom: 6px; }
 .gs-opts { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-.gs-opt { flex: 0 0 auto; min-width: 150px; text-align: left; padding: 7px 10px; background: rgba(20, 23, 30, 0.95); border: 1px solid rgba(201, 169, 106, 0.2); color: #e8dcc0; cursor: pointer; }
+.gs-opt { flex: 0 0 auto; min-width: 150px; text-align: left; padding: 7px 10px; background: #14171e; border: 1px solid rgba(201, 169, 106, 0.2); color: #e8dcc0; cursor: pointer; }
 .gs-opt b { display: block; font-size: 13px; } .gs-opt span { font-size: 11px; color: #9aa4b4; }
 .gs-opt.on { border-color: #ffd24a; background: rgba(201, 169, 106, 0.18); }
 .gs-opt:disabled { opacity: 0.45; cursor: default; }
@@ -539,6 +541,14 @@ em.up { color: #3aff8a; } em.down { color: #ff6a5a; }
 .gs-bar { position: relative; height: 6px; background: rgba(255, 255, 255, 0.08); }
 .gs-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #e8dcc0; }
 .gs-bar u { position: absolute; top: 0; bottom: 0; } .gs-bar u.up { background: #3aff8a; } .gs-bar u.down { background: #ff5a4a; }
+.gs-kit { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.gs-kit-t { text-align: left; padding: 5px 7px; background: rgba(8, 10, 14, 0.8); border: 1px solid rgba(201, 169, 106, 0.2); border-left: 3px solid rgba(201, 169, 106, 0.4); color: #e8dcc0; cursor: pointer; min-width: 0; }
+.gs-kit-t b { display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold2, #e0c27a); }
+.gs-kit-t span { display: block; font-size: 12px; color: #9aa4b4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gs-kit-t.set { border-left-color: #ffd24a; } .gs-kit-t.set span { color: #fff; }
+.gs-kit-t.on, .gs-kit-t:hover { background: rgba(201, 169, 106, 0.22); }
+.gs-wbar { margin-top: 3px; height: 3px; }
+.mp-rank.wlv b { font-size: 13px; }
 .gs-equip { margin-top: auto; background: linear-gradient(180deg, #ffd24a, #c9a030) !important; color: #1a1408 !important; font-weight: 800; }
 @media (max-height: 520px), (max-width: 900px) {
   .gs-body { grid-template-columns: 1fr 190px; padding: 6px 8px; }

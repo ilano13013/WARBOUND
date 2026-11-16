@@ -45,6 +45,7 @@ await A.evaluate(() => document.querySelector('[data-a="start"]')?.click());
 await sleep(800);
 for (const p of [B, C, D]) await p.evaluate(() => window.WB.onlineReady());
 await A.waitForFunction(() => window.WB.onlineRoom()?.players.every((p) => p.ready || p.host), null, { timeout: 20000 });
+await B.evaluate(() => { const m = window.WB.game.match; m.cls = { ...m.cls, lethal: 'frag' }; }); // Bravo (client) emporte une Frag
 await A.evaluate(() => window.WB.onlineStart());
 await waitAll(() => { const s = window.WB.matchState(); return s.phase === 'playing' && s.level === 'duel' && s.state !== 'menu'; }, 90000);
 ok(true, 'partie lancée : les 4 joueurs sont dans l’arène (connexions WebRTC en étoile)');
@@ -102,6 +103,22 @@ await cheater.evaluate(() => window.WB.matchPeerBinary(-28, 0.1, -15));
 await sleep(800);
 const pc = (await ms(A)).players.find((p) => p.name === cheaterName);
 ok(Math.hypot(pc.x - 7, pc.z - 12.6) < 3, 'téléportation refusée par l’hôte', `position retenue ${pc.x},${pc.z}`);
+
+// ---------- grenade lancée par un client : validée et simulée par l'hôte, visible et explosée chez tous ----------
+await B.waitForFunction(() => !window.WB.matchState().me.dead, null, { timeout: 15000 }).catch(() => {});
+const bl = await B.evaluate(() => ({ ...window.WB.game.match.myLoad }));
+ok(bl.lt === 'frag' && bl.n === 1, 'classe du client : Grenade Frag reçue de l’hôte', JSON.stringify(bl));
+const thrownB = await B.evaluate(() => window.WB.game.match.throwNade());
+await sleep(600);
+const seen = await Promise.all(P.map((p) => p.evaluate(() => window.WB.game.match.nades.list.length)));
+const bn = await B.evaluate(() => window.WB.game.match.myLoad.n);
+ok(thrownB && seen.every((n) => n === 1) && bn === 0, 'grenade du client acceptée par l’hôte et affichée chez les 4 joueurs', `${seen.join(',')} ; reste ${bn}`);
+await sleep(2600);
+const gone = await Promise.all(P.map((p) => p.evaluate(() => window.WB.game.match.nades.list.length)));
+ok(gone.every((n) => n === 0), 'explosion reçue par tous (grenade retirée)', gone.join(','));
+await B.evaluate(() => window.WB.matchPeerSend({ t: 'nade', ox: 0, oy: 1, oz: 0, dx: 1, dy: 0, dz: 0 }));
+await sleep(600);
+ok(await A.evaluate(() => window.WB.game.match.nades.list.length === 0), 'seconde grenade sans réserve refusée par l’hôte');
 
 // ---------- victoire ----------
 await A.evaluate(() => window.WB.matchPlace(0, 12, 0.1, 12.6)); // l'hôte reste à son poste

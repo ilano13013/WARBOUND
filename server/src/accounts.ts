@@ -53,13 +53,20 @@ export async function verifiedCosmetics(env: AccountEnv, playerId: string): Prom
 
 type J = (data: unknown, status?: number) => Response;
 
+/** XP par arme stockée en JSON ({ id: xp }), relue avec prudence. */
+function readWeapons(raw: string | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  try { const o = raw ? JSON.parse(raw) : {}; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (/^[a-z0-9]{2,16}$/.test(k) && Number.isFinite(Number(v))) out[k] = Math.max(0, Math.floor(Number(v))); } catch { /* */ }
+  return out;
+}
+
 let schemaReady = false;
 /** Crée les tables si besoin (une fois par instance du Worker). */
 export async function ensureSchema(env: AccountEnv): Promise<void> {
   if (schemaReady || !env.DB) return;
   await env.DB.batch(SCHEMA.map((q) => env.DB.prepare(q)));
   // colonnes ajoutées après coup (sans effet si elles existent déjà)
-  for (const q of ['ALTER TABLE players ADD COLUMN mp_xp INTEGER NOT NULL DEFAULT 0', 'ALTER TABLE players ADD COLUMN mp_classes TEXT']) {
+  for (const q of ['ALTER TABLE players ADD COLUMN mp_xp INTEGER NOT NULL DEFAULT 0', 'ALTER TABLE players ADD COLUMN mp_classes TEXT', 'ALTER TABLE players ADD COLUMN mp_weapons TEXT']) {
     try { await env.DB.prepare(q).run(); } catch { /* colonne déjà présente */ }
   }
   schemaReady = true;
@@ -111,10 +118,11 @@ export async function handleAccounts(req: Request, env: AccountEnv, url: URL, js
     const ent = await env.DB.prepare('SELECT item_id, revoked FROM entitlements WHERE player_id = ?').bind(me.id).all<{ item_id: string; revoked: number }>();
     const pur = await env.DB.prepare('SELECT id, sku, amount_cents, currency, status, livemode, created_at FROM purchases WHERE player_id = ? ORDER BY created_at DESC').bind(me.id).all();
     const cos = await verifiedCosmetics(env, me.id);
-    const mp = await env.DB.prepare('SELECT mp_xp, mp_classes FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number; mp_classes: string | null }>();
+    const mp = await env.DB.prepare('SELECT mp_xp, mp_classes, mp_weapons FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number; mp_classes: string | null; mp_weapons: string | null }>();
     let classes: unknown = [];
     try { classes = mp?.mp_classes ? JSON.parse(mp.mp_classes) : []; } catch { classes = []; }
-    return json({ mp: { xp: mp?.mp_xp || 0, classes }, id: me.id, name: me.name, owned: (ent.results || []).filter((e) => !e.revoked).map((e) => e.item_id), revoked: (ent.results || []).filter((e) => e.revoked).map((e) => e.item_id), equipped: cos.equipped, badge: cos.badge, purchases: pur.results || [] });
+    const weapons = readWeapons(mp?.mp_weapons);
+    return json({ mp: { xp: mp?.mp_xp || 0, classes, weapons }, id: me.id, name: me.name, owned: (ent.results || []).filter((e) => !e.revoked).map((e) => e.item_id), revoked: (ent.results || []).filter((e) => e.revoked).map((e) => e.item_id), equipped: cos.equipped, badge: cos.badge, purchases: pur.results || [] });
   }
 
   if (p === '/api/me/equip' && req.method === 'POST') {
@@ -133,13 +141,24 @@ export async function handleAccounts(req: Request, env: AccountEnv, url: URL, js
 
   // progression multijoueur : XP gagnée en fin de partie (plafonnée par appel) et classes personnalisées
   if (p === '/api/me/mp/xp' && req.method === 'POST') {
-    let body: { xp?: number } = {};
+    let body: { xp?: number; weapons?: Record<string, unknown> } = {};
     try { body = await req.json(); } catch { /* */ }
-    const xp = Math.floor(Number(body.xp));
-    if (!Number.isFinite(xp) || xp <= 0 || xp > 6000) return json({ error: 'XP invalide.' }, 400);
-    await env.DB.prepare('UPDATE players SET mp_xp = mp_xp + ? WHERE id = ?').bind(xp, me.id).run();
-    const r = await env.DB.prepare('SELECT mp_xp FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number }>();
-    return json({ xp: r?.mp_xp || 0 });
+    const xp = Math.floor(Number(body.xp || 0));
+    if (!Number.isFinite(xp) || xp < 0 || xp > 6000) return json({ error: 'XP invalide.' }, 400);
+    // XP d'arme : identifiants courts, 12 armes au plus par appel, plafonnée par arme
+    const add: Record<string, number> = {};
+    if (body.weapons && typeof body.weapons === 'object') {
+      for (const [id, v] of Object.entries(body.weapons).slice(0, 12)) {
+        const n = Math.floor(Number(v));
+        if (/^[a-z0-9]{2,16}$/.test(id) && Number.isFinite(n) && n > 0) add[id] = Math.min(4000, n);
+      }
+    }
+    if (!xp && !Object.keys(add).length) return json({ error: 'XP invalide.' }, 400);
+    const cur = await env.DB.prepare('SELECT mp_xp, mp_weapons FROM players WHERE id = ?').bind(me.id).first<{ mp_xp: number; mp_weapons: string | null }>();
+    const weapons = readWeapons(cur?.mp_weapons);
+    for (const [id, n] of Object.entries(add)) weapons[id] = Math.min(10_000_000, (weapons[id] || 0) + n);
+    await env.DB.prepare('UPDATE players SET mp_xp = mp_xp + ?, mp_weapons = ? WHERE id = ?').bind(xp, JSON.stringify(weapons), me.id).run();
+    return json({ xp: (cur?.mp_xp || 0) + xp, weapons });
   }
   if (p === '/api/me/mp/classes' && req.method === 'POST') {
     const raw = await req.text();

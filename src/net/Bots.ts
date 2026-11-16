@@ -4,6 +4,7 @@
 // d'environ 2,2°, tir en rafales courtes avec pauses, tête visée rarement, vue limitée à 60 m.
 import * as THREE from 'three';
 import type { Match, MP } from './Match';
+import { THROW_SPEED, THROW_UP } from './Nades';
 
 const R = 0.36, H = 1.8, EYE = 1.62, GRAV = 20;
 const REACT = [0.55, 0.95], TURN = 4, ERR_DEG = 2.2, SIGHT = 60;
@@ -20,6 +21,7 @@ export class BotBrain {
   private target: MP | null = null; private reactT = 0; private thinkT = 0; private fireT = 0;
   private strafeT = 0; private strafeDir = 1; private aimHead = false;
   private burstLeft = 0;
+  private nadeT = 6 + Math.random() * 8;
   private wasAlive = false;
 
   constructor(private m: Match, private p: MP) {}
@@ -30,7 +32,7 @@ export class BotBrain {
     if (!p.alive) { this.wasAlive = false; return; }
     if (!this.wasAlive) { this.wasAlive = true; this.path = null; this.target = null; this.vy = 0; this.hasGoal = false; }
     for (const w of Object.values(p.wpn)) w.reserve = 999; // munitions de réserve illimitées pour les bots
-    this.thinkT -= dt; this.repathT -= dt; this.fireT -= dt; this.strafeT -= dt;
+    this.thinkT -= dt; this.repathT -= dt; this.fireT -= dt; this.strafeT -= dt; this.nadeT -= dt;
     if (this.thinkT <= 0) { this.thinkT = 0.25; this.think(); }
 
     // ---- déplacement ----
@@ -93,12 +95,32 @@ export class BotBrain {
         } else this.fireT = 60 / p.st.rpm + 0.25 + Math.random() * 0.4;
         if (Math.random() < HEAD_CHANCE) this.aimHead = !this.aimHead;
       }
+      // grenade de temps en temps, vers une cible à moyenne distance
+      const dist = Math.hypot(dx, dz);
+      if (this.nadeT <= 0 && p.nades > 0 && dist > 8 && dist < 24 && this.reactT <= 0) {
+        this.nadeT = 12 + Math.random() * 10;
+        if (Math.random() < 0.6) this.throwAt(_pos, t, dist);
+      }
     } else {
       // pas de cible : regarder dans le sens de la marche
       if (moved > 0.5) { const wy = Math.atan2(-mx, -mz); let dyaw = wy - yaw; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2; yaw += dyaw * Math.min(1, dt * 6); }
       pitch *= Math.max(0, 1 - dt * 4);
     }
     this.m.acceptMove(p, { x: _pos.x, y: _pos.y, z: _pos.z, yaw, pitch, speed: moved, height: H, ads, crouch: false }, now, true);
+  }
+
+  /** Lancer en cloche : angle choisi pour que la grenade retombe près de la cible (sol plat, approximation). */
+  private throwAt(from: THREE.Vector3, t: MP, dist: number): void {
+    let best = 0.3, be = Infinity;
+    for (let th = -0.2; th <= 0.9; th += 0.05) {
+      const vx = THROW_SPEED * Math.cos(th), vy = THROW_SPEED * Math.sin(th) + THROW_UP;
+      const tf = (vy + Math.sqrt(vy * vy + 2 * 15 * (EYE))) / 15;
+      const e = Math.abs(vx * tf - dist);
+      if (e < be) { be = e; best = th; }
+    }
+    const h = Math.atan2(t.z - from.z, t.x - from.x) + (Math.random() - 0.5) * 0.12;
+    const c = Math.cos(best);
+    this.m.hostNade(this.p, { ox: from.x, oy: from.y + EYE, oz: from.z, dx: Math.cos(h) * c, dy: Math.sin(best), dz: Math.sin(h) * c });
   }
 
   /** Choix de la cible (ennemi visible le plus proche) et de l'objectif de déplacement. */

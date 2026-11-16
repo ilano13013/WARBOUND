@@ -6,7 +6,7 @@ import type { CosSlot } from '../data/cosmetics';
 
 const KEY = 'wb-account';
 
-export interface Me { mp?: { xp: number; classes: unknown[] }; id: string; name: string; owned: string[]; revoked: string[]; equipped: Partial<Record<CosSlot, string>>; badge: string | null; purchases: { id: string; sku: string; amount_cents: number; currency: string; status: string; livemode: number; created_at: number }[] }
+export interface Me { mp?: { xp: number; classes: unknown[]; weapons?: Record<string, number> }; id: string; name: string; owned: string[]; revoked: string[]; equipped: Partial<Record<CosSlot, string>>; badge: string | null; purchases: { id: string; sku: string; amount_cents: number; currency: string; status: string; livemode: number; created_at: number }[] }
 export interface Catalog { currency: string; payments: boolean; testMode: boolean; products: { sku: string; name: string; priceCents: number }[] }
 
 export class Account {
@@ -57,15 +57,17 @@ export class Account {
     await this.refresh();
   }
 
-  /** Ajoute de l'XP multijoueur au compte ; renvoie l'XP totale. */
-  async addMpXp(xp: number): Promise<number> {
-    const r = await this.call<{ xp: number }>('/api/me/mp/xp', { method: 'POST', body: JSON.stringify({ xp: Math.min(6000, Math.max(1, Math.round(xp))) }) });
-    if (this.me) this.me.mp = { xp: r.xp, classes: this.me.mp?.classes || [] };
+  /** Ajoute de l'XP multijoueur au compte (joueur et armes) ; renvoie l'XP totale. */
+  async addMpXp(xp: number, weapons: Record<string, number> = {}): Promise<number> {
+    const w: Record<string, number> = {};
+    for (const [k, v] of Object.entries(weapons)) if (v > 0) w[k] = Math.min(4000, Math.round(v));
+    const r = await this.call<{ xp: number; weapons: Record<string, number> }>('/api/me/mp/xp', { method: 'POST', body: JSON.stringify({ xp: Math.min(6000, Math.max(0, Math.round(xp))), weapons: w }) });
+    if (this.me) this.me.mp = { xp: r.xp, classes: this.me.mp?.classes || [], weapons: r.weapons || {} };
     return r.xp;
   }
   async saveClasses(classes: unknown[]): Promise<void> {
     await this.call('/api/me/mp/classes', { method: 'POST', body: JSON.stringify({ classes }) });
-    if (this.me) this.me.mp = { xp: this.me.mp?.xp || 0, classes };
+    if (this.me) this.me.mp = { xp: this.me.mp?.xp || 0, classes, weapons: this.me.mp?.weapons || {} };
   }
 
   async checkout(sku: string): Promise<string> { const r = await this.call<{ url: string }>('/api/me/checkout', { method: 'POST', body: JSON.stringify({ sku }) }); return r.url; }

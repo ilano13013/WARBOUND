@@ -14,7 +14,7 @@ import { Panels } from './Panels';
 import { LobbyClient, LOBBY_URL } from '../net/LobbyClient';
 import { MODES, type ModeId, type RoomView } from '../net/lobbyProtocol';
 import { Classes } from './Classes';
-import { mpLevelOf, WEAPON_UNLOCK, ATTACH_UNLOCK } from '../data/mpProgress';
+import { mpLevelOf, unlocksBetween, weaponLevelOf, weaponAttachList, weaponMaxLevel } from '../data/mpProgress';
 import { Shop } from './Shop';
 import { TouchControls } from './TouchControls';
 import { LEGAL, mdToHtml, type LegalDoc } from './Legal';
@@ -184,7 +184,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.9.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.10.0</span></div>`, {
       legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },
@@ -274,13 +274,19 @@ export class UI {
 
   private mpResults(m: NonNullable<ResultsData['mp']>): string {
     const a = mpLevelOf(m.before), b = mpLevelOf(m.after);
-    const unlocked: string[] = [];
-    for (const [id, lv] of Object.entries(WEAPON_UNLOCK)) if (lv > a.level && lv <= b.level) unlocked.push(WEAPONS[id]?.name || id);
-    for (const [id, lv] of Object.entries(ATTACH_UNLOCK)) if (lv > a.level && lv <= b.level) unlocked.push(ATTACHMENTS[id]?.name || id);
+    const unlocked = unlocksBetween(a.level, b.level);
+    // niveaux d'armes : progression et accessoires débloqués
+    const wRows = Object.entries(m.wGain).filter(([id, x]) => x > 0 && WEAPONS[id] && weaponMaxLevel(id) > 1).map(([id, x]) => {
+      const wa = weaponLevelOf(id, m.wBefore[id] || 0), wb = weaponLevelOf(id, (m.wBefore[id] || 0) + x);
+      for (let l = wa.level + 1; l <= wb.level; l++) { const att = weaponAttachList(id)[l - 2]; if (att) unlocked.push(`${ATTACHMENTS[att]?.name} (${WEAPONS[id].name})`); }
+      const wp = wb.need ? Math.round((wb.into / wb.need) * 100) : 100;
+      return `<div class="mp-rank wlv"><b>${esc(WEAPONS[id].name)} — ${wb.level > wa.level ? `niv. ${wa.level} → ${wb.level}` : `niv. ${wb.level}`}${wb.level >= wb.max ? ' (max.)' : ''}</b><div class="mp-bar"><i style="width:${wp}%"></i></div><span class="label">+${x} XP d’arme</span></div>`;
+    }).join('');
     const pct = b.need ? Math.round((b.into / b.need) * 100) : 100;
     return `<div class="label">Progression multijoueur</div>
       <div class="mp-rank"><b>${b.level > a.level ? `Niveau ${a.level} → ${b.level}` : `Niveau ${b.level}`}</b><div class="mp-bar"><i style="width:${pct}%"></i></div><span class="label">+${m.after - m.before} XP${m.saved ? '' : ' (non enregistrée : compte hors ligne)'}</span></div>
       ${m.events.length ? `<table class="board">${m.events.map((e) => `<tr><td>${esc(e.label)}</td><td>+${e.xp}</td></tr>`).join('')}</table>` : ''}
+      ${wRows ? `<div class="label">Niveaux d’armes</div>${wRows}` : ''}
       ${unlocked.length ? `<div class="toast" style="animation:none;color:#ffd24a;margin:6px 0">DÉBLOQUÉ : ${unlocked.map(esc).join(' · ')}</div>` : ''}`;
   }
 

@@ -131,11 +131,13 @@ export class TouchControls {
     if (show !== this.shown) { this.shown = show; this.root.classList.toggle('hidden', !show); if (!show) this.releaseAll(); }
     if (!show) return;
     const online = g.match.active || g.duel.active;
-    for (const b of BTNS) { const e = this.els.get(b.act)!; e.style.display = b.solo && online ? 'none' : ''; }
+    const lethal = g.match.active && !!g.match.myLoad.lt;
+    for (const b of BTNS) { const e = this.els.get(b.act)!; e.style.display = b.solo && online && !(lethal && b.act === 'grenade') ? 'none' : ''; }
     this.els.get('ads')!.classList.toggle('active', g.input.ads);
     this.els.get('crouch')!.classList.toggle('active', this.crouchOn);
     this.els.get('swap')!.style.display = g.weapons.slots.length > 1 ? '' : 'none';
     if (!online) this.cooldowns();
+    else if (lethal) { this.setIcons(); const gr = this.els.get('grenade')!; this.label(gr, 'grenade', String(g.player.grenades)); gr.classList.toggle('noen', g.player.grenades <= 0); }
   }
 
   /** Icônes des compétences de la classe (mêmes images et couleurs que la barre de l'ordinateur), décompte par-dessus. */
