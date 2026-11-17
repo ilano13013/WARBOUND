@@ -50,7 +50,7 @@ const inv = await page.evaluate(() => ({ owned: window.WB.game.account.me.owned,
 ok(inv.owned.length === 5 && inv.badge === 'FONDATEUR', 'inventaire : 5 objets et badge Fondateur', inv.owned.join(','));
 await page.waitForSelector('[data-a="equip"][data-v="camo_fondateur"]', { timeout: 10000 });
 await page.evaluate(() => document.querySelector('[data-a="equip"][data-v="camo_fondateur"]').click());
-await page.waitForFunction(() => window.WB.game.account.me.equipped.camo === 'camo_fondateur', null, { timeout: 10000 }).then(() => ok(true, 'camouflage Fondateur équipé (enregistré sur le serveur)'), async () => ok(false, 'camouflage équipé', await page.evaluate(() => (document.getElementById('shop-status')?.textContent || '') + ' / ' + JSON.stringify(window.WB.game.account.me.equipped) + ' / boutons ' + document.querySelectorAll('[data-a="equip"]').length)));
+await page.waitForFunction(() => window.WB.game.account.me.equipped.camo === 'camo_fondateur', null, { timeout: 30000 }).then(() => ok(true, 'camouflage Fondateur équipé (enregistré sur le serveur)'), async () => ok(false, 'camouflage équipé', await page.evaluate(() => (document.getElementById('shop-status')?.textContent || '') + ' / ' + JSON.stringify(window.WB.game.account.me.equipped) + ' / boutons ' + document.querySelectorAll('[data-a="equip"]').length)));
 await page.screenshot({ path: SHOTS + 'boutique-inventaire.png' });
 await page.evaluate(() => document.querySelector('[data-a="tab"][data-v="hist"]').click());
 await sleep(300);

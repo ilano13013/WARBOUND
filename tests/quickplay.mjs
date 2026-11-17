@@ -62,6 +62,8 @@ ok(cpl === 6 || (await ms(C)).players.filter((p) => /\[BOT\]/.test(p.name)).leng
 await B.waitForFunction(() => window.WB.matchState().zones.some((z) => z.owner), null, { timeout: 150000, polling: 1000 }).then(() => ok(true, 'des zones sont capturées'), () => ok(false, 'des zones sont capturées'));
 ok((await ms(C)).zones.some((z) => z.owner), 'propriétaire des zones synchronisé chez l’autre joueur', JSON.stringify((await ms(C)).zones.map((z) => z.owner)));
 for (const p of [B, C]) await p.evaluate(() => { const lb = window.WB.game.match.lobby; lb?.leave(); window.WB.game.match.lobby = null; });
+// parties terminées fermées : quatre jeux rendus en même temps par le processeur dépassent les délais du test
+for (const p of [A, B, C]) await p.context().close();
 
 // ---------- 1v1 seul : adversaire bot ----------
 const D = await page('Delta');

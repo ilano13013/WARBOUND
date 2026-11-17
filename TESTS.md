@@ -1,5 +1,23 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.11 (refonte graphique de l'arsenal)
+
+Tests réellement exécutés (Chromium sans carte graphique, rendu logiciel SwiftShader) :
+
+- `tests/weapon-fire.mjs` : 25/25 — pour chacune des 12 armes : ensemble importé chargé, tir (munitions consommées), chargeur vidé puis rechargement animé jusqu'au bout (chargeur plein, animation terminée) ; aucune erreur console.
+- Planches de captures hanche / visée / rechargement / tir des 12 armes (`tests/weapon-shots.mjs`, `tests/vm-probe.mjs`), comparées avant/après au même point de vue.
+- Non-régression : gameplay 27/27, systèmes 26/26, réglages OK, cohérence des niveaux OK, boss OK (3 boss vaincus), survie 6/6, duel 20/20, téléphone 18/18, classes et progression multijoueur 21/21, campagne complète op1 à op5 terminée par le pilote (0 mort, 0 erreur).
+- Multijoueur (serveur local) : matchmaking avec bots 15/15 ; boutique 15/15 ; partie privée à 4 navigateurs : 24/27 puis 26/27, chaque contrôle ayant réussi au moins une fois sur les deux passages (voir ci-dessous).
+- Partie à 4 navigateurs : quatre jeux rendus en même temps par le processeur tournent à 1 image/s. Au premier passage, la première rafale de 15 s est partie (27 tirs enregistrés) sans toucher la cible ; au second, la cible est éliminée en 4 s (12 touches), et c'est l'annonce d'explosion de grenade qui arrive après le délai chez trois joueurs (elle passait au premier). Échecs alternés dus à la charge, pas une régression ; non vérifié sur de vraies machines.
+- Matchmaking : le test laissait tourner trois parties terminées pendant qu'il en ouvrait une quatrième (chargement du QG au-delà de 2 minutes en rendu logiciel). Il ferme désormais les parties terminées ; la partie 1v1 seule se lance en 36 s.
+- Boutique : le délai d'attente de l'équipement d'un camouflage passe de 10 à 30 s. Mesures : 13,5 s et 14,1 s sur l'ancienne version, 13,5 s sur la nouvelle (rendu logiciel) ; le délai de 10 s était déjà trop court avant la refonte.
+- Cartes (`tests/visual.mjs`) : op1, op2, op3, op4, QG et survie chargés sans erreur console ni matériau manquant.
+- Remarque : un premier passage de `gameplay` a échoué sur « pause (Échap) » ; le même test relancé passe à 27/27, et l'ancienne version échoue elle aussi par intermittence (sur « ultime ») dans les mêmes conditions : aléa de minutage du rendu logiciel, pas une régression.
+
+Performances (même machine, même rendu logiciel, `tests/perf-frames.mjs`, deux mesures chacune) : QG 4,5 et 3,8 images/s avant contre 3,2 et 2,8 après ; mission op1 0,7–0,8 avant contre 0,7 après. Le surcoût vient des bras et armes texturés et animés (squelettes de 80 os). Ces chiffres ne prédisent pas le débit sur une vraie carte graphique, qui n'a pas pu être mesuré ici.
+
+Ce qui n'a pas pu être vérifié : le rendu et la fluidité sur une vraie carte graphique et sur un vrai téléphone ; la sensation en jeu (cadence, recul ressenti) au-delà des captures ; la position des doigts image par image pendant toute la durée de chaque rechargement (contrôlée sur des captures à mi-animation, pas en continu).
+
 ## Version 2.10 (niveaux d'armes, grenades, atouts) et 2.9 (classes)
 
 `tests/classes.mjs` : 21/21 (v2.10) — Frag verrouillée au niveau 1 ; XP d'arme enregistrée (Vektor-556 niveau 4) ; poignée verticale et canon lourd verrouillés par le niveau d'arme ; classe avec Frag et atouts Vigueur + Rechargement rapide enregistrée ; en partie, grenade et atouts reçus de l'hôte (rechargement ×0,7, grenade affichée) ; lancer validé par l'hôte, pas de seconde grenade, explosion après la mèche ; Frag ennemie aux pieds : joueur éliminé, élimination attribuée au lanceur « [Grenade Frag] » ; régénération par l'hôte après 2,5 s ; XP d'arme de fin de partie enregistrée. `tests/online.mjs` : 27/27 (grenade d'un client distant affichée et explosée chez les 4, seconde grenade refusée). Comptes : 30/30 (XP d'arme plafonnée, identifiants invalides ignorés). Non-régression : bots 15/15, duel 20/20, téléphone 18/18, boutique 15/15.

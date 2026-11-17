@@ -4,6 +4,16 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.11 (refonte graphique de l'arsenal)
+
+- **Les 12 armes en vue subjective** sont remplacées par des ensembles « bras + arme + animations » texturés en PBR : attente, tir, rechargement (et rechargement à vide quand la source le fournit), sortie de l'arme. Les doigts et les mains suivent les animations des auteurs ; l'ancienne pose calculée et les anciens mouvements de chargeur sont désactivés pour ces armes. Fusil à verrou : culasse manœuvrée après chaque tir ; revolver : rechargement cartouche par cartouche.
+- Visée alignée sur les organes de visée de chaque arme, sons de rechargement calés sur l'animation, flash de bouche et douilles attachés à l'arme animée, recul procédural réduit (l'animation porte déjà le recul).
+- Bras harmonisés entre auteurs (manches et gants de toile kaki).
+- Arme des ennemis et des autres joueurs : AK-74M texturée à la place du modèle à aplats.
+- Décors : caisses, barils, jerricans, bouteilles de propane, caisses militaires et radio texturés (Poly Haven) à la place des modèles à aplats, collisions inchangées.
+- Chargement : seules les armes du profil sont chargées au démarrage ; les autres à la demande (l'ancien modèle s'affiche le temps du chargement).
+- Crédits : `ASSET_CREDITS.md` et, dans le jeu, Mentions légales → « Crédits des modèles 3D » (licence CC BY 4.0 : attribution obligatoire).
+
 ## Version 2.10 (niveaux d'armes, grenades et atouts)
 
 - **Niveaux d'armes** : chaque arme gagne de l'XP quand on élimine avec elle (100, +25 à la tête) et 100 XP à la fin d'une partie terminée avec elle en arme principale. De 10 à 11 niveaux par arme ; chaque niveau à partir du 2 débloque un accessoire de cette arme, dans l'ordre : viseur reflex, compensateur, chargeur étendu, poignée verticale, ACOG, silencieux, chargeur rapide, poignée d'assaut, canon lourd, lunette x8 (selon compatibilité). XP par arme enregistrée sur le compte ; progression affichée dans l'atelier et sur l'écran de fin.
