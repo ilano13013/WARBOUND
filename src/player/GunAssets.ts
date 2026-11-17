@@ -255,6 +255,17 @@ export function buildGunAsset(def: WeaponDef, attach: Partial<Record<AttachSlot,
 
 /** Arme portée par un ennemi : le même modèle, à l'échelle, sans accessoires. */
 export function buildEnemyGun(id = 'enemy_rifle'): { root: THREE.Group; muzzle: THREE.Object3D } | null {
+  // AK-74M texturée (Cransh, CC BY 4.0) : un seul maillage, matériaux PBR conservés. Repère source : bouche vers +Z.
+  if (id === 'enemy_rifle' && Assets.has('weapons/enemy_ak')) {
+    const ak = Assets.clone('weapons/enemy_ak')!;
+    const k = 0.95 / 1.382, grip = new THREE.Vector3(0, 0.03, 0.03);
+    ak.rotation.y = Math.PI; ak.scale.setScalar(k);
+    ak.position.set(grip.x * k, -grip.y * k, grip.z * k);
+    const root = new THREE.Group(); root.add(ak);
+    ak.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; (m.material as THREE.MeshStandardMaterial).envMapIntensity = 0.8; } });
+    const muzzle = new THREE.Object3D(); muzzle.position.set(0, (0.15 - grip.y) * k, -(0.958 - grip.z) * k); root.add(muzzle);
+    return { root, muzzle };
+  }
   const src = Assets.clone('weapons/' + id);
   if (!src) return null;
   remapMaterials(src, { look: { accent: 0x3a3028 } } as WeaponDef);

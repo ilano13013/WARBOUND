@@ -1,6 +1,8 @@
 # WARBOUND — Assets externes et licences
 
-Les assets **actuellement intégrés au jeu** sont tous sous licence **CC0 1.0** (domaine public : usage commercial, modification et redistribution libres, attribution non obligatoire mais donnée ci-dessous). D'autres licences sont prévues pour des assets en attente (CC BY 4.0, Fab Standard) : elles imposent des obligations différentes, détaillées dans la section « Assets en attente ». Un fichier sous l'une de ces licences n'est **pas** intégré tant que la ligne correspondante n'est pas passée dans un tableau « intégré ».
+> **Version 2.11** : la refonte graphique ajoute des armes en vue subjective sous licence **CC BY 4.0** (attribution obligatoire) et de nouveaux décors CC0. Elles sont décrites dans **`ASSET_CREDITS.md`**, qui fait foi pour ces fichiers. Les anciens modèles d’armes (Flat Guns) restent dans le projet comme repli si un ensemble ne peut pas être chargé.
+
+Les assets décrits ci-dessous sont sous licence **CC0 1.0** (domaine public : usage commercial, modification et redistribution libres, attribution non obligatoire mais donnée ci-dessous). D'autres licences sont prévues pour des assets en attente (CC BY 4.0, Fab Standard) : elles imposent des obligations différentes, détaillées dans la section « Assets en attente ». Un fichier sous l'une de ces licences n'est **pas** intégré tant que la ligne correspondante n'est pas passée dans un tableau « intégré ».
 
 Les fichiers optimisés sont dans `public/assets/` et copiés tels quels dans `dist/`. Ils sont régénérés par :
 

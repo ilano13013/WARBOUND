@@ -1,0 +1,54 @@
+# Crédits des assets de WARBOUND
+
+Ce fichier recense les ressources externes ajoutées par la refonte graphique (version 2.11). Les ressources plus anciennes (Quaternius, Flat Guns, ambientCG, premières pièces Poly Haven, sons) sont décrites dans `ASSETS.md` ; elles restent sous CC0.
+
+## Obligations
+
+- **CC BY 4.0** ([texte de la licence](https://creativecommons.org/licenses/by/4.0/)) : créditer l’auteur, donner le lien de la licence, indiquer les modifications. Usage commercial et modification autorisés. Ces crédits sont aussi affichés dans le jeu (menu → Mentions légales → section « Crédits des modèles 3D »).
+- **CC0 1.0** : aucune obligation ; l’auteur est cité par courtoisie.
+
+## Provenance et téléchargement (à lire)
+
+Les ensembles « bras + arme + animations » ont été publiés par leurs auteurs sur Sketchfab sous CC BY 4.0. Sur Sketchfab, le téléchargement demande un compte. **Aucun compte n’a été utilisé** : chaque fichier a été pris dans une copie publique sur GitHub, accompagnée du fichier `license.txt` généré par Sketchfab (titre, auteur, page d’origine, licence). La CC BY 4.0 autorise expressément toute personne à redistribuer l’œuvre ; ces copies sont donc licites et leur réutilisation aussi.
+
+Limite : la licence a été vérifiée dans le `license.txt` de chaque copie, pas sur la page Sketchfab elle-même (site inaccessible depuis l’environnement de construction, et téléchargement soumis à connexion). Avant une exploitation commerciale, il est prudent d’ouvrir chaque page d’origine et de confirmer qu’elle affiche toujours « CC Attribution ».
+
+## Armes en vue subjective et arme des personnages (CC BY 4.0)
+
+| Ressource | Auteur | Source | Téléchargement utilisé | Licence | Modifications | Emplacement / usage |
+| --- | --- | --- | --- | --- | --- | --- |
+| *Animated FPS hands (rifle animation pack)* | Cransh | [page d’origine](https://sketchfab.com/3d-models/animated-fps-hands-rifle-animation-pack-5f2d0ed780a94724b36ab505f7564057) | [copie téléchargée](https://github.com/efs91/open-esport-2025/tree/HEAD/assets/animated_fps_hands_rifle_animation_pack) | CC BY 4.0 | animations Idle, OneShot, Reload_Fast, Draw conservées et renommées ; silencieux affiché seulement avec l’accessoire ; pour le Titan-46, le fusil d’origine est retiré et remplacé par le M249 | `public/assets/models/vm/ar17.glb` — vm/ar17.glb (AR-17 Phantom), vm/titan.glb (bras et animations du Titan-46) |
+| *FPS AK-74m animations* | Cransh | [page d’origine](https://sketchfab.com/3d-models/fps-ak-74m-animations-94be8385c402474cacd39bc096c6ca14) | [copie téléchargée](https://github.com/Ayush-Mohanty/FPS-Arms-3D/tree/HEAD/Models/fps_ak-74m_animations) | CC BY 4.0 | animations AK_Idle, AK_Shot, AK_Reload, AK_Reload_full, AK_Draw ; pour Bastion et Requiem, l’AK est retirée et une autre arme montée sur l’os d’arme ; pour les personnages : AK seule figée, allégée à 4 700 triangles | `public/assets/models/vm/vektor.glb` — vm/vektor.glb (Vektor-556), vm/bastion.glb et vm/requiem.glb (bras et animations), weapons/enemy_ak.glb (arme des personnages) |
+| *FPS Arms saiga animations remake* | Cransh | [page d’origine](https://sketchfab.com/3d-models/fps-arms-saiga-animations-remake-74e30b71e4a049b2a82b9d18f58e623c) | [copie téléchargée](https://github.com/Flesymeb/fusepoint/tree/HEAD/game/systems/weapons/viewmodels/ak74/addons/fps_ak74_viewmodel/assets/saiga) | CC BY 4.0 | animations Saiga_Idle, Fire, Reload_Fast, Reload_Full ; silencieux lié à l’accessoire | `public/assets/models/vm/aegis762.glb` — vm/aegis762.glb (Aegis-762) |
+| *SMG FPS Animations* | Cransh | [page d’origine](https://sketchfab.com/3d-models/smg-fps-animations-ca37ea9148dc4fcc9cc632175d311b23) | [copie téléchargée](https://github.com/VixidDev/Heatstroke/tree/HEAD/Game/assets/guns/smg) | CC BY 4.0 | animations IDLE, KDW_Shot, KDW_Reload_fast, KDW_Reload_full, KDW_Draw ; pour le Spectre, l’arme d’origine est remplacée par le MP5 | `public/assets/models/vm/vesper.glb` — vm/vesper.glb (Vesper-9), vm/spectre.glb (bras et animations du Spectre-PDW) |
+| *FPS pistol animations* | Cransh | [page d’origine](https://sketchfab.com/3d-models/fps-pistol-animations-0d7a343dcb6f401197a73c91aee93f6d) | [copie téléchargée](https://github.com/Mugiwara-Thomas/RE4_minigame_in_WEBGL/tree/HEAD/assets/hand) | CC BY 4.0 | animations Idle, Fire, Reload_easy, Reload_full ; texture spéculaire/brillance du pistolet absente de la copie source, remplacée par une valeur uniforme ; matériaux convertis en métal/rugosité | `public/assets/models/vm/p9.glb` — vm/p9.glb (Sidearm P9) |
+| *M249 Machine Gun* | Kendrick Russell | [page d’origine](https://sketchfab.com/3d-models/m249-machine-gun-bf0105376a2d4c37926f3ce95316460d) | [copie téléchargée](https://github.com/Yni-Viar/scp-continued-path/tree/HEAD/src/Assets/ExternalModels/Weapons/ci_logicer_modified) | CC BY 4.0 | monté sur l’os d’arme de l’ensemble « Animated FPS hands », mis à l’échelle | `public/assets/models/vm/titan.glb` — vm/titan.glb (arme) |
+| *FPS Guns 4K - Rifle 1* | Heart State Games® | [page d’origine](https://sketchfab.com/3d-models/fps-guns-4k-rifle-1-9f421e63c2e241cdb5ec85fd10837853) | [copie téléchargée](https://github.com/VixidDev/Heatstroke/tree/HEAD/Game/assets/guns/rifle2) | CC BY 4.0 | douilles, cartouches et lunette retirées ; pièces fusionnées ; chargeur attaché à l’os de chargeur de l’ensemble AK-74M | `public/assets/models/vm/bastion.glb` — vm/bastion.glb (arme) |
+| *Dragunov SVD* | Vintar | [page d’origine](https://sketchfab.com/3d-models/dragunov-svd-e3520e52a0d547b6b7c7ff2726161702) | [copie téléchargée](https://github.com/ZHe-testName/StalkerCV/tree/HEAD/public/models/dragunov-svd) | CC BY 4.0 | monté sur l’os d’arme de l’ensemble AK-74M | `public/assets/models/vm/requiem.glb` — vm/requiem.glb (arme) |
+| *FPS Animations LowPoly MP5* | Cransh | [page d’origine](https://sketchfab.com/3d-models/fps-animations-lowpoly-mp5-568f00dd76944baaa5eae1a1cc871423) | [copie téléchargée](https://github.com/Nick-hub3/hand-cannon/tree/HEAD/assets/smg) | CC BY 4.0 | arme seule (bras d’origine retirés), figée en pose de liaison, matériau uni sombre (modèle non texturé) | `public/assets/models/vm/spectre.glb` — vm/spectre.glb (arme) |
+| *CZ Scorpion Evo3 A1 | First Person Animations* | 1Matzh | [page d’origine](https://sketchfab.com/3d-models/cz-scorpion-evo3-a1-first-person-animations-f2bdfac775344004ad38d0318f0664a4) | [copie téléchargée](https://github.com/harryu97/HyunEngine/tree/HEAD/assets/models/cz_scorpion) | CC BY 4.0 | animations Idle, Fire, Reload, Reload_Empty, Equip ; ciel de présentation et viseurs retirés ; peau et manches repeintes en kaki ; squelette de contrôle allégé (pistes inutiles retirées) | `public/assets/models/vm/ember45.glb` — vm/ember45.glb (Ember-45) |
+| *sniper animated* | DJMaesen | [page d’origine](https://sketchfab.com/3d-models/sniper-animated-d6b5bccd148540f0b722d05998c9af38) | [copie téléchargée](https://github.com/AngelRealms/FPS-Test/tree/HEAD/assets/models/sniper) | CC BY 4.0 | piste unique découpée en tir 0–0,5 s, culasse 0,5–1,6 s, rechargement 1,65–3,1 s, sortie 3,2–3,7 s, attente 3,7–4,6 s (bornes vérifiées image par image) ; peau et manches repeintes en kaki | `public/assets/models/vm/frostbite.glb` — vm/frostbite.glb (Frostbite .50) |
+| *revolver animated* | DJMaesen | [page d’origine](https://sketchfab.com/3d-models/revolver-animated-0b0eef627f7b4ca8b425096196213601) | [copie téléchargée](https://github.com/AdilBasri/Sphenks_Godot/tree/HEAD/animated_gun) | CC BY 4.0 | piste unique découpée en tir 0–0,6 s, rechargement cartouche par cartouche 0,65–7,6 s, sortie 7,65–8,4 s, attente 9,8–10,8 s (bornes vérifiées) ; peau et manches repeintes en kaki | `public/assets/models/vm/ash.glb` — vm/ash.glb (Revolver Ash) |
+
+Modifications communes à tous les ensembles : conversion glTF → GLB, textures redimensionnées (1024 px) et converties en WebP, géométrie compressée (meshopt), animations non utilisées retirées, extensions de matériau inutiles retirées ; aucune animation n’a été inventée. Script de conversion : `tools/assets/build-viewmodels.mjs` et `tools/assets/viewmodels.config.mjs` (arme des personnages : `tools/assets/build-enemygun.mjs`).
+
+## Décors (CC0 1.0, Poly Haven)
+
+Téléchargés par l’API publique de Poly Haven (sans compte, sans clé) avec `tools/assets/build-props.mjs`.
+
+| Ressource | Auteur | Source | Téléchargement utilisé | Licence | Modifications | Emplacement / usage |
+| --- | --- | --- | --- | --- | --- | --- |
+| *Wooden Crate 02* | Poly Haven | [page](https://polyhaven.com/a/wooden_crate_02) | API `api.polyhaven.com/files/wooden_crate_02` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_crate.glb` — caisses en bois des cartes (fonction `crate`) |
+| *Barrel 01* | Poly Haven | [page](https://polyhaven.com/a/Barrel_01) | API `api.polyhaven.com/files/Barrel_01` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_barrel.glb` — barils décoratifs |
+| *Metal Jerrycan Green* | Poly Haven | [page](https://polyhaven.com/a/metal_jerrycan_green) | API `api.polyhaven.com/files/metal_jerrycan_green` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_jerrycan.glb` — remplace GasCan |
+| *Propane Tank* | Poly Haven | [page](https://polyhaven.com/a/propane_tank) | API `api.polyhaven.com/files/propane_tank` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_propane.glb` — remplace PropaneTank |
+| *Old Military Crate* | Poly Haven | [page](https://polyhaven.com/a/old_military_crate) | API `api.polyhaven.com/files/old_military_crate` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_milcrate.glb` — remplace Props_Crate |
+| *Wooden Military Crate* | Poly Haven | [page](https://polyhaven.com/a/wooden_military_crate) | API `api.polyhaven.com/files/wooden_military_crate` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_milcrate_long.glb` — remplace Props_CrateLong |
+| *Ammo Box* | Poly Haven | [page](https://polyhaven.com/a/ammo_box) | API `api.polyhaven.com/files/ammo_box` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_ammobox.glb` — réserve (non placé) |
+| *Vintage Radio Transceiver* | Poly Haven | [page](https://polyhaven.com/a/vintage_radio_transceiver) | API `api.polyhaven.com/files/vintage_radio_transceiver` (glTF 1K) | CC0 1.0 | triangles réduits (meshopt), textures WebP | `public/assets/models/props/ph_radio.glb` — remplace Radio |
+
+Les décors remplacés gardent la collision de l’ancien modèle : passages, couvertures et lignes de tir sont inchangés.
+
+## Retour arrière
+
+La version précédant la refonte est marquée par l’étiquette Git `avant-refonte-graphique`.
