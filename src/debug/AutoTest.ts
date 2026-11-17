@@ -91,6 +91,7 @@ export function installAutoTest(g: Game): void {
       tick();
       return { clips: [...(rig as any).acts.keys()], hand: !!(rig as any).hand, head: !!(rig as any).head, scale: rig.scale };
     },
+    THREE,
     newGame: (cls: ClassId, name = 'Testeur') => { g.profile = newProfile(cls, name); g.profile.introSeen = true; g.startHub(); },
     hub: () => g.startHub(),
     mission: (id: string) => g.startMission(id),
@@ -119,6 +120,47 @@ export function installAutoTest(g: Game): void {
     give: (table: string, n = 1) => import('../rpg/items').then((m) => { for (let i = 0; i < n; i++) g.giveItems(m.rollLoot(table, g.profile!.level, 1.5, true)); return g.profile!.inventory.length; }),
     speed: (n: number) => { g.testSpeed = n; },
     god: (on: boolean) => { g.player.godMode = on; },
+    /** Remplace les réglages d'un ensemble d'arme et reconstruit l'arme (mise au point du cadrage et de la visée). */
+    vmTune: async (id: string, tune: Record<string, unknown>) => { const m = await import('../player/ViewModel'); m.VM[id] = { ...(m.VM[id] || {}), ...tune } as any; await m.vmLoad(id); g.weapons.rebuild(true); return Object.keys(m.VM[id]); },
+    /** Pose de visée à partir de deux points de la ligne de mire (repère caméra au repos) : œilleton/cran arrière et guidon/avant. */
+    vmAds: async (id: string, rear: number[], front: number[], relief = 0.3, drop = 0) => {
+      const R = new THREE.Vector3().fromArray(rear), F = new THREE.Vector3().fromArray(front);
+      const q = new THREE.Quaternion().setFromUnitVectors(F.clone().sub(R).normalize(), new THREE.Vector3(0, 0, -1));
+      const t = R.clone().applyQuaternion(q).multiplyScalar(-1).add(new THREE.Vector3(0, -drop, -relief));
+      const e = new THREE.Euler().setFromQuaternion(q, 'YXZ');
+      const ads = { pos: t.toArray().map((x) => +x.toFixed(4)), rot: [e.x, e.y, e.z].map((x) => +x.toFixed(4)) };
+      const m = await import('../player/ViewModel'); m.VM[id] = { ...m.VM[id], ads } as any; g.weapons.rebuild(true);
+      return ads;
+    },
+    /** Mesures de l'arme courante dans le repère de la caméra au repos : axe du canon, bouche, profil supérieur, orientation de visée proposée. */
+    vmProbe: () => {
+      const vm = g.weapons.w?.vm; if (!vm) return null;
+      const root = vm.root; root.updateMatrixWorld(true);
+      const pts: THREE.Vector3[] = []; const v = new THREE.Vector3();
+      for (const m of vm.gunMeshes) { if (!m.visible) continue; const pos = m.geometry.attributes.position; const sk = m as THREE.SkinnedMesh, si = m.geometry.attributes.skinIndex; for (let i = 0; i < pos.count; i += 3) { if (sk.isSkinnedMesh && si && /mag|bullet|shell|12ge/i.test(sk.skeleton.bones[si.getX(i)]?.name || '')) continue; v.fromBufferAttribute(pos, i); if ((m as THREE.SkinnedMesh).isSkinnedMesh) (m as THREE.SkinnedMesh).applyBoneTransform(i, v); v.applyMatrix4(m.matrixWorld); pts.push(root.worldToLocal(v.clone())); } }
+      { const xs = pts.map((p) => p.z).sort((a, b) => a - b), med = xs[xs.length >> 1]; for (let i = pts.length - 1; i >= 0; i--) if (Math.abs(pts[i].z - med) > 2.5 || Math.abs(pts[i].y) > 2) pts.splice(i, 1); }
+      const mean = new THREE.Vector3(); for (const p of pts) mean.add(p); mean.multiplyScalar(1 / pts.length);
+      const c = [0, 0, 0, 0, 0, 0];
+      for (const p of pts) { const x = p.x - mean.x, y = p.y - mean.y, z = p.z - mean.z; c[0] += x * x; c[1] += x * y; c[2] += x * z; c[3] += y * y; c[4] += y * z; c[5] += z * z; }
+      let d = new THREE.Vector3(0, 0, -1);
+      for (let i = 0; i < 40; i++) d.set(c[0] * d.x + c[1] * d.y + c[2] * d.z, c[1] * d.x + c[3] * d.y + c[4] * d.z, c[2] * d.x + c[4] * d.y + c[5] * d.z).normalize();
+      if (d.z > 0) d.multiplyScalar(-1);
+      let max = -1e9; for (const p of pts) max = Math.max(max, p.dot(d));
+      const mz = new THREE.Vector3(); let n = 0; for (const p of pts) if (p.dot(d) > max - 0.006) { mz.add(p); n++; } mz.multiplyScalar(1 / n);
+      const q = new THREE.Quaternion().setFromUnitVectors(d, new THREE.Vector3(0, 0, -1));
+      const e = new THREE.Euler().setFromQuaternion(q, 'YXZ');
+      // profil supérieur une fois l'arme alignée sur l'axe de visée
+      const bins: { y: number; x: number; z: number }[] = [];
+      let zmin = 1e9, zmax = -1e9; const rp = pts.map((p) => p.clone().applyQuaternion(q)); for (const p of rp) { zmin = Math.min(zmin, p.z); zmax = Math.max(zmax, p.z); }
+      const qi = q.clone().invert(); const NB = 24;
+      for (let b = 0; b < NB; b++) { let best: THREE.Vector3 | null = null; for (const p of rp) { const k = Math.floor(((p.z - zmin) / (zmax - zmin + 1e-6)) * NB); if (k === b && (!best || p.y > best.y)) best = p; } if (best) { const r = best.clone().applyQuaternion(qi); bins.push({ z: +best.z.toFixed(3), y: +best.y.toFixed(3), x: +best.x.toFixed(3), rest: [+r.x.toFixed(3), +r.y.toFixed(3), +r.z.toFixed(3)] } as any); } }
+      const f = (a: THREE.Vector3) => a.toArray().map((x) => +x.toFixed(3));
+      const boxes: Record<string, number[][]> = {};
+      for (const m of vm.gunMeshes) { if (!m.visible) continue; const b = new THREE.Box3(); const pos = m.geometry.attributes.position; for (let i = 0; i < pos.count; i += 2) { v.fromBufferAttribute(pos, i); if ((m as THREE.SkinnedMesh).isSkinnedMesh) (m as THREE.SkinnedMesh).applyBoneTransform(i, v); v.applyMatrix4(m.matrixWorld); root.worldToLocal(v); if (Math.abs(v.y) < 2 && Math.abs(v.z) < 4) b.expandByPoint(v); } boxes[m.name] = [f(b.min), f(b.max)]; }
+      return { boxes, n: pts.length, mean: f(mean), axis: f(d), muzzle: f(mz), adsRot: [e.x, e.y, e.z].map((x) => +x.toFixed(3)), top: bins, meshes: vm.gunMeshes.map((m) => m.name) };
+    },
+    /** Équipe une arme précise (captures et contrôles visuels). */
+    equip: (id: string, attach: Record<string, string> = {}) => import('../rpg/items').then((m) => { const it = m.makeWeaponItem(id, 'common', 1); it.attach = attach as typeof it.attach; g.weapons.override = [it]; g.weapons.cur = 0; g.weapons.rebuild(true); g.ui.hud.weaponChanged(); return id; }),
     tp: (x: number, y: number, z: number, yaw?: number) => { g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); if (yaw !== undefined) g.player.yaw = yaw; g.player.pitch = 0; },
     look: (yaw: number, pitch: number) => { g.player.yaw = yaw; g.player.pitch = pitch; },
     mouse: (dx: number, dy: number) => { g.input.mouseDX += dx; g.input.mouseDY += dy; },

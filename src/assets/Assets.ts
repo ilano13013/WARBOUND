@@ -55,6 +55,18 @@ class AssetStore {
     }
   }
 
+  private pending = new Map<string, Promise<boolean>>();
+  /** Charge un modèle hors manifeste à la demande (armes en vue subjective) ; résout à false en cas d'échec. */
+  lazy(name: string): Promise<boolean> {
+    if (this.models.has(name)) return Promise.resolve(true);
+    let p = this.pending.get(name);
+    if (!p) {
+      p = this.loader.loadAsync(BASE + 'models/' + name + '.glb').then((g) => { this.models.set(name, g); return true; }, () => { this.failed.push(name); return false; });
+      this.pending.set(name, p);
+    }
+    return p;
+  }
+
   has(name: string): boolean { return this.models.has(name); }
   gltf(name: string): GLTF | null { return this.models.get(name) || null; }
   /** Copie indépendante d'un modèle (squelettes compris). */

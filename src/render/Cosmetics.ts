@@ -51,7 +51,7 @@ const _p = new THREE.Vector3(), _n = new THREE.Vector3(), _nm = new THREE.Matrix
 
 /** Coordonnées de texture projetées sur la géométrie (projection selon l'axe dominant de la normale) :
  *  le motif garde la même taille sur toute l'arme, quelles que soient les coordonnées d'origine du modèle. */
-function projectUV(m: THREE.Mesh, k: number): void {
+function projectUV(m: THREE.Mesh, k: number, attr = 'uv'): void {
   const g0 = m.geometry as THREE.BufferGeometry;
   const pos = g0.attributes.position;
   if (!pos) return;
@@ -68,7 +68,7 @@ function projectUV(m: THREE.Mesh, k: number): void {
     const [u, v] = ax >= ay && ax >= az ? [_p.z, _p.y] : ay >= az ? [_p.x, _p.z] : [_p.x, _p.y];
     uv[i * 2] = u * k; uv[i * 2 + 1] = v * k;
   }
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setAttribute(attr, new THREE.BufferAttribute(uv, 2));
   m.geometry = g;
 }
 
@@ -123,3 +123,29 @@ export function cosmeticImage(id: string): string {
   }
   return c.toDataURL();
 }
+
+/**
+ * Camouflage sur les maillages d'une arme texturée (ensembles importés) : le motif remplace la couleur par un second
+ * jeu d'UV projeté, le relief et la rugosité d'origine sont conservés. Les bras ne sont pas concernés.
+ */
+export function applyCamoMeshes(meshes: THREE.Mesh[], id: string | null | undefined): void {
+  if (!id || !meshes.length) return;
+  const base = camoTexture(id);
+  if (!base) return;
+  const tex = base.clone(); tex.channel = 1; tex.needsUpdate = true;
+  const box = new THREE.Box3();
+  for (const m of meshes) { m.updateWorldMatrix(true, false); if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(_cb.copy(m.geometry.boundingBox!).applyMatrix4(m.matrixWorld)); }
+  const size = box.getSize(new THREE.Vector3());
+  const k = 1.6 / Math.max(1e-3, size.x, size.y, size.z);
+  for (const m of meshes) {
+    const s = m.material as THREE.MeshStandardMaterial;
+    if (Array.isArray(m.material) || s.transparent || SKIP.test(s.name || '') || SKIP.test(m.name || '')) continue;
+    projectUV(m, k, 'uv1');
+    const c = s.clone();
+    c.map = tex; c.color.setHex(0xffffff);
+    if (id === 'camo_fracture') { c.emissiveMap = tex; c.emissive.setHex(0x6a3aaa); c.emissiveIntensity = 0.6; }
+    c.needsUpdate = true;
+    m.material = c;
+  }
+}
+const _cb = new THREE.Box3();

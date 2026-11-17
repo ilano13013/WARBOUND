@@ -6,14 +6,18 @@ import type { Item } from '../rpg/items';
 import { buildWeaponModel, type WeaponModel } from './WeaponModels';
 import { buildGunAsset, type GunAsset } from './GunAssets';
 import { Arms } from './Arms';
-import { applyCamo } from '../render/Cosmetics';
+import { ViewModel, VM, vmReady, vmLoad } from './ViewModel';
+import { applyCamo, applyCamoMeshes } from '../render/Cosmetics';
 import { softTexture } from '../render/Materials';
 import { flareTexture } from '../render/FX';
 
-export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number; gun: GunAsset | null }
+export interface WeaponState { st: WStats; ammo: number; reserve: number; model: WeaponModel; hits: number; shots: number; gun: GunAsset | null; vm: ViewModel | null }
 
 const VM_SCALE = 0.78;
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3(), _e = new THREE.Euler();
+const _qa = new THREE.Quaternion(), _pv = new THREE.Vector3();
+/** Point autour duquel tournent les mouvements procéduraux d'un ensemble importé (à peu près la poignée). */
+const VM_PIVOT = new THREE.Vector3(0.1, -0.14, -0.32);
 
 export class WeaponSystem {
   slots: WeaponState[] = [];
@@ -56,21 +60,26 @@ export class WeaponSystem {
   rebuild(keepAmmo = false): void {
     const p = this.g.profile!;
     const old = this.slots;
-    for (const s of old) s.model.group.removeFromParent();
+    for (const s of old) { s.model.group.removeFromParent(); s.vm?.dispose(); }
     this.slots = [];
     const ov = this.override;
     (['primary', 'secondary'] as const).forEach((slot, i) => {
       const item = ov ? ov[i] : equippedItem(p, slot);
       if (!item) return;
       const st = ov ? weaponStats(item, {}, 'arcanist') : weaponStats(item, this.g.player.mods, p.classId);
-      const gun = buildGunAsset(st.def, item.attach || {});
-      const model: WeaponModel = gun ? { group: gun.root, muzzle: gun.muzzle, mag: null, sightY: gun.sightY, scoped: gun.scoped } : buildWeaponModel(st.def, item.attach || {});
+      // ensemble importé (bras + arme + animations) s'il est chargé ; sinon ancien modèle, remplacé dès l'arrivée du fichier
+      const wid = st.def.id;
+      let vm: ViewModel | null = null;
+      if (vmReady(wid)) { try { vm = new ViewModel(wid, VM[wid], item.attach || {}); } catch (e) { console.warn('[WARBOUND] ensemble d’arme inutilisable :', wid, e); vm = null; } }
+      else if (VM[wid]) void vmLoad(wid).then((ok) => { if (ok && this.slots.some((x) => x.st.def.id === wid && !x.vm)) this.rebuild(true); });
+      const gun = vm ? null : buildGunAsset(st.def, item.attach || {});
+      const model: WeaponModel = vm ? { group: vm.root, muzzle: vm.muzzle, mag: null, sightY: 0, scoped: false } : gun ? { group: gun.root, muzzle: gun.muzzle, mag: null, sightY: gun.sightY, scoped: gun.scoped } : buildWeaponModel(st.def, item.attach || {});
       model.group.visible = false;
-      applyCamo(model.group, this.g.account.equipped('camo'));
-      model.group.scale.setScalar(gun ? 1 : VM_SCALE);
+      if (vm) applyCamoMeshes(vm.gunMeshes, this.g.account.equipped('camo')); else applyCamo(model.group, this.g.account.equipped('camo'));
+      if (!vm) model.group.scale.setScalar(gun ? 1 : VM_SCALE);
       this.root.add(model.group);
       const prev = keepAmmo ? old.find((o) => o.st.item.uid === item.uid) : null;
-      this.slots[i] = { st, ammo: prev ? Math.min(prev.ammo, st.mag) : st.mag, reserve: prev ? prev.reserve : st.def.reserve, model, hits: 0, shots: 0, gun };
+      this.slots[i] = { st, ammo: prev ? Math.min(prev.ammo, st.mag) : st.mag, reserve: prev ? prev.reserve : st.def.reserve, model, hits: 0, shots: 0, gun, vm };
     });
     this.cur = Math.min(this.cur, this.slots.length - 1);
     if (this.cur < 0) this.cur = 0;
@@ -90,6 +99,7 @@ export class WeaponSystem {
   switchTo(i: number): void {
     if (i === this.cur || !this.slots[i] || this.swapT > 0) return;
     this.swapTo = i; this.swapT = 0.4; this.reloading = 0;
+    this.w?.vm?.stop();
     this.g.audio.swap();
   }
 
@@ -98,6 +108,7 @@ export class WeaponSystem {
     if (!w || this.reloading > 0 || this.swapT > 0 || w.ammo >= w.st.mag || w.reserve <= 0 || p.has('colossus')) return;
     this.reloadDur = w.st.reload * (this.g.match.active ? this.reloadMul : 1);
     this.reloading = this.reloadDur; this.reloadStage = 0; this.reloadEmpty = w.ammo === 0;
+    if (w.vm) w.vm.play(this.reloadEmpty && w.vm.has('reloadEmpty') ? 'reloadEmpty' : 'reload', this.reloadDur);
     if (this.g.match.active) this.g.match.onReload();
   }
 
@@ -108,7 +119,7 @@ export class WeaponSystem {
   }
 
   /** Recharge instantanément l'arme courante (talents). */
-  instantReload(): void { const w = this.w; if (!w) return; this.reloading = 0; w.ammo = w.st.mag; }
+  instantReload(): void { const w = this.w; if (!w) return; if (this.reloading > 0) w.vm?.stop(); this.reloading = 0; w.ammo = w.st.mag; }
 
   update(dt: number): void {
     const g = this.g, p = g.player, inp = g.input, w = this.w;
@@ -123,7 +134,7 @@ export class WeaponSystem {
     }
     if (this.swapT > 0) {
       this.swapT -= dt;
-      if (this.swapTo >= 0 && this.swapT <= 0.2) { this.cur = this.swapTo; this.swapTo = -1; this.attachFlash(); this.updateVisibility(); g.ui.hud.weaponChanged(); }
+      if (this.swapTo >= 0 && this.swapT <= 0.2) { this.cur = this.swapTo; this.swapTo = -1; this.attachFlash(); this.updateVisibility(); g.ui.hud.weaponChanged(); const nv = this.w.vm; if (nv) { nv.stop(); nv.play('draw'); } }
     }
     const cw = this.w, st = cw.st;
     this.mobility = st.mobility;
@@ -138,9 +149,11 @@ export class WeaponSystem {
       const before = 1 - this.reloading / this.reloadDur;
       this.reloading -= dt;
       const k = 1 - Math.max(0, this.reloading) / this.reloadDur;
-      if (before < 0.12 && k >= 0.12) g.audio.reload(0);
-      if (before < 0.62 && k >= 0.62) g.audio.reload(1);
-      if (before < 0.88 && k >= 0.88) g.audio.reload(2);
+      // sons calés sur l'animation importée quand il y en a une (sortie du chargeur, insertion, armement)
+      const cue = (this.reloadEmpty ? cw.vm?.tune.cuesEmpty : null) || cw.vm?.tune.cues || [0.12, 0.62, 0.88];
+      if (before < cue[0] && k >= cue[0]) g.audio.reload(0);
+      if (before < cue[1] && k >= cue[1]) g.audio.reload(1);
+      if (before < cue[2] && k >= cue[2]) g.audio.reload(2);
       if (this.reloading <= 0) { this.reloading = 0; this.finishReload(); }
     }
     // visée
@@ -261,12 +274,15 @@ export class WeaponSystem {
     if (st.def.id === 'bastion') { const k = Math.max(0.45, 1 - w.shots * 0.0 - this.bloom * 0.25); rv *= k; }
     p.kick(rv, (Math.random() * 2 - 1) * rh);
     this.bloom = Math.min(3.2, this.bloom + (st.def.auto ? 0.42 : 1.2) * (st.hipSpread / 2.4));
-    this.kickZ += 0.028 + st.recoilV * 0.016;
-    this.kickR += 0.018 + st.recoilV * 0.012;
+    // ensemble importé : l'animation de tir porte déjà le recul, seule une fraction du recul procédural s'y ajoute
+    const kk = w.vm ? w.vm.kick : 1;
+    this.kickZ += (0.028 + st.recoilV * 0.016) * kk;
+    this.kickR += (0.018 + st.recoilV * 0.012) * kk;
+    w.vm?.fire();
     if (!g.settings.reduceMotion) p.shakeAmt = Math.min(0.5, p.shakeAmt + st.recoilV * 0.035);
     if (st.def.id === 'frostbite') this.boltT = 0.95;
     this.cycleT = 0.07;
-    if (w.gun && st.def.id !== 'ash' && st.def.id !== 'frostbite') this.ejectCasing(w.gun);
+    if ((w.gun || w.vm) && st.def.id !== 'ash' && st.def.id !== 'frostbite') this.ejectCasing(w);
     // flash de bouche
     this.flash.visible = true; this.flashT = st.silent ? 0.025 : 0.045;
     this.flash.rotation.z = Math.random() * Math.PI;
@@ -290,10 +306,11 @@ export class WeaponSystem {
     const sprintT = p.sprinting && this.reloading <= 0 ? 1 : 0;
     this.sprintK += (sprintT - this.sprintK) * Math.min(1, dt * 10);
 
-    const gun = w.gun;
+    const gun = w.gun, vm = w.vm;
     const hipX = gun ? (pistol ? 0.13 : 0.16) : pistol ? 0.15 : 0.18, hipY = gun ? (pistol ? -0.15 : -0.185) : pistol ? -0.16 : -0.19, hipZ = gun ? (pistol ? -0.38 : -0.4) : pistol ? -0.42 : -0.4;
     const adsY = -w.model.sightY * (gun ? 1 : VM_SCALE), adsZ = gun ? (pistol ? -0.34 : w.st.scoped ? -0.2 : -0.24) : pistol ? -0.36 : -0.26;
     const pos = this.pose.set(hipX + (0 - hipX) * ease, hipY + (adsY - hipY) * ease, hipZ + (adsZ - hipZ) * ease);
+    if (vm) pos.copy(vm.hip).lerp(vm.adsPos, ease);
     const rot = this.rot.set(0, 0, 0);
     const bobK = (reduce ? 0.3 : 1) * p.bobLevel * (1 - ease * 0.85);
     pos.x += Math.cos(p.bobPhase) * 0.007 * bobK + this.swayX * (1 - ease * 0.7);
@@ -311,7 +328,7 @@ export class WeaponSystem {
     pos.z += this.kickZ * (1 - ease * 0.35); rot.x += this.kickR * (1 - ease * 0.5); pos.y += this.kickR * 0.04;
     // rechargement
     if (w.model.mag) w.model.mag.visible = true;
-    if (this.reloading > 0) {
+    if (this.reloading > 0 && !vm) {
       const k = 1 - this.reloading / this.reloadDur;
       const inK = Math.min(1, k / 0.15), outK = Math.min(1, (1 - k) / 0.14);
       const a = Math.min(inK, outK);
@@ -324,7 +341,7 @@ export class WeaponSystem {
     // culasse (fusil à verrou)
     if (this.boltT > 0 && this.reloading <= 0) {
       const k = 1 - this.boltT / 0.95;
-      const a = Math.sin(Math.min(1, Math.max(0, (k - 0.2) / 0.7)) * Math.PI);
+      const a = vm ? 0 : Math.sin(Math.min(1, Math.max(0, (k - 0.2) / 0.7)) * Math.PI);
       rot.z -= 0.35 * a * (1 - ease * 0.6); pos.y -= 0.03 * a * (1 - ease * 0.6); pos.x += 0.02 * a;
       if (k > 0.35 && k - dt / 0.95 <= 0.35) g.audio.reload(0);
       if (k > 0.7 && k - dt / 0.95 <= 0.7) g.audio.reload(2);
@@ -336,9 +353,15 @@ export class WeaponSystem {
     if (p.dead) low = 1;
     pos.y -= 0.28 * low; rot.x -= 0.7 * low;
     const m = w.model.group;
-    m.position.copy(pos);
     _e.set(rot.x, rot.y, rot.z, 'YXZ');
     m.quaternion.setFromEuler(_e);
+    if (vm) {
+      // mouvements procéduraux autour de la poignée, puis orientation de visée
+      pos.add(VM_PIVOT).sub(_pv.copy(VM_PIVOT).applyQuaternion(m.quaternion));
+      m.quaternion.multiply(_qa.copy(vm.hipQuat).slerp(vm.adsQuat, ease));
+      vm.update(dt);
+    }
+    m.position.copy(pos);
     // lunette : masque l'arme quand la surimpression est affichée
     m.visible = !this.scopeOverlay;
     this.g.r.drawVm = true;
@@ -407,10 +430,11 @@ export class WeaponSystem {
     arms.solve();
   }
 
-  private ejectCasing(gun: GunAsset): void {
+  private ejectCasing(w: WeaponState): void {
     const c = this.casings.find((x) => x.t <= 0) || this.casings[0];
-    const m = this.w.model.group;
-    c.m.position.copy(m.localToWorld(gun.eject.clone()));
+    const m = w.model.group;
+    if (w.vm) { m.updateMatrixWorld(true); w.vm.eject.getWorldPosition(c.m.position); }
+    else c.m.position.copy(m.localToWorld(w.gun!.eject.clone()));
     c.v.set(0.9 + Math.random() * 0.5, 0.9 + Math.random() * 0.5, 0.2 + Math.random() * 0.3);
     c.m.rotation.set(Math.random() * 3, Math.random() * 3, 0);
     c.m.visible = true; c.t = 0.7;
