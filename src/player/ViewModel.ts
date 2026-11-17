@@ -46,7 +46,7 @@ export interface VmTune {
 /** Réglages par arme (cadrage, visée, bouche du canon), établis à l'écran sur chaque ensemble. */
 export const VM: Record<string, VmTune> = {
   // --- ensembles Cransh (CC BY 4.0) : mêmes bras, même squelette ---
-  ar17: { hip: [0.11, -0.05, -0.1], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.052, -0.008, 0.05] }, muzzle: [0.056, -0.084, -0.872], eject: [0.09, -0.06, -0.3], parts: { muzzle: { silencer: 'mesh_Silencer' } } },
+  ar17: { hip: [0.12, -0.065, -0.13], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.052, -0.008, 0.05] }, muzzle: [0.056, -0.084, -0.872], eject: [0.09, -0.06, -0.3], parts: { muzzle: { silencer: 'mesh_Silencer' } } },
   vektor: { previewHide: /^mesh_ak74m_1$/, scale: 0.38, hip: [0.16, -0.065, -0.26], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.0431, 0.0201, -0.0653], rot: [0, -0.0337, 0] }, muzzle: [0.02, -0.073, -0.752], eject: [0.06, -0.04, -0.2] },
   aegis762: { scale: 0.63, hip: [0.1, -0.07, -0.15], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.1137, -0.0166, 0.0647], rot: [0.0074, -0.0639, -0.0002] }, muzzle: [0.055, -0.067, -0.929], eject: [0.12, -0.03, -0.35], parts: { muzzle: { silencer: 'mesh_Silencer' } } },
   vesper: { previewHide: /^mesh_Material_457_1$/, scale: 0.6, hip: [0.12, -0.07, -0.2], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.0642, 0.0168, -0.1179], rot: [0, -0.0141, 0] }, muzzle: [0.042, -0.071, -0.736], eject: [0.08, -0.04, -0.3] },

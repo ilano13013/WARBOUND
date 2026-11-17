@@ -263,7 +263,10 @@ export class Level {
     if (!info) return false;
     const k = h / info.h;
     const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y - info.min.y * k, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(k, k, k));
-    this.propList.push({ name, m });
+    // modèle remplacé par un décor texturé (Poly Haven) : même emprise, la collision reste celle du modèle d'origine
+    const swap = PROP_SWAP[name], alt = swap ? propInfo(swap.to) : null;
+    if (swap && alt) this.propList.push({ name: swap.to, m: fitProp(alt, info, k, swap.fit, x, y, z, ry) });
+    else this.propList.push({ name, m });
     if (solid) {
       const quarter = Math.round(ry / (Math.PI / 2)) % 2 !== 0;
       const sx = (quarter ? info.size.z : info.size.x) * k, sz = (quarter ? info.size.x : info.size.z) * k;
@@ -386,6 +389,16 @@ export class Level {
   }
 
   crate(x: number, z: number, s = 1.2, y = 0, m: MatName = 'crate'): void {
+    // caisse en bois : modèle texturé (Poly Haven) ajusté au cube de collision, tourné par quarts de tour pour varier
+    const ph = m === 'crate' ? propInfo('ph_crate') : null;
+    if (ph) {
+      this.collider(x, y, z, s, s, s);
+      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((Math.abs(Math.round(x * 7 + z * 13)) % 4) * Math.PI) / 2);
+      const sc = new THREE.Vector3(s / ph.size.x, s / ph.h, s / ph.size.z);
+      const c = new THREE.Vector3(-((ph.min.x + ph.max.x) / 2) * sc.x, -ph.min.y * sc.y, -((ph.min.z + ph.max.z) / 2) * sc.z).applyQuaternion(q);
+      this.propList.push({ name: 'ph_crate', m: new THREE.Matrix4().compose(c.add(new THREE.Vector3(x, y, z)), q, sc) });
+      return;
+    }
     this.box(m, x, y, z, s, s, s);
     // cadre : patins, couvercle cerclé, cornières
     const N = { collide: false } as BoxOpts, t: MatName = m === 'crate' ? 'wood' : 'trim';
@@ -445,6 +458,7 @@ export class Level {
   }
 
   barrelDeco(x: number, z: number, m: MatName = 'rust', y = 0): void {
+    if (propInfo('ph_barrel')) { this.prop('ph_barrel', x, y, z, x * 3.1 + z * 1.7, 0.95); this.collider(x, y, z, 0.6, 0.95, 0.6, 'metal'); return; }
     this.deco(mat(m), new THREE.CylinderGeometry(0.32, 0.32, 0.95, 10), x, y + 0.475, z);
     this.collider(x, y, z, 0.6, 0.95, 0.6, 'metal');
   }
@@ -779,6 +793,26 @@ export class Level {
   }
 }
 
+/** Décors remplacés par un modèle texturé. `fit` : étiré à l'emprise exacte de l'ancien modèle (caisses) ; sinon même hauteur. */
+const PROP_SWAP: Record<string, { to: string; fit?: boolean }> = {
+  Props_Crate: { to: 'ph_milcrate', fit: true }, Props_CrateLong: { to: 'ph_milcrate_long', fit: true },
+  GasCan: { to: 'ph_jerrycan' }, PropaneTank: { to: 'ph_propane' }, Radio: { to: 'ph_radio' },
+};
+/** Matrice d'un décor de remplacement posé dans l'emprise du décor d'origine (échelle k, position et rotation de l'original). */
+function fitProp(a: PropInfo, o: PropInfo, k: number, fit: boolean | undefined, x: number, y: number, z: number, ry: number): THREE.Matrix4 {
+  // quart de tour si les grands côtés ne sont pas sur le même axe
+  const turn = fit && (o.size.x > o.size.z) !== (a.size.x > a.size.z);
+  const ax = turn ? a.size.z : a.size.x, az = turn ? a.size.x : a.size.z;
+  const u = (o.h * k) / a.h;
+  const sc = fit ? new THREE.Vector3((o.size.x * k) / ax, u, (o.size.z * k) / az) : new THREE.Vector3(u, u, u);
+  const ql = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), turn ? Math.PI / 2 : 0);
+  // dans le repère local de l'original : centre de la boîte de remplacement amené sur celui de l'original
+  const local = new THREE.Matrix4().makeScale(turn ? sc.z : sc.x, sc.y, turn ? sc.x : sc.z).premultiply(new THREE.Matrix4().makeRotationFromQuaternion(ql));
+  const ca = new THREE.Vector3((a.min.x + a.max.x) / 2, a.min.y, (a.min.z + a.max.z) / 2).applyMatrix4(local);
+  const co = new THREE.Vector3(((o.min.x + o.max.x) / 2) * k, 0, ((o.min.z + o.max.z) / 2) * k);
+  local.premultiply(new THREE.Matrix4().makeTranslation(co.x - ca.x, -ca.y, co.z - ca.z));
+  return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(1, 1, 1)).multiply(local);
+}
 interface PropInfo { skinned: boolean; parts: { geometry: THREE.BufferGeometry; material: THREE.Material; local: THREE.Matrix4 }[]; min: THREE.Vector3; max: THREE.Vector3; size: THREE.Vector3; h: number }
 const propCache = new Map<string, PropInfo | null>();
 /** Géométries et matériaux d'un décor, partagés entre toutes ses instances. */
