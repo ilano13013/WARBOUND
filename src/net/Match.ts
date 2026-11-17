@@ -23,6 +23,7 @@ import { outfitMats } from '../render/Cosmetics';
 import { PRESET_CLASSES, sanitizeClass, MP_XP, LETHALS, RELOAD_FAST, REGEN_DELAY, REGEN_DELAY_FAST, REGEN_RATE, WEAPON_FINISH_XP, type ClassDef } from '../data/mpProgress';
 import { Nades, THROW_SPEED, THROW_UP, type Nade } from './Nades';
 import { BotBrain } from './Bots';
+import { vmLoad } from '../player/ViewModel';
 import { MODES } from './lobbyProtocol';
 
 export type TeamId = 'red' | 'blue';
@@ -137,6 +138,8 @@ export class Match {
     this.players = room.players.filter((p) => p.connected).map((p, i) => this.newPlayer(i, p.id, p.name, p.team as TeamId | null));
     this.me = this.players.findIndex((p) => p.id === lobby.you);
     this.mine!.cls = this.cls;
+    // ensembles d'armes de la partie chargés pendant la connexion (classe choisie, ou échelle du duel)
+    for (const st of this.mode === 'duel' ? LADDER : classKit(this.cls)) void vmLoad(st.base);
     this.phase = 'connecting';
     lobby.onSignal = (from, data) => void this.onSignal(from, data);
     if (this.isHost) {

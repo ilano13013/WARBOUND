@@ -9,6 +9,7 @@ const ids = (process.argv[3] || 'ar17,vektor,aegis762,vesper,spectre,ember45,tit
 await page.evaluate(() => { window.WB.god(true); window.WB.tp(0, 0.1, 19, 0); window.WB.look(0.5, 0.02); });
 for (const id of ids) {
   await page.evaluate((id) => window.WB.equip(id), id);
+  await page.waitForFunction(() => !!window.WB.game.weapons.w?.vm, null, { timeout: 30000 }).catch(() => console.log(id, "ANCIEN MODÈLE"));
   await sleep(2500);
   await page.screenshot({ path: `${out}/${id}-1hip.png`, timeout: 180000 });
   await page.evaluate(() => window.WB.ads(true)); await sleep(1500);

@@ -1,5 +1,7 @@
 // Chef d'orchestre : boucle de jeu, états, chargement des niveaux, transitions et progression.
 import * as THREE from 'three';
+import { vmLoad } from '../player/ViewModel';
+import { equippedItem } from '../rpg/Stats';
 import { DIAG } from '../render/Renderer';
 import { Renderer } from '../render/Renderer';
 import { FX } from '../render/FX';
@@ -125,6 +127,13 @@ export class Game {
     this.last = performance.now();
     this.ui.showLoading(0, '');
     await Assets.loadAll((k, label) => this.ui.showLoading(k, label));
+    // armes en vue subjective : seules celles du profil (et les deux armes de départ) sont chargées ici, les autres à la demande
+    {
+      const ids = new Set<string>(['ar17', 'p9']);
+      if (this.profile) for (const sl of ['primary', 'secondary'] as const) { const it = equippedItem(this.profile, sl); if (it?.base) ids.add(it.base); }
+      this.ui.showLoading(1, 'armes');
+      await Promise.race([Promise.all([...ids].map((id) => vmLoad(id))), new Promise((r) => setTimeout(r, 12000))]);
+    }
     this.toMenu();
     // compte joueur en ligne (boutique, cosmétiques) : chargé en arrière-plan, sans bloquer le jeu
     if (this.profile && this.account.online && !this.testMode) void this.account.ensure(this.profile.name).then(() => this.weapons.rebuild(true));

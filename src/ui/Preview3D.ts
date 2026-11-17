@@ -7,6 +7,9 @@ import { WEAPONS, type AttachSlot } from '../data/weapons';
 import { CharacterRig } from '../render/CharacterRig';
 import { RIGS } from '../ai/EnemyRigs';
 import { Assets } from '../assets/Assets';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { ViewModel, VM, vmReady, vmLoad } from '../player/ViewModel';
+import { applyCamoMeshes } from '../render/Cosmetics';
 
 /** Aperçu 3D dans un canevas de la page (contexte WebGL propre, libéré à la fermeture). */
 export class Preview {
@@ -26,6 +29,8 @@ export class Preview {
     this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3020, 1.6));
     const d = new THREE.DirectionalLight(0xfff0dc, 2.6); d.position.set(2, 3, 2.5); this.scene.add(d);
     const b = new THREE.DirectionalLight(0x9ab8ff, 1.2); b.position.set(-2.5, 1.5, -2); this.scene.add(b);
+    // reflets : nécessaires aux matériaux métalliques des armes texturées
+    const pm = new THREE.PMREMGenerator(this.r); this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; this.scene.environmentIntensity = 0.55; pm.dispose();
     this.resize();
     const loop = () => { this.raf = requestAnimationFrame(loop); this.frame(); };
     loop();
@@ -33,16 +38,37 @@ export class Preview {
 
   private resize(): void { const w = this.canvas.clientWidth || 360, h = this.canvas.clientHeight || 260; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
 
-  private clear(): void { if (this.obj) this.scene.remove(this.obj); this.obj = null; this.rig?.dispose(); this.rig = null; }
+  private vm: ViewModel | null = null; private req = 0;
+  private clear(): void { if (this.obj) this.scene.remove(this.obj); this.obj = null; this.vm?.dispose(); this.vm = null; this.rig?.dispose(); this.rig = null; }
 
   showWeapon(camo: string | null, id = 'ar17', attach: Partial<Record<AttachSlot, string>> = {}, spin = true): void {
     this.clear();
     this.spin = spin;
     const def = WEAPONS[id] || WEAPONS.ar17;
-    const gun = buildGunAsset(def, attach);
-    const g = gun ? gun.root : buildWeaponModel(def, attach, false).group;
-    applyCamo(g, camo);
-    const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+    const req = ++this.req;
+    let g: THREE.Object3D;
+    const box = new THREE.Box3();
+    if (vmReady(def.id)) {
+      // arme de l'ensemble importé, sans les bras, en pose de repos
+      const vm = new ViewModel(def.id, VM[def.id], attach); this.vm = vm; g = vm.root;
+      for (const a of vm.armMeshes) a.visible = false;
+      applyCamoMeshes(vm.gunMeshes, camo);
+      g.updateMatrixWorld(true);
+      const bb = new THREE.Box3();
+      for (const m of vm.gunMeshes) {
+        if (vm.tune.previewHide?.test(m.name)) { m.visible = false; continue; }
+        const sk = m as THREE.SkinnedMesh;
+        if (sk.isSkinnedMesh) { sk.skeleton.update(); sk.computeBoundingBox(); bb.copy(sk.boundingBox!); } else { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); bb.copy(m.geometry.boundingBox!); }
+        box.union(bb.applyMatrix4(m.matrixWorld));
+      }
+    } else {
+      if (VM[def.id]) void vmLoad(def.id).then((ok) => { if (ok && req === this.req && this.obj) this.showWeapon(camo, id, attach, spin); });
+      const gun = buildGunAsset(def, attach);
+      g = gun ? gun.root : buildWeaponModel(def, attach, false).group;
+      applyCamo(g, camo);
+      box.setFromObject(g);
+    }
+    const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
     g.position.sub(c);
     const pivot = new THREE.Group(); pivot.add(g); pivot.scale.setScalar(1.1 / s);
     this.obj = pivot; this.scene.add(pivot);
