@@ -51,4 +51,4 @@ Les décors remplacés gardent la collision de l’ancien modèle : passages, co
 
 ## Retour arrière
 
-La version précédant la refonte est marquée par l’étiquette Git `avant-refonte-graphique`.
+La version précédant la refonte est le commit `0542129` (v2.10.0) de la branche `claude/warbound-fps-game-mhwfzi` (l’étiquette `avant-refonte-graphique` n’existe qu’en local : l’environnement de construction ne peut pas pousser d’étiquettes). Sur Cloudflare Pages : Déploiements → déploiement précédent → « Rollback ».

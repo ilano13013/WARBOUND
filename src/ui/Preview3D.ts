@@ -52,15 +52,20 @@ export class Preview {
       // arme de l'ensemble importé, sans les bras, en pose de repos
       const vm = new ViewModel(def.id, VM[def.id], attach); this.vm = vm; g = vm.root;
       for (const a of vm.armMeshes) a.visible = false;
+      if (vm.tune.previewHideBone) { const re = vm.tune.previewHideBone; vm.root.traverse((o) => { if (re.test(o.name)) o.scale.setScalar(1e-4); }); vm.freeze = true; }
       applyCamoMeshes(vm.gunMeshes, camo);
       g.updateMatrixWorld(true);
-      const bb = new THREE.Box3();
+      // boîte mesurée sur les sommets déformés par le squelette (la boîte d'un maillage skinné n'est pas fiable ici)
+      const v = new THREE.Vector3(), xs: number[] = [], ys: number[] = [], zs: number[] = [];
       for (const m of vm.gunMeshes) {
         if (vm.tune.previewHide?.test(m.name)) { m.visible = false; continue; }
-        const sk = m as THREE.SkinnedMesh;
-        if (sk.isSkinnedMesh) { sk.skeleton.update(); sk.computeBoundingBox(); bb.copy(sk.boundingBox!); } else { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); bb.copy(m.geometry.boundingBox!); }
-        box.union(bb.applyMatrix4(m.matrixWorld));
+        const sk = m as THREE.SkinnedMesh, pos = m.geometry.attributes.position;
+        if (sk.isSkinnedMesh) sk.skeleton.update();
+        for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i); if (sk.isSkinnedMesh) sk.applyBoneTransform(i, v); v.applyMatrix4(m.matrixWorld); xs.push(v.x); ys.push(v.y); zs.push(v.z); }
       }
+      // bornes à 1 % et 99 % : une pièce rangée hors champ par l'animation de repos (chargeur de rechange) n'agrandit pas l'aperçu
+      const q = (a: number[], k: number) => a.sort((x, y) => x - y)[Math.min(a.length - 1, Math.max(0, Math.round(k * (a.length - 1))))];
+      if (xs.length) box.set(new THREE.Vector3(q(xs, 0.01), q(ys, 0.01), q(zs, 0.01)), new THREE.Vector3(q(xs, 0.99), q(ys, 0.99), q(zs, 0.99)));
     } else {
       if (VM[def.id]) void vmLoad(def.id).then((ok) => { if (ok && req === this.req && this.obj) this.showWeapon(camo, id, attach, spin); });
       const gun = buildGunAsset(def, attach);

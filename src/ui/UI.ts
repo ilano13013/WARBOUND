@@ -184,7 +184,7 @@ export class UI {
         <button class="btn" data-a="credits">Crédits</button>
         <button class="btn" data-a="quit">Quitter</button>
       </div>${info}
-      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.11.0</span></div>`, {
+      <div class="menu-foot"><span>COALITION AEGIS — UNITÉ WARBOUND — 2037</span><span class="legal-links"><a data-a="legal" data-v="mentions">Mentions légales</a> · <a data-a="legal" data-v="cgv">CGV</a> · <a data-a="legal" data-v="privacy">Confidentialité</a></span><span>v2.11.1</span></div>`, {
       legal: (v) => this.showLegal(v as LegalDoc, () => this.showMenu()),
       new: () => { if (g.profile) this.confirm('Créer un nouvel opérateur ?', 'La sauvegarde actuelle sera <b>définitivement supprimée</b> lors de la création du nouveau personnage.', () => this.showClassSelect(true), () => this.showMenu()); else this.showClassSelect(true); },
       continue: () => { if (g.profile) g.startHub(); },

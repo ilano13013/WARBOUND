@@ -1,5 +1,9 @@
 # WARBOUND — Résultats des tests et limites connues
 
+## Version 2.11.1
+
+- Défaut signalé par l'utilisateur après publication : arme absente de l'aperçu de l'atelier. Cause : boîte englobante faussée par une pièce rangée hors champ par l'animation de repos. Ajout au test des classes d'un contrôle de l'aperçu des 12 armes ; `tests/classes.mjs` 22/22, boutique 15/15, tir Ember-45 et AR-17 5/5.
+
 ## Version 2.11 (refonte graphique de l'arsenal)
 
 Tests réellement exécutés (Chromium sans carte graphique, rendu logiciel SwiftShader) :

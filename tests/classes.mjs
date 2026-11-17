@@ -37,6 +37,15 @@ await openSlot('lethal');
 const lockL = await page.evaluate(() => ({ frag: document.querySelector('[data-a="lethal"][data-v="frag"]')?.disabled, txt: document.querySelector('[data-a="lethal"][data-v="frag"]')?.textContent }));
 ok(lockL.frag === true && /Niveau 3/.test(lockL.txt), 'niveau 1 : Grenade Frag verrouillée (niveau joueur 3)', JSON.stringify(lockL));
 await page.screenshot({ path: SHOTS + 'classes-niveau1.png' });
+// aperçu 3D de l'atelier : chaque arme importée est chargée et cadrée (échelle plausible, ni minuscule ni géante)
+const pv = [];
+for (const id of ['ar17', 'vektor', 'aegis762', 'vesper', 'spectre', 'ember45', 'titan', 'bastion', 'frostbite', 'requiem', 'p9', 'ash']) {
+  await page.evaluate((id) => window.WB.game.ui.classes.preview.showWeapon(null, id, {}, false), id);
+  await page.waitForFunction(() => !!window.WB.game.ui.classes.preview.vm, null, { timeout: 30000 }).catch(() => {});
+  pv.push(await page.evaluate((id) => { const p = window.WB.game.ui.classes.preview; return { id, vm: !!p.vm, s: +p.obj.scale.x.toFixed(2), arms: p.vm ? p.vm.armMeshes.every((m) => !m.visible) : false }; }, id));
+}
+ok(pv.every((x) => x.vm && x.arms && x.s > 0.3 && x.s < 6), 'atelier : aperçu 3D des 12 armes (arme importée, bras masqués, cadrage correct)', JSON.stringify(pv.filter((x) => !(x.vm && x.arms && x.s > 0.3 && x.s < 6))));
+await page.evaluate(() => window.WB.game.ui.classes.showEditor(() => window.WB.game.ui.showMenu(), 0)); await sleep(500);
 
 // ---------- montée de niveau (XP ajoutée au compte) ----------
 for (let i = 0; i < 2; i++) await page.evaluate(() => window.WB.game.account.addMpXp(6000));

@@ -27,6 +27,10 @@ export interface VmTune {
   parts?: Partial<Record<AttachSlot, Record<string, string>>>;
   /** Maillages masqués dans l'aperçu (chargeur de rechange tenu hors champ au repos). */
   previewHide?: RegExp;
+  /** Os d'une pièce rangée hors champ au repos (chargeur de rechange) : réduite à rien dans l'aperçu. */
+  previewHideBone?: RegExp;
+  /** Maillages des bras quand ils ne s'appellent pas « arms » (exclus du camouflage et de l'aperçu). */
+  armMesh?: RegExp;
   /** Maillages toujours masqués. */
   hide?: RegExp;
   /** Part du recul procédural conservée (l'animation de tir porte déjà le sien). */
@@ -57,7 +61,7 @@ export const VM: Record<string, VmTune> = {
   requiem: { scale: 0.38, hip: [0.16, -0.065, -0.26], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.0431, 0.0201, -0.0653], rot: [0, -0.0337, 0] }, muzzle: [0.04, -0.1, -0.89], mount: { pos: [0.044, -0.217, -0.34], scale: 0.256 } },
   spectre: { scale: 0.6, hip: [0.12, -0.07, -0.2], hipRot: [0.04, 0.1, 0], ads: { pos: [-0.0446, 0.015, -0.08], rot: [0.0089, -0.0148, -0.0001] }, muzzle: [0.047, -0.16, -0.742], eject: [0.08, -0.05, -0.25], mount: { pos: [0.043, -0.09, -0.22], scale: 0.34 } },
   // --- ensembles complets d'autres auteurs (manches repeintes en kaki à la conversion) ---
-  ember45: { hip: [0.06, -0.06, -0.05], hipRot: [0.03, 0.08, 0], ads: { pos: [-0.0553, 0.014, -0.0752], rot: [0, -0.0235, 0] }, eject: [0.07, -0.03, -0.25], muzzle: [0.032, -0.059, -0.618], camBone: /^Camera$/, camFlip: false, camRot: [0, -1.5708, 0], gunBone: /^__none$/ },
+  ember45: { previewHideBone: /^Magazine_2_\d+$/, armMesh: /^mesh_(Cloths|Body|Gloves|Watch)/, hip: [0.06, -0.06, -0.05], hipRot: [0.03, 0.08, 0], ads: { pos: [-0.0553, 0.014, -0.0752], rot: [0, -0.0235, 0] }, eject: [0.07, -0.03, -0.25], muzzle: [0.032, -0.059, -0.618], camBone: /^Camera$/, camFlip: false, camRot: [0, -1.5708, 0], gunBone: /^__none$/ },
   frostbite: { hip: [0.09, -0.07, 0.05], hipRot: [0.02, 0.08, 0], ads: { pos: [0, 0, 0] }, muzzle: [0.0, -0.021, -1.3], gunBone: /^__none$/, bolt: true, ranges: { fire: [0, 0.5], bolt: [0.5, 1.6], reload: [1.65, 3.1], draw: [3.2, 3.7], idle: [3.7, 4.6] }, view: { pos: [0, 8, -40], rot: [0, Math.PI, 0] }, scale: 0.01 },
   ash: { hip: [0.1, -0.1, 0], hipRot: [0.02, 0.07, 0], ads: { pos: [0, 0.0082, -0.0897], rot: [-0.065, 0, 0] }, muzzle: [0, 0.009, -0.536], gunBone: /^__none$/, ranges: { fire: [0, 0.6], reload: [0.65, 7.6], draw: [7.65, 8.4], idle: [9.8, 10.8] }, view: { pos: [0, 6, -42], rot: [0, Math.PI, 0] }, scale: 0.0067 },
 };
@@ -105,7 +109,7 @@ export class ViewModel {
       if (mat.map) mat.map.anisotropy = 8;
       // verre d'optique livré opaque : rendu translucide pour voir à travers en visée
       if (/glass|lens/i.test(mat.name) && !mat.transparent) { const c = mat.clone(); c.transparent = true; c.opacity = 0.14; c.depthWrite = false; c.roughness = 0.05; m.material = c; }
-      if (/arms/i.test(m.name)) this.armMeshes.push(m); else this.gunMeshes.push(m);
+      if ((tune.armMesh || /arms/i).test(m.name)) this.armMeshes.push(m); else this.gunMeshes.push(m);
     });
     // animations
     this.mixer = new THREE.AnimationMixer(scene);
@@ -179,6 +183,8 @@ export class ViewModel {
   stop(): void { if (this.shot) { this.shot.stop(); this.shot = null; } this.queued = null; if (this.idle) this.idle.setEffectiveWeight(1); }
   get busy(): boolean { return !!this.shot; }
 
+  /** Aperçu : pose figée (les échelles d'os modifiées ne sont pas écrasées par l'animation). */
+  freeze = false;
   update(dt: number): void {
     if (this.shot) {
       this.shotT += dt;
@@ -192,7 +198,7 @@ export class ViewModel {
         if (this.queued) { const q = this.queued; this.queued = null; this.play(q); }
       }
     }
-    this.mixer.update(dt);
+    if (!this.freeze) this.mixer.update(dt);
   }
 
   dispose(): void { this.mixer.stopAllAction(); this.root.removeFromParent(); }

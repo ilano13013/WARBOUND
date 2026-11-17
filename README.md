@@ -4,6 +4,10 @@ FPS 3D / Action-RPG militaire dark fantasy, jouable dans le navigateur (PC). Cam
 
 Le jeu est un site statique : aucun service cloud, aucun backend. Les modèles, textures et sons libres (CC0) sont embarqués dans le dépôt ; le reste (décors de niveau, effets, musique, habillage) est généré par le code.
 
+## Version 2.11.1 (correctif)
+
+- Atelier « Créer une classe » et boutique : l'arme n'apparaissait plus dans l'aperçu 3D (taille mal mesurée sur les armes animées, réduite à un point). Corrigé pour les 12 armes ; bras de l'Ember-45 masqués et exclus du camouflage ; chargeur de rechange de l'Ember-45 masqué dans l'aperçu.
+
 ## Version 2.11 (refonte graphique de l'arsenal)
 
 - **Les 12 armes en vue subjective** sont remplacées par des ensembles « bras + arme + animations » texturés en PBR : attente, tir, rechargement (et rechargement à vide quand la source le fournit), sortie de l'arme. Les doigts et les mains suivent les animations des auteurs ; l'ancienne pose calculée et les anciens mouvements de chargeur sont désactivés pour ces armes. Fusil à verrou : culasse manœuvrée après chaque tir ; revolver : rechargement cartouche par cartouche.
